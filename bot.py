@@ -233,7 +233,7 @@ if user_id == ADMIN_ID:
     if ok:
         save_user_to_registry(user_id, full_name, username)
         increment_counter()
-        # await notify_admin(context.bot, full_name, username, user_id)
+        await notify_admin(context.bot, full_name, username, user_id)
     return
 
     # Already approved — deliver immediately
