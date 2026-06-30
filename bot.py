@@ -202,7 +202,6 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
         f"Name: {full_name}\n"
         f"Username: {username}\n"
         f"User ID: `{user_id}`\n\n"
-        f"Code: `{DEEP_LINK_PAYLOAD}`\n"
         f"Time: {now}"
     )
     try:
