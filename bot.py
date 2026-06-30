@@ -233,56 +233,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ok:
             save_user_to_registry(user_id, full_name, username)
             increment_counter()
-            keyboard = InlineKeyboardMarkup([
-    [
-        InlineKeyboardButton("🚫 Blokir", callback_data=f"banbtn|{user_id}"),
-        InlineKeyboardButton("🔄 Izinkan Lagi", callback_data=f"ulang|{user_id}")
-    ]
-])
-
-await context.bot.send_message(
-    chat_id=ADMIN_ID,
-    text=text,
-    parse_mode="Markdown",
-    reply_markup=keyboard,
-)
+            await notify_admin(context.bot, full_name, username, user_id)
         return
 
     # Already approved — deliver immediately
-    # User pernah menerima
-if user_id in read_approved():
-
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "✅ IZINKAN",
-                callback_data=f"ulang|{user_id}"
-            ),
-            InlineKeyboardButton(
-                "⛔ BLOKIR",
-                callback_data=f"banbtn|{user_id}"
-            )
-        ]
-    ])
-
-    await context.bot.send_message(
-        ADMIN_ID,
-        (
-            "⚠️ Request Ulang\n\n"
-            f"Name: {full_name}\n"
-            f"Username: {username}\n"
-            f"User ID: `{user_id}`\n\n"
-            "Sudah pernah menerima akses."
-        ),
-        parse_mode="Markdown",
-        reply_markup=keyboard
-    )
-
-    await update.message.reply_text(
-        "Maaf, Anda sudah menerima akses."
-    )
-
-    return
+    if user_id in read_approved():
+        ok = await deliver_album(context.bot, update.effective_chat.id)
+        if ok:
+            save_user_to_registry(user_id, full_name, username)
+            increment_counter()
+            await notify_admin(context.bot, full_name, username, user_id)
+        return
 
     # Already waiting for approval — ignore duplicate taps
     if user_id in pending_requests:
@@ -362,64 +323,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 save_user_to_registry(user_id, pending["full_name"], pending["username"])
                 increment_counter()
                 await notify_admin(context.bot, pending["full_name"], pending["username"], user_id)
-elif action == "ulang":
 
-    registry = read_user_registry()
-
-    if user_id not in registry:
-        await query.edit_message_text(
-            "User tidak ditemukan."
-        )
-        return
-
-    await query.edit_message_text(
-        f"✅ Akses diberikan — {registry[user_id]['full_name']}"
-    )
-
-    await deliver_album(
-        context.bot,
-        user_id
-    )
-
-    increment_counter()
-
-    await notify_admin(
-        context.bot,
-        registry[user_id]["full_name"],
-        registry[user_id]["username"],
-        user_id
-    )
-    elif action == "banbtn":
-
-    registry = read_user_registry()
-
-    full_name = "-"
-    username = "-"
-
-    if user_id in registry:
-        full_name = registry[user_id]["full_name"]
-        username = registry[user_id]["username"]
-
-    bl = read_blacklist()
-
-    bl[user_id] = {
-        "full_name": full_name,
-        "username": username
-    }
-
-    write_blacklist(bl)
-
-    approved = read_approved()
-
-    if user_id in approved:
-        approved.remove(user_id)
-        save_approved(approved)
-
-    await query.edit_message_text(
-        f"⛔ User diblokir\n\n"
-        f"Name: {full_name}\n"
-        f"User ID: {user_id}"
-    )
     elif action == "tolak":
         name_str = pending["full_name"] if pending else str(user_id)
         await query.edit_message_text(f"❌ Ditolak — {name_str}")
@@ -628,12 +532,7 @@ def main():
     app.add_handler(CommandHandler("banned",     banned))
     app.add_handler(CommandHandler("getid",      getid_start))
     app.add_handler(CommandHandler("cancel",     getid_cancel))
-    app.add_handler(
-    CallbackQueryHandler(
-        approval_callback,
-        pattern=r"^(izin|tolak|ulang|banbtn)\|"
-    )
-)
+    app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
         filters.AUDIO | filters.VOICE | filters.ANIMATION | filters.Sticker.ALL,
