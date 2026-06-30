@@ -227,14 +227,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in read_blacklist():
         return
 
-    # Admin always bypasses approval
-    if user_id == ADMIN_ID:
-        ok = await deliver_album(context.bot, update.effective_chat.id)
-        if ok:
-            save_user_to_registry(user_id, full_name, username)
-            increment_counter()
-            await notify_admin(context.bot, full_name, username, user_id)
-        return
+# Admin always bypasses approval
+if user_id == ADMIN_ID:
+    ok = await deliver_album(context.bot, update.effective_chat.id)
+    if ok:
+        save_user_to_registry(user_id, full_name, username)
+        increment_counter()
+        # await notify_admin(context.bot, full_name, username, user_id)
+    return
 
     # Already approved — deliver immediately
     if user_id in read_approved():
