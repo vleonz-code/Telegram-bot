@@ -237,13 +237,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Already approved — deliver immediately
-    if user_id in read_approved():
-        ok = await deliver_album(context.bot, update.effective_chat.id)
-        if ok:
-            save_user_to_registry(user_id, full_name, username)
-            increment_counter()
-            await notify_admin(context.bot, full_name, username, user_id)
-        return
+    # User pernah menerima
+if user_id in read_approved():
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "✅ IZINKAN",
+                callback_data=f"ulang|{user_id}"
+            ),
+            InlineKeyboardButton(
+                "⛔ BLOKIR",
+                callback_data=f"banbtn|{user_id}"
+            )
+        ]
+    ])
+
+    await context.bot.send_message(
+        ADMIN_ID,
+        (
+            "⚠️ Request Ulang\n\n"
+            f"Name: {full_name}\n"
+            f"Username: {username}\n"
+            f"User ID: `{user_id}`\n\n"
+            "Sudah pernah menerima akses."
+        ),
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
+
+    await update.message.reply_text(
+        "Maaf, Anda sudah menerima akses."
+    )
+
+    return
 
     # Already waiting for approval — ignore duplicate taps
     if user_id in pending_requests:
@@ -532,7 +559,12 @@ def main():
     app.add_handler(CommandHandler("banned",     banned))
     app.add_handler(CommandHandler("getid",      getid_start))
     app.add_handler(CommandHandler("cancel",     getid_cancel))
-    app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
+    app.add_handler(
+    CallbackQueryHandler(
+        approval_callback,
+        pattern=r"^(izin|tolak|ulang|banbtn)\|"
+    )
+)
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
         filters.AUDIO | filters.VOICE | filters.ANIMATION | filters.Sticker.ALL,
