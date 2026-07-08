@@ -1,3 +1,5 @@
+Bot lama
+
 import os
 import json
 import logging
@@ -23,9 +25,6 @@ WIB = timezone(timedelta(hours=7))
 # { user_id: {"chat_id": int, "waiting_msg_id": int, "full_name": str, "username": str} }
 pending_requests: dict = {}
 
-# Menyimpan paket yang dipilih user
-user_orders = {}
-
 # In-memory set of admin user_ids waiting to send a media for /getid
 getid_waiting: set = set()
 
@@ -39,7 +38,7 @@ FILE_IDS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Media helpers 
+# Media helpers
 # ---------------------------------------------------------------------------
 
 def build_media_group():
@@ -63,22 +62,12 @@ async def deliver_album(bot, chat_id: int):
         progress = await bot.send_message(chat_id, "📦 Mengirim Batch 1/1 (6 media)...\nMohon tunggu...")
         await bot.send_media_group(chat_id, media=media)
         await progress.delete()
-keyboard = InlineKeyboardMarkup([
-    [
-        InlineKeyboardButton(
-            "✨ Join VIP (Lihat Harga Paket)",
-            callback_data="join_vip"
+        await bot.send_message(
+            chat_id,
+            "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
+            "✅ Semua 6 media terkirim!",
+            parse_mode="HTML"
         )
-    ]
-])
-
-await bot.send_message(
-    chat_id,
-    "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
-    "✅ Semua 6 media terkirim!",
-    parse_mode="HTML",
-    reply_markup=keyboard
-)
         return True
     except Exception as e:
         logger.error(f"Failed to deliver album to {chat_id}: {e}")
@@ -292,14 +281,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
-      if query.data == "join_vip":
-
-        await query.edit_message_text(
-
-            "📦 Katalog masih dalam pengembangan."
-
-        )
 
     # Only the admin can act on these buttons
     if query.from_user.id != ADMIN_ID:
@@ -537,7 +518,6 @@ def main():
     app.add_handler(CommandHandler("getid",      getid_start))
     app.add_handler(CommandHandler("cancel",     getid_cancel))
     app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
-    app.add_handler(CallbackQueryHandler(vip_callback,pattern="^join_vip$"))
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
         filters.AUDIO | filters.VOICE | filters.ANIMATION | filters.Sticker.ALL,
