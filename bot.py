@@ -66,6 +66,11 @@ async def deliver_album(bot, chat_id: int):
             "✅ Semua 6 media terkirim!",
             parse_mode="HTML"
         )
+        await bot.send_message(
+    chat_id,
+    "👑 Ingin menikmati lebih banyak konten eksklusif?\n\n"
+    "Fitur Paket VIP akan segera tersedia."
+)
         return True
     except Exception as e:
         logger.error(f"Failed to deliver album to {chat_id}: {e}")
