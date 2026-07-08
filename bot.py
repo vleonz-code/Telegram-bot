@@ -1,5 +1,3 @@
-Bot lama
-
 import os
 import json
 import logging
