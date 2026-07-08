@@ -215,7 +215,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in read_blacklist():
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="🚫 Permintaan Anda telah dibatasi."
+            text="🚫 Akses Anda telah dibatasi."
         )
         return
 
