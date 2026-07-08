@@ -35,7 +35,6 @@ FILE_IDS = [
     ("photo", os.environ.get("FILE_ID_6", "")),
 ]
 
-
 # ---------------------------------------------------------------------------
 # Media helpers
 # ---------------------------------------------------------------------------
@@ -50,7 +49,6 @@ def build_media_group():
         else:
             media.append(InputMediaPhoto(media=fid))
     return media
-
 
 async def deliver_album(bot, chat_id: int):
     """Send the progress message, album, then confirmation to chat_id."""
@@ -73,7 +71,6 @@ async def deliver_album(bot, chat_id: int):
         logger.error(f"Failed to deliver album to {chat_id}: {e}")
         return False
 
-
 # ---------------------------------------------------------------------------
 # Approved users 
 # ---------------------------------------------------------------------------
@@ -87,14 +84,12 @@ def read_approved() -> set:
     except Exception:
         return set()
 
-
 def save_approved(approved: set):
     try:
         with open(APPROVED_FILE, "w") as f:
             json.dump({"approved": list(approved)}, f)
     except Exception as e:
         logger.error(f"Approved write error: {e}")
-
 
 # ---------------------------------------------------------------------------
 # Blacklist
@@ -123,7 +118,6 @@ def read_blacklist() -> dict:
         logger.error(f"Blacklist read error: {e}")
         return {}
 
-
 def write_blacklist(bl: dict):
     try:
         entries = [
@@ -134,7 +128,6 @@ def write_blacklist(bl: dict):
             json.dump({"banned": entries}, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error(f"Blacklist write error: {e}")
-
 
 # ---------------------------------------------------------------------------
 # User registry
@@ -151,7 +144,6 @@ def read_user_registry() -> dict:
         logger.error(f"User registry read error: {e}")
         return {}
 
-
 def save_user_to_registry(user_id: int, full_name: str, username: str):
     registry = read_user_registry()
     registry[user_id] = {"full_name": full_name, "username": username}
@@ -160,7 +152,6 @@ def save_user_to_registry(user_id: int, full_name: str, username: str):
             json.dump({str(k): v for k, v in registry.items()}, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error(f"User registry write error: {e}")
-
 
 # ---------------------------------------------------------------------------
 # Counter
@@ -175,7 +166,6 @@ def read_counter() -> int:
     except Exception:
         return 0
 
-
 def increment_counter() -> int:
     try:
         data = {"count": 0}
@@ -189,7 +179,6 @@ def increment_counter() -> int:
     except Exception as e:
         logger.error(f"Counter error: {e}")
         return -1
-
 
 # ---------------------------------------------------------------------------
 # Admin notification (no counter shown)
@@ -209,7 +198,6 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
     except Exception as e:
         logger.error(f"Failed to notify admin: {e}")
 
-
 # ---------------------------------------------------------------------------
 # /start — deep link handler with approval gate
 # ---------------------------------------------------------------------------
@@ -223,9 +211,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     full_name = user.full_name or "-"
     username  = f"@{user.username}" if user.username else "-"
 
-# Silently ignore banned users
-if user_id in read_blacklist():
-    return
+    # Silently ignore banned users
+    if user_id in read_blacklist():
+        return
 
     # Admin always bypasses approval
     if user_id == ADMIN_ID:
@@ -278,7 +266,6 @@ if user_id in read_blacklist():
         parse_mode="Markdown",
         reply_markup=keyboard,
     )
-
 
 # ---------------------------------------------------------------------------
 # Callback query — admin presses ✅ Izinkan or ❌ Tolak
@@ -348,7 +335,6 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
-
 # ---------------------------------------------------------------------------
 # Admin commands
 # ---------------------------------------------------------------------------
@@ -391,7 +377,6 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("✅ User banned.")
 
-
 async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -408,7 +393,6 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bl.pop(target_id, None)
     write_blacklist(bl)
     await update.message.reply_text("✅ User unbanned.")
-
 
 async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -428,7 +412,6 @@ async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
     )
 
-
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -437,7 +420,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📊 *Stats Bot*\n\nTotal penggunaan `UB3A6P`: *{count}x*",
         parse_mode="Markdown",
     )
-
 
 async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -449,7 +431,6 @@ async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Failed to reset counter: {e}")
         return
     await update.message.reply_text("✅ Statistik berhasil direset!")
-
 
 # ---------------------------------------------------------------------------
 # /getid — admin tool to retrieve Telegram file_id from any media
@@ -463,7 +444,6 @@ async def getid_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📎 Kirim satu file media (foto, video, dokumen, audio, voice, animasi, atau sticker).\n\n"
         "Ketik /cancel untuk membatalkan."
     )
-
 
 async def getid_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -505,13 +485,11 @@ async def getid_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("⚠️ Tidak ada media yang terdeteksi. Kirim ulang atau /cancel.")
         getid_waiting.add(user_id)
 
-
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
     getid_waiting.discard(update.effective_user.id)
     await update.message.reply_text("❌ /getid dibatalkan.")
-
 
 # ---------------------------------------------------------------------------
 # Main
@@ -542,7 +520,6 @@ def main():
     
     logger.info("Bot is running...")
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
