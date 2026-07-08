@@ -224,8 +224,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username  = f"@{user.username}" if user.username else "-"
 
     # Silently ignore banned users
-    if user_id in read_blacklist():
-        return
+# Notify banned users
+if user_id in read_blacklist():
+    await update.message.reply_text(
+        "🚫 Akses Anda telah dibatasi."
+    )
+    return
 
     # Admin always bypasses approval
     if user_id == ADMIN_ID:
