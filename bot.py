@@ -211,8 +211,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     full_name = user.full_name or "-"
     username  = f"@{user.username}" if user.username else "-"
 
-    # Silently ignore banned users
-    if user_id in read_blacklist():
+# Silently ignore banned users
+if user_id in read_blacklist():
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="🚫 Permintaan Anda telah dibatasi."
