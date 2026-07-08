@@ -363,6 +363,17 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
+async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.message.reply_text(
+        "💎 Paket VIP\n\n"
+        "Silakan pilih paket.\n\n"
+        "• 1 Bulan\n"
+        "• 3 Bulan\n"
+        "• Permanen"
+    )
 # ---------------------------------------------------------------------------
 # Admin commands
 # ---------------------------------------------------------------------------
@@ -539,6 +550,12 @@ def main():
     app.add_handler(CommandHandler("getid",      getid_start))
     app.add_handler(CommandHandler("cancel",     getid_cancel))
     app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
+    app.add_handler(
+    CallbackQueryHandler(
+        vipmenu_callback,
+        pattern=r"^vipmenu$"
+    )
+)
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
         filters.AUDIO | filters.VOICE | filters.ANIMATION | filters.Sticker.ALL,
