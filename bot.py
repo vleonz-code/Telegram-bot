@@ -56,17 +56,40 @@ async def deliver_album(bot, chat_id: int):
     if not media:
         logger.error("One or more FILE_ID env vars are missing.")
         return False
+
     try:
-        progress = await bot.send_message(chat_id, "📦 Mengirim Batch 1/1 (6 media)...\nMohon tunggu...")
+        progress = await bot.send_message(
+            chat_id,
+            "📦 Mengirim Batch 1/1 (6 media)...\nMohon tunggu..."
+        )
+
         await bot.send_media_group(chat_id, media=media)
         await progress.delete()
+
         await bot.send_message(
             chat_id,
             "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
             "✅ Semua 6 media terkirim!",
             parse_mode="HTML"
         )
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "💎 Paket VIP",
+                    callback_data="vipmenu"
+                )
+            ]
+        ])
+
+        await bot.send_message(
+            chat_id,
+            "💎 Paket VIP",
+            reply_markup=keyboard
+        )
+
         return True
+
     except Exception as e:
         logger.error(f"Failed to deliver album to {chat_id}: {e}")
         return False
