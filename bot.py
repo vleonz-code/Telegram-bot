@@ -66,24 +66,6 @@ async def deliver_album(bot, chat_id: int):
             "✅ Semua 6 media terkirim!",
             parse_mode="HTML"
         )
-        await bot.send_message(
-    chat_id,
-    "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
-    "✅ Semua 6 media terkirim!",
-    parse_mode="HTML"
-)
-
-keyboard = InlineKeyboardMarkup([
-    [InlineKeyboardButton("💎 Paket VIP", callback_data="vipmenu")]
-])
-
-await bot.send_message(
-    chat_id,
-    "💎 Paket VIP",
-    reply_markup=keyboard
-)
-
-return True
         return True
     except Exception as e:
         logger.error(f"Failed to deliver album to {chat_id}: {e}")
