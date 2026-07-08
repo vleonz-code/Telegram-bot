@@ -213,7 +213,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Silently ignore banned users
     if user_id in read_blacklist():
-        return
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="🚫 Permintaan Anda telah dibatasi."
+    )
+    return
 
     # Admin always bypasses approval
     if user_id == ADMIN_ID:
