@@ -243,7 +243,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Send waiting message to user
-    waiting_msg = await update.message.reply_text("⏳ Bot sedang idle…\n\nEstimasi waktu: 40 menit.\n\nJoin VIP? @BocilVIP89")
+    waiting_msg = await update.message.reply_text("⏳ Menunggu persetujuan admin…\n\nEstimasi waktu: 1–3 menit.")
 
     # Store pending request
     pending_requests[user_id] = {
