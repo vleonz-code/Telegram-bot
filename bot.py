@@ -226,7 +226,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Silently ignore banned users
 # Notify banned users
 if user_id in read_blacklist():
-    await update.message.reply_text(
+    await update.effective_message.reply_text(
         "🚫 Akses Anda telah dibatasi."
     )
     return
