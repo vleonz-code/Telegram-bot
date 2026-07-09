@@ -1,17 +1,12 @@
 {
-
-  "vip_1bulan": {
-
-    "nama": "VIP 1 Bulan",
-
-    "harga": "Rp50.000",
-
-    "deskripsi": "Akses VIP selama 30 hari",
-
-    "link_var": "VIP_LINK_1",
-
-    "aktif": true
-
-  }
-
+  "packages": [
+    {
+      "id": 1,
+      "nama": "VIP 1 Bulan",
+      "harga": "Rp50.000",
+      "deskripsi": "Akses VIP selama 30 hari",
+      "link_var": "VIP_LINK_1",
+      "aktif": true
+    }
+  ]
 }
