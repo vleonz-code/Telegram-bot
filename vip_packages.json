@@ -23,8 +23,8 @@
       "deskripsi": "Akses VIP selamanya",
       "link_var": "VIP_LINK_3",
       "aktif": true
-    }
-        {
+    },
+    {
       "id": 4,
       "nama": "Ekslusif 3",
       "harga": "Rp130.000",
@@ -32,7 +32,7 @@
       "link_var": "VIP_LINK_2",
       "aktif": true
     },
-        {
+    {
       "id": 5,
       "nama": "Ekslusif 4",
       "harga": "Rp190.000",
