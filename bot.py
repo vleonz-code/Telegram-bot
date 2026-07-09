@@ -687,12 +687,7 @@ def main():
     app.add_handler(CommandHandler("banned",     banned))
     app.add_handler(CommandHandler("getid",      getid_start))
     app.add_handler(CommandHandler("cancel",     getid_cancel))
-    app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
-    app.add_handler(
-    CallbackQueryHandler(
-        payment_admin_callback,
-        pattern=r"^(pay_ok|pay_no)\|"
-    ))
+    app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|")
     app.add_handler(
     CallbackQueryHandler(
         vipmenu_callback,
