@@ -418,19 +418,21 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("💳 Bayar", callback_data="bayar1")]
         ])
     
+        package = get_package(1)
+
         await query.edit_message_text(
-            "💎 VIP 1 Bulan\n\n"
-            "✨ Keuntungan Member\vip1n\n"
-            "• Akses seluruh konten VIP\n"
-            "• Update konten berkala\n"
-            "• Download tanpa batas\n"
-            "• Support admin\n"
-            "• Berlaku selama 30 hari\n\n"
-            "━━━━━━━━━━━━━━\n\n"
-            "💰 Harga\n"
-            "Rp50.000",
-            reply_markup=keyboard
-        )
+
+        f"💎 {package['nama']}\n\n"
+
+        f"{package['deskripsi']}\n\n"
+
+        "━━━━━━━━━━━━━━\n\n"
+
+        f"💰 Harga\n{package['harga']}",
+
+        reply_markup=keyboard
+
+)
         
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             query = update.callback_query
