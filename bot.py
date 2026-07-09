@@ -683,6 +683,54 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ Bukti transfer berhasil diterima.\n\n"
             "Mohon tunggu verifikasi dari admin."
         )
+async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        return
+
+    try:
+        action, uid = query.data.split("|", 1)
+        user_id = int(uid)
+    except Exception:
+        return
+
+    data = upload_waiting.get(user_id)
+
+    if not data:
+        await query.edit_message_text(
+            "⚠️ Data pembayaran sudah tidak tersedia."
+        )
+        return
+
+    if action == "pay_ok":
+        vip_link = os.getenv(data["link_var"])
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=(
+                "✅ Pembayaran berhasil diverifikasi.\n\n"
+                f"Silakan bergabung ke VIP:\n{vip_link}"
+            )
+        )
+
+        await query.edit_message_text(
+            "✅ Pembayaran telah disetujui."
+        )
+
+    elif action == "pay_no":
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=(
+                "❌ Bukti transfer ditolak.\n\n"
+                "Silakan upload ulang bukti transfer."
+            )
+        )
+
+        await query.edit_message_text(
+            "❌ Pembayaran ditolak."
+        )
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -708,6 +756,11 @@ def main():
     app.add_handler(CommandHandler("getid",      getid_start))
     app.add_handler(CommandHandler("cancel",     getid_cancel))
     app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
+    app.add_handler(
+    CallbackQueryHandler(
+            payment_admin_callback,
+            pattern=r"^(pay_ok|pay_no)\|"
+      ))
     app.add_handler(
     CallbackQueryHandler(
         vipmenu_callback,
