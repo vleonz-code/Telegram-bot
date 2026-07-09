@@ -477,7 +477,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                caption=(
                     "💳 *PEMBAYARAN GROUP BOCIL*\n"
                     "────── . 👇🏻 . ──────\n"
-                   "Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan group lalu kirim (screenshot/foto) transfer di dalam chat ini sebagai bukti.\n\n"
+                   "Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer kesini sebagai bukti.\n\n"
                     "✅ Pembayaran via (Ovo, Dana, Shopeepay, Gopay, dll)\n\n"
                     "⚠️ Pastikan nominal transfer sesuai.\n\n Terimakasih"
                 ),
@@ -508,7 +508,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     "link_var": package["link_var"]
                 }
                 await query.message.reply_text(
-                    "Silakan kirim screenshot bukti transfer Anda.\n\n"
+                    "Silakan upload screenshot bukti transfer Anda.\n\n"
                     "Pastikan:\n"
                     "• Nominal transfer terlihat jelas.\n"
                     "• Waktu transaksi terlihat.\n"
