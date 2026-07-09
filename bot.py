@@ -35,6 +35,7 @@ FILE_IDS = [
     ("photo", os.environ.get("FILE_ID_6", "")),
 ]
 
+QRIS_FILE_ID = os.environ.get("QRIS_FILE_ID", "")
 # ---------------------------------------------------------------------------
 # Media helpers
 # ---------------------------------------------------------------------------
@@ -389,7 +390,7 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
         await query.edit_message_text(
             "💎 VIP 1 Bulan\n\n"
-            "✨ Keuntungan Member\n\n"
+            "✨ Keuntungan Member\vip1n\n"
             "• Akses seluruh konten VIP\n"
             "• Update konten berkala\n"
             "• Download tanpa batas\n"
@@ -400,6 +401,35 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Rp50.000",
             reply_markup=keyboard
         )
+        
+async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+            query = update.callback_query
+            await query.answer()
+        
+            if not QRIS_FILE_ID:
+                await query.message.reply_text("❌ QRIS belum dikonfigurasi.")
+                return
+        
+            await context.bot.send_photo(
+                chat_id=query.message.chat_id,
+                photo=QRIS_FILE_ID,
+                caption=(
+                    "💳 *Instruksi Pembayaran*\n\n"
+                    "1. Scan QRIS di atas.\n"
+                    "2. Transfer sesuai harga paket.\n"
+                    "3. Setelah pembayaran berhasil, tekan tombol di bawah.\n\n"
+                    "⚠️ Pastikan nominal transfer sesuai."
+                ),
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "📤 Upload Bukti Transfer",
+                            callback_data="upload_bukti"
+                        )
+                    ]
+                ])
+            )
 # ---------------------------------------------------------------------------
 # Admin commands
 # ---------------------------------------------------------------------------
@@ -586,6 +616,12 @@ def main():
         vip1_callback,
         pattern=r"^vip1$"
     ))
+    app.add_handler(
+    CallbackQueryHandler(
+        bayar1_callback,
+        pattern=r"^bayar1$"
+    ))
+    
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
         filters.AUDIO | filters.VOICE | filters.ANIMATION | filters.Sticker.ALL,
