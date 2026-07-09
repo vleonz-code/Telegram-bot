@@ -7,6 +7,22 @@
       "deskripsi": "Akses VIP selama 30 hari",
       "link_var": "VIP_LINK_1",
       "aktif": true
+    },
+    {
+      "id": 2,
+      "nama": "VIP 3 Bulan",
+      "harga": "Rp120.000",
+      "deskripsi": "Akses VIP selama 90 hari",
+      "link_var": "VIP_LINK_2",
+      "aktif": true
+    },
+    {
+      "id": 3,
+      "nama": "VIP Permanen",
+      "harga": "Rp250.000",
+      "deskripsi": "Akses VIP selamanya",
+      "link_var": "VIP_LINK_3",
+      "aktif": true
     }
   ]
 }
