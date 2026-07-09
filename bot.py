@@ -475,11 +475,12 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=query.message.chat_id,
                 photo=QRIS_FILE_ID,
                 caption=(
-                    "💳 *Instruksi Pembayaran*\n\n"
-                    "1. Scan QRIS di atas.\n"
-                    "2. Transfer sesuai harga paket.\n"
-                    "3. Setelah pembayaran berhasil, tekan tombol di bawah.\n\n"
-                    "⚠️ Pastikan nominal transfer sesuai."
+                    ""PEMBAYARAN GROUP\n"
+                "────── . 👇🏻 . ──────\n"
+                "Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan group lalu kirim (screenshot/foto) transfer dichat ini sebagai bukti.\n\n"
+                "✅ Pembayaran via\n"
+               "(Ovo, Dana, Shopeepay, Gopay, dll)\n\n"
+                l"Terimakasih""
                 ),
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([
