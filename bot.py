@@ -426,10 +426,23 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
     
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💳 Bayar", callback_data="bayar1")]
-        ])
+
+    [
+
+        InlineKeyboardButton(
+
+            "💳 Bayar",
+
+            callback_data=f"bayar_{package_id}"
+
+        )
+
+    ]
+
+])
     
-        package = get_package(1)
+        package_id = int(query.data.split("_")[1])
+        package = get_package(package_id)
 
         await query.edit_message_text(
 
@@ -449,6 +462,9 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             query = update.callback_query
             await query.answer()
         
+            package_id = int(query.data.split("_")[1])
+            package = get_package(package_id)
+
             if not QRIS_FILE_ID:
                 await query.message.reply_text("❌ QRIS belum dikonfigurasi.")
                 return
@@ -811,12 +827,12 @@ def main():
     app.add_handler(
     CallbackQueryHandler(
         vip1_callback,
-        pattern=r"^vip1$"
+        pattern=r"^vip_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
-        bayar1_callback,
-        pattern=r"^bayar1$"
+    bayar1_callback,
+    pattern=r"^bayar_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
