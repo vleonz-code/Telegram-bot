@@ -738,7 +738,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
             "✅ Bukti transfer kamu sudah diterima.\n"
-            "⏳ Estimasi waktu: 1–3 menit.\n*Colek Admin: @BocilVIP89*"
+            "⏳ Estimasi waktu: 1–3 menit.\n\nColek Admin: @BocilVIP89"
         )
 async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -768,7 +768,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         await context.bot.send_message(
             chat_id=user_id,
             text=(
-                "✅ Pembayaran berhasil diverifikasi.\n\n"
+                "👉🏻 Pembayaran berhasil diverifikasi.\n\n"
                 f"Silakan bergabung ke VIP:\n{vip_link}"
             )
         )
