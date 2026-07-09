@@ -479,7 +479,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "*────── . 👇🏻 . ──────*\n"
                    "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer kesini sebagai bukti.*\n\n"
                     "*✅ Pembayaran via (Ovo, Dana, Shopeepay, Gopay, dll)*\n\n"
-                    "\n\n *Terimakasih*"
+                    "*Terimakasih*"
                 ),
                 parse_mode="Markdown",
                 reply_markup=InlineKeyboardMarkup([
