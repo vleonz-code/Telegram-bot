@@ -378,6 +378,28 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Silakan pilih salah satu paket.",
         reply_markup=keyboard
     )
+    
+async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        query = update.callback_query
+        await query.answer()
+    
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("💳 Bayar", callback_data="bayar1")]
+        ])
+    
+        await query.edit_message_text(
+            "💎 VIP 1 Bulan\n\n"
+            "✨ Keuntungan Member\n\n"
+            "• Akses seluruh konten VIP\n"
+            "• Update konten berkala\n"
+            "• Download tanpa batas\n"
+            "• Support admin\n"
+            "• Berlaku selama 30 hari\n\n"
+            "━━━━━━━━━━━━━━\n\n"
+            "💰 Harga\n"
+            "Rp50.000",
+            reply_markup=keyboard
+        )
 # ---------------------------------------------------------------------------
 # Admin commands
 # ---------------------------------------------------------------------------
@@ -558,6 +580,12 @@ def main():
     CallbackQueryHandler(
         vipmenu_callback,
         pattern=r"^vipmenu$"
+    )
+)
+app.add_handler(
+    CallbackQueryHandler(
+        vip1_callback,
+        pattern=r"^vip1$"
     )
 )
     app.add_handler(MessageHandler(
