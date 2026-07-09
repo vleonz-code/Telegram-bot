@@ -730,7 +730,8 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     if action == "pay_ok":
-        package = get_package(...)vip_link = package["link"]
+        package = get_package(1)
+        vip_link = os.getenv(package["link_var"])
 
         await context.bot.send_message(
             chat_id=user_id,
