@@ -96,14 +96,11 @@ async def deliver_album(bot, chat_id: int):
             ]
         ])
 
-      await bot.send_message(
-         chat_id,
-
-    "\u200b",
-
-    reply_markup=keyboard
-
-)
+        await bot.send_message(
+            chat_id,
+            "\u200b",
+         reply_markup=keyboard
+         )
 
         return True
 
