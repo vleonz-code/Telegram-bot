@@ -447,6 +447,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 upload_waiting[user.id] = {
                     "paket": "VIP 1 Bulan",
                     "harga": "Rp50.000"
+                    "link_var": "VIP_LINK_1"
                 }
             
                 await query.message.reply_text(
@@ -654,6 +655,31 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     )
+
+keyboard = InlineKeyboardMarkup([
+    [
+        InlineKeyboardButton(
+            "✅ Terima",
+            callback_data=f"pay_ok|{user.id}"
+        ),
+        InlineKeyboardButton(
+            "❌ Tolak",
+            callback_data=f"pay_no|{user.id}"
+        )
+    ]
+])
+
+await context.bot.send_message(
+    chat_id=ADMIN_ID,
+    text=(
+        "📋 Verifikasi Pembayaran\n\n"
+        f"👤 {user.full_name}\n"
+        f"📦 {upload_waiting[user_id]['paket']}\n"
+        f"💰 {upload_waiting[user_id]['harga']}"
+    ),
+    reply_markup=keyboard
+)
+
 
     await update.message.reply_text(
 
