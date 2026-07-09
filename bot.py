@@ -656,38 +656,33 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     )
 
-keyboard = InlineKeyboardMarkup([
-    [
-        InlineKeyboardButton(
-            "✅ Terima",
-            callback_data=f"pay_ok|{user.id}"
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "✅ Terima",
+                callback_data=f"pay_ok|{user.id}"
+            ),
+            InlineKeyboardButton(
+                "❌ Tolak",
+                callback_data=f"pay_no|{user.id}"
+            )
+        ]
+    ])
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=(
+            "📋 Verifikasi Pembayaran\n\n"
+            f"👤 {user.full_name}\n"
+            f"📦 {upload_waiting[user_id]['paket']}\n"
+            f"💰 {upload_waiting[user_id]['harga']}"
         ),
-        InlineKeyboardButton(
-            "❌ Tolak",
-            callback_data=f"pay_no|{user.id}"
-        )
-    ]
-])
-
-await context.bot.send_message(
-    chat_id=ADMIN_ID,
-    text=(
-        "📋 Verifikasi Pembayaran\n\n"
-        f"👤 {user.full_name}\n"
-        f"📦 {upload_waiting[user_id]['paket']}\n"
-        f"💰 {upload_waiting[user_id]['harga']}"
-    ),
-    reply_markup=keyboard
-)
-
-
-await update.message.reply_text(
-    "✅ Bukti transfer berhasil diterima.\n\n"
-
-    "Mohon tunggu verifikasi dari admin."
-
+        reply_markup=keyboard
     )
-    
+
+    await update.message.reply_text(
+            "✅ Bukti transfer berhasil diterima.\n\n"
+            "Mohon tunggu verifikasi dari admin."
+        )
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
