@@ -18,6 +18,11 @@ BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
 USERS_FILE     = os.path.join(os.path.dirname(__file__), "users.json")
 APPROVED_FILE  = os.path.join(os.path.dirname(__file__), "approved.json")
 VIP_PACKAGES_FILE = os.path.join(os.path.dirname(__file__),"vip_packages.json")
+
+def read_vip_packages():
+with open(VIP_PACKAGE_FILE, "r", encoding="utf-8") as f:
+return json.load(f)
+
 WIB = timezone(timedelta(hours=7))
 
 # In-memory store for requests awaiting admin decision.
