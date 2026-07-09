@@ -714,7 +714,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 f"Silakan bergabung ke VIP:\n{vip_link}"
             )
         )
-
+        upload_waiting.pop(user_id, None)
         await query.edit_message_text(
             "✅ Pembayaran telah disetujui."
         )
@@ -757,7 +757,7 @@ def main():
     app.add_handler(CommandHandler("cancel",     getid_cancel))
     app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
     app.add_handler(
-        CallbackQueryHandler(
+    CallbackQueryHandler(
             payment_admin_callback,
             pattern=r"^(pay_ok|pay_no)\|"
       ))
