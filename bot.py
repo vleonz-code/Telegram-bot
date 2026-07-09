@@ -580,14 +580,12 @@ def main():
     CallbackQueryHandler(
         vipmenu_callback,
         pattern=r"^vipmenu$"
-    )
-)
-app.add_handler(
+    ))
+    app.add_handler(
     CallbackQueryHandler(
         vip1_callback,
         pattern=r"^vip1$"
-    )
-)
+    ))
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
         filters.AUDIO | filters.VOICE | filters.ANIMATION | filters.Sticker.ALL,
