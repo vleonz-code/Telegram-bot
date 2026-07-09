@@ -84,7 +84,7 @@ async def deliver_album(bot, chat_id: int):
         keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    "💎 Paket VIP",
+                    "Join Grup VIP?",
                     callback_data="vipmenu"
                 )
             ]
@@ -92,7 +92,7 @@ async def deliver_album(bot, chat_id: int):
 
         await bot.send_message(
             chat_id,
-            "💎 Paket VIP",
+            "💎 Price List",
             reply_markup=keyboard
         )
 
@@ -631,32 +631,30 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     username = f"@{user.username}" if user.username else "-"
 
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "✅ Terima",
-                callback_data=f"pay_ok|{user.id}"
-            ),
-            InlineKeyboardButton(
-                "❌ Tolak",
-                callback_data=f"pay_no|{user.id}"
-            ),
-        ]
-    ])
-    
     await context.bot.send_photo(
+
         chat_id=ADMIN_ID,
+
         photo=upload_waiting[user_id]["photo_file_id"],
+
         caption=(
+
             "📥 Bukti Transfer Baru\n\n"
+
             f"👤 Nama : {user.full_name}\n"
+
             f"🔗 Username : {username}\n"
+
             f"🆔 User ID : {user.id}\n\n"
+
             f"📦 Paket : {upload_waiting[user_id]['paket']}\n"
+
             f"💰 Harga : {upload_waiting[user_id]['harga']}"
-        ),
-        reply_markup=keyboard
+
+        )
+
     )
+
     await update.message.reply_text(
 
         "✅ Bukti transfer berhasil diterima.\n\n"
@@ -727,4 +725,5 @@ def main():
     logger.info("Bot is running...")
     app.run_polling()
 
-if __name_
+if __name__ == "__main__":
+    main()
