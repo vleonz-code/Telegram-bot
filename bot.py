@@ -90,7 +90,7 @@ async def deliver_album(bot, chat_id: int):
         keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    "🗂️ Price List",
+                    "🗂️ KLIK DI SINI",
                     callback_data="vipmenu"
                 )
             ]
