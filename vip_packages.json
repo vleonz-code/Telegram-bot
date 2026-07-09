@@ -10,19 +10,35 @@
     },
     {
       "id": 2,
-      "nama": "VIP 3 Bulan",
-      "harga": "Rp120.000",
+      "nama": "Ekslusif 1",
+      "harga": "Rp80.000",
       "deskripsi": "Akses VIP selama 90 hari",
       "link_var": "VIP_LINK_2",
       "aktif": true
     },
     {
       "id": 3,
-      "nama": "VIP Permanen",
-      "harga": "Rp250.000",
+      "nama": "Ekslusif 2",
+      "harga": "Rp100.000",
       "deskripsi": "Akses VIP selamanya",
       "link_var": "VIP_LINK_3",
       "aktif": true
     }
+        {
+      "id": 4,
+      "nama": "Ekslusif 3",
+      "harga": "Rp130.000",
+      "deskripsi": "Akses VIP selama 90 hari",
+      "link_var": "VIP_LINK_2",
+      "aktif": true
+    },
+        {
+      "id": 5,
+      "nama": "Ekslusif 4",
+      "harga": "Rp190.000",
+      "deskripsi": "Akses VIP selama 90 hari",
+      "link_var": "VIP_LINK_2",
+      "aktif": true
+    },
   ]
 }
