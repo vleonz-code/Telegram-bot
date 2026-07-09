@@ -662,11 +662,6 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Mohon tunggu verifikasi dari admin."
 
     )
-
-    await update.message.reply_text(
-        "✅ Bukti transfer berhasil diterima.\n\n"
-        "Mohon tunggu verifikasi dari admin."
-    )
     
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
