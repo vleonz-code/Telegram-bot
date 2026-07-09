@@ -98,7 +98,7 @@ async def deliver_album(bot, chat_id: int):
 
         await bot.send_message(
             chat_id,
-            "Mau Join VIP?",
+            "🛒 Lihat Paket VIP",
             reply_markup=keyboard
         )
 
