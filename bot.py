@@ -17,6 +17,7 @@ COUNTER_FILE  = os.path.join(os.path.dirname(__file__), "counter.json")
 BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
 USERS_FILE     = os.path.join(os.path.dirname(__file__), "users.json")
 APPROVED_FILE  = os.path.join(os.path.dirname(__file__), "approved.json")
+VIP_PACKAGES_FILE = os.path.join(os.path.dirname(__file__),"vip_packages.json")
 WIB = timezone(timedelta(hours=7))
 
 # In-memory store for requests awaiting admin decision.
@@ -150,16 +151,38 @@ def read_blacklist() -> dict:
         return {}
 
 def write_blacklist(bl: dict):
+
     try:
+
         entries = [
+
             {"user_id": uid, "full_name": info["full_name"], "username": info["username"]}
+
             for uid, info in bl.items()
+
         ]
+
         with open(BLACKLIST_FILE, "w") as f:
+
             json.dump({"banned": entries}, f, ensure_ascii=False, indent=2)
+
     except Exception as e:
+
         logger.error(f"Blacklist write error: {e}")
 
+def get_package(package_id: int):
+
+    with open(VIP_PACKAGES_FILE, "r", encoding="utf-8") as f:
+
+        data = json.load(f)
+
+    for pkg in data["packages"]:
+
+        if pkg["id"] == package_id:
+
+            return pkg
+
+    return None
 # ---------------------------------------------------------------------------
 # User registry
 # ---------------------------------------------------------------------------
