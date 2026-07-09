@@ -737,8 +737,8 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(
-            "✅ Bukti transfer berhasil diterima.\n\n"
-            "Mohon tunggu verifikasi dari admin."
+            "✅ Bukti transfer kamu sudah diterima.\n"
+            "\n\nEstimasi proses: 1–3 menit. CS: @BocilVIP89""
         )
 async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
