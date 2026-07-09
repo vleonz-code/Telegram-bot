@@ -90,7 +90,7 @@ async def deliver_album(bot, chat_id: int):
         keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    "🗂️ JOIN DI SINI",
+                    "🗂️ BERGABUNG",
                     callback_data="vipmenu"
                 )
             ]
@@ -436,7 +436,7 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
     [
         InlineKeyboardButton(
-            "💳 Join",
+            "💳 Bergabung",
             callback_data=f"bayar_{package_id}"
         ),
         InlineKeyboardButton(
