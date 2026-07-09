@@ -502,13 +502,13 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 user = query.from_user
             
                 package_id = int(query.data.split("_")[2])
-                 package = get_package(package_id)
+                package = get_package(package_id)
 
                 upload_waiting[user.id] = {
-                   "package_id": package["id"],
-                   "paket": package["nama"],
-                   "harga": package["harga"],
-                   "link_var": package["link_var"]
+                    "package_id": package["id"],
+                    "paket": package["nama"],
+                    "harga": package["harga"],
+                    "link_var": package["link_var"]
                 }
                 await query.message.reply_text(
                     "📤 Silakan kirim screenshot bukti transfer Anda.\n\n"
