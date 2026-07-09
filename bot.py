@@ -446,7 +446,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
             
                 upload_waiting[user.id] = {
                     "paket": "VIP 1 Bulan",
-                    "harga": "Rp50.000"
+                    "harga": "Rp50.000",
                     "link_var": "VIP_LINK_1"
                 }
             
