@@ -436,11 +436,9 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
     [
         InlineKeyboardButton(
-            "💳 Beli VIP",
+            "💳 Bayar",
             callback_data=f"bayar_{package_id}"
-        )
-    ],
-    [
+        ),
         InlineKeyboardButton(
             "🔙 Kembali",
             callback_data="vipmenu"
