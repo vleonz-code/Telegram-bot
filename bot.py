@@ -434,19 +434,18 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         package = get_package(package_id)
     
         keyboard = InlineKeyboardMarkup([
-
     [
-
         InlineKeyboardButton(
-
-            "💳 Bayar",
-
+            "💳 Beli VIP",
             callback_data=f"bayar_{package_id}"
-
         )
-
+    ],
+    [
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="vipmenu"
+        )
     ]
-
 ])
 
         await query.edit_message_text(
