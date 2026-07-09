@@ -25,6 +25,13 @@ pending_requests: dict = {}
 
 # In-memory set of admin user_ids waiting to send a media for /getid
 getid_waiting: set = set()
+# User yang sedang dalam proses upload bukti transfer
+# Contoh:
+# upload_waiting[user_id] = {
+#     "paket": "VIP 1 Bulan",
+#     "harga": "Rp50.000"
+# }
+upload_waiting = {}
 
 FILE_IDS = [
     ("video", os.environ.get("FILE_ID_1", "")),
@@ -430,6 +437,26 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ]
                 ])
             )
+            
+async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+                query = update.callback_query
+                await query.answer()
+            
+                user = query.from_user
+            
+                upload_waiting[user.id] = {
+                    "paket": "VIP 1 Bulan",
+                    "harga": "Rp50.000"
+                }
+            
+                await query.message.reply_text(
+                    "📤 Silakan kirim screenshot bukti transfer Anda.\n\n"
+                    "Pastikan:\n"
+                    "• Nominal transfer terlihat jelas.\n"
+                    "• Waktu transaksi terlihat.\n"
+                    "• Bukti tidak terpotong.\n\n"
+                    "Ketik /cancel untuk membatalkan."
+                )
 # ---------------------------------------------------------------------------
 # Admin commands
 # ---------------------------------------------------------------------------
