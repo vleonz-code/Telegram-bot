@@ -607,6 +607,25 @@ async def getid_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("⚠️ Tidak ada media yang terdeteksi. Kirim ulang atau /cancel.")
         getid_waiting.add(user_id)
 
+async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id not in upload_waiting:
+        return
+
+    if not update.message.photo:
+        await update.message.reply_text(
+            "⚠️ Silakan kirim bukti transfer dalam bentuk foto."
+        )
+        return
+
+    upload_waiting[user_id]["photo_file_id"] = update.message.photo[-1].file_id
+
+    await update.message.reply_text(
+        "✅ Bukti transfer berhasil diterima.\n\n"
+        "Mohon tunggu verifikasi dari admin."
+    )
+    
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -651,6 +670,12 @@ def main():
     CallbackQueryHandler(
             upload_bukti_callback,
             pattern=r"^upload_bukti$"
+    ))
+    
+    app.add_handler(
+    MessageHandler(
+            filters.PHOTO,
+            payment_receive,
     ))
     
     app.add_handler(MessageHandler(
