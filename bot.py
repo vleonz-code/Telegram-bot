@@ -404,7 +404,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for package in packages:
         if not package.get("aktif", True):
-        continue
+            continue
 
         buttons.append([
             InlineKeyboardButton(
