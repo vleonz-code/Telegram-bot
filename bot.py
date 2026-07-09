@@ -648,6 +648,11 @@ def main():
         bayar1_callback,
         pattern=r"^bayar1$"
     ))
+    app.add_handler(
+    CallbackQueryHandler(
+            upload_bukti_callback,
+            pattern=r"^upload_bukti$"
+    ))
     
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
