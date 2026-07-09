@@ -712,8 +712,9 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             text=(
                 "✅ Pembayaran berhasil diverifikasi.\n\n"
                 f"Silakan bergabung ke VIP:\n{vip_link}"
-            )
         )
+        )
+    upload_waiting.pop(user_id, None)
 
         await query.edit_message_text(
             "✅ Pembayaran telah disetujui."
