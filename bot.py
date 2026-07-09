@@ -56,17 +56,40 @@ async def deliver_album(bot, chat_id: int):
     if not media:
         logger.error("One or more FILE_ID env vars are missing.")
         return False
+
     try:
-        progress = await bot.send_message(chat_id, "📦 Mengirim Batch 1/1 (6 media)...\nMohon tunggu...")
+        progress = await bot.send_message(
+            chat_id,
+            "📦 Mengirim Batch 1/1 (6 media)...\nMohon tunggu..."
+        )
+
         await bot.send_media_group(chat_id, media=media)
         await progress.delete()
+
         await bot.send_message(
             chat_id,
             "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
             "✅ Semua 6 media terkirim!",
             parse_mode="HTML"
         )
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "💎 Paket VIP",
+                    callback_data="vipmenu"
+                )
+            ]
+        ])
+
+        await bot.send_message(
+            chat_id,
+            "💎 Paket VIP",
+            reply_markup=keyboard
+        )
+
         return True
+
     except Exception as e:
         logger.error(f"Failed to deliver album to {chat_id}: {e}")
         return False
@@ -340,6 +363,19 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
+async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📅 1 Bulan", callback_data="vip1")]
+    ])
+
+    await query.edit_message_text(
+        "💎 Paket VIP\n\n"
+        "Pilih salah satu paket.",
+        reply_markup=keyboard
+    )
 # ---------------------------------------------------------------------------
 # Admin commands
 # ---------------------------------------------------------------------------
@@ -516,6 +552,12 @@ def main():
     app.add_handler(CommandHandler("getid",      getid_start))
     app.add_handler(CommandHandler("cancel",     getid_cancel))
     app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
+    app.add_handler(
+    CallbackQueryHandler(
+        vipmenu_callback,
+        pattern=r"^vipmenu$"
+    )
+)
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
         filters.AUDIO | filters.VOICE | filters.ANIMATION | filters.Sticker.ALL,
