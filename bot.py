@@ -608,34 +608,61 @@ async def getid_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         getid_waiting.add(user_id)
 
 async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     user_id = update.effective_user.id
 
     if user_id not in upload_waiting:
+
         return
 
     if not update.message.photo:
+
         await update.message.reply_text(
+
             "⚠️ Silakan kirim bukti transfer dalam bentuk foto."
+
         )
+
         return
 
     upload_waiting[user_id]["photo_file_id"] = update.message.photo[-1].file_id
 
-user = update.effective_user
-    
+    user = update.effective_user
+
+    username = f"@{user.username}" if user.username else "-"
+
     await context.bot.send_photo(
+
         chat_id=ADMIN_ID,
+
         photo=upload_waiting[user_id]["photo_file_id"],
+
         caption=(
+
             "📥 Bukti Transfer Baru\n\n"
+
             f"👤 Nama : {user.full_name}\n"
-            f"🔗 Username : @{user.username}" if user.username else "🔗 Username : -"
+
+            f"🔗 Username : {username}\n"
+
+            f"🆔 User ID : {user.id}\n\n"
+
+            f"📦 Paket : {upload_waiting[user_id]['paket']}\n"
+
+            f"💰 Harga : {upload_waiting[user_id]['harga']}"
+
         )
-        + f"\n🆔 User ID : {user.id}"
-        + f"\n\n📦 Paket : {upload_waiting[user_id]['paket']}"
-        + f"\n💰 Harga : {upload_waiting[user_id]['harga']}"
+
     )
-    
+
+    await update.message.reply_text(
+
+        "✅ Bukti transfer berhasil diterima.\n\n"
+
+        "Mohon tunggu verifikasi dari admin."
+
+    )
+
     await update.message.reply_text(
         "✅ Bukti transfer berhasil diterima.\n\n"
         "Mohon tunggu verifikasi dari admin."
