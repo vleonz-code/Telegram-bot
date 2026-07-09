@@ -84,7 +84,7 @@ async def deliver_album(bot, chat_id: int):
         keyboard = InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
-                    "Join Grup VIP?",
+                    "💎 Price List",
                     callback_data="vipmenu"
                 )
             ]
@@ -92,7 +92,7 @@ async def deliver_album(bot, chat_id: int):
 
         await bot.send_message(
             chat_id,
-            "💎 Price List",
+            "Mau Join VIP?",
             reply_markup=keyboard
         )
 
