@@ -608,10 +608,22 @@ async def getid_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         getid_waiting.add(user_id)
 
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
+    user_id = update.effective_user.id
+
+    # Batalkan proses /getid
+    if user_id == ADMIN_ID and user_id in getid_waiting:
+        getid_waiting.discard(user_id)
+        await update.message.reply_text("❌ /getid dibatalkan.")
         return
-    getid_waiting.discard(update.effective_user.id)
-    await update.message.reply_text("❌ /getid dibatalkan.")
+
+    # Batalkan proses upload bukti transfer
+    if user_id in upload_waiting:
+        upload_waiting.pop(user_id, None)
+        await update.message.reply_text("❌ Upload bukti transfer dibatalkan.")
+        return
+
+    # Tidak ada proses yang sedang berjalan
+    await update.message.reply_text("ℹ️ Tidak ada proses yang sedang berjalan.")
 
 # ---------------------------------------------------------------------------
 # Main
@@ -663,6 +675,3 @@ def main():
     
     logger.info("Bot is running...")
     app.run_polling()
-
-if __name__ == "__main__":
-    main()
