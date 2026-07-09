@@ -477,7 +477,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                caption=(
                     "*PEMBAYARAN GROUP BOCIL*\n"
                     "*────── . 👇🏻 . ──────*\n"
-                   "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer kesini sebagai bukti.*\n\n"
+                   "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
                     "*✅ Pembayaran via (Ovo, Dana, Shopeepay, Gopay, dll)*\n\n"
                     "*Terimakasih*"
                 ),
@@ -738,7 +738,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
             "✅ Bukti transfer kamu sudah diterima.\n"
-            "\nEstimasi proses: 1–3 menit. \n Colek Admin: @BocilVIP89"
+            "⏳ Estimasi waktu: 1–3 menit.\n*Colek Admin: @BocilVIP89*"
         )
 async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
