@@ -727,7 +727,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 "Silakan upload ulang bukti transfer."
             )
         )
-        upload_waiting.pop(user_id, None)
+        
         await query.edit_message_text(
             "❌ Pembayaran ditolak."
         )
