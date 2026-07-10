@@ -263,11 +263,21 @@ def read_approved() -> set:
 
 def save_approved(approved: set):
     try:
-        with open(APPROVED_FILE, "w") as f:
-            json.dump({"approved": list(approved)}, f)
+        with open(APPROVED_FILE, "w", encoding="utf-8") as f:
+            json.dump(
+                {"approved": list(approved)},
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
+
+        github_commit_file(
+            APPROVED_FILE,
+            "Update approved.json"
+        )
+
     except Exception as e:
         logger.error(f"Approved write error: {e}")
-
 # ---------------------------------------------------------------------------
 # Blacklist
 # ---------------------------------------------------------------------------
@@ -296,25 +306,32 @@ def read_blacklist() -> dict:
         return {}
 
 def write_blacklist(bl: dict):
-
     try:
-
         entries = [
-
-            {"user_id": uid, "full_name": info["full_name"], "username": info["username"]}
-
+            {
+                "user_id": uid,
+                "full_name": info["full_name"],
+                "username": info["username"]
+            }
             for uid, info in bl.items()
-
         ]
 
-        with open(BLACKLIST_FILE, "w") as f:
+        with open(BLACKLIST_FILE, "w", encoding="utf-8") as f:
+            json.dump(
+                {"banned": entries},
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
 
-            json.dump({"banned": entries}, f, ensure_ascii=False, indent=2)
+        github_commit_file(
+            BLACKLIST_FILE,
+            "Update blacklist.json"
+        )
 
     except Exception as e:
-
         logger.error(f"Blacklist write error: {e}")
-
+        
 def get_package(package_id: int):
 
     with open(VIP_PACKAGES_FILE, "r", encoding="utf-8") as f:
@@ -349,6 +366,11 @@ def save_user_to_registry(user_id: int, full_name: str, username: str):
     try:
         with open(USERS_FILE, "w") as f:
             json.dump({str(k): v for k, v in registry.items()}, f, ensure_ascii=False, indent=2)
+    
+    github_commit_file(
+    USERS_FILE,
+    "Update users.json")
+    
     except Exception as e:
         logger.error(f"User registry write error: {e}")
 
@@ -1397,6 +1419,10 @@ async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         with open(COUNTER_FILE, "w") as f:
             json.dump({"count": 0}, f)
+    github_commit_file(
+    COUNTER_FILE,
+    "Reset counter.json"
+    )
     except Exception as e:
         logger.error(f"Failed to reset counter: {e}")
         return
