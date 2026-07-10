@@ -647,7 +647,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup(buttons)
 
     await query.edit_message_text(
-        "💎 Paket VIP\n\n"
+        "👑 Membership VIP\n\n"
         "Silakan pilih salah satu paket.",
         reply_markup=keyboard
     )
