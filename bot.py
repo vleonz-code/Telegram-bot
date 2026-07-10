@@ -29,6 +29,15 @@ DATA_DIR = "/data"
 APP_DIR = os.path.dirname(__file__)
 
 os.makedirs(DATA_DIR, exist_ok=True)
+
+def migrate_to_volume(filename):
+    src = os.path.join(APP_DIR, filename)
+    dst = os.path.join(DATA_DIR, filename)
+
+    if not os.path.exists(dst) and os.path.exists(src):
+        shutil.copy2(src, dst)
+        logger.info(f"{filename} berhasil disalin ke Volume.")
+        
 def read_vip_packages():
     with open(VIP_PACKAGES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
