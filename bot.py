@@ -43,6 +43,7 @@ getid_waiting: set = set()
 # }
 upload_waiting = {}
 admin_edit_waiting = {}
+admin_add_waiting = {}
 
 FILE_IDS = [
     ("video", os.environ.get("FILE_ID_1", "")),
@@ -528,9 +529,13 @@ async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     await query.answer()
 
+    admin_add_waiting[query.from_user.id] = {
+        "step": "nama"
+    }
+
     await query.edit_message_text(
         "➕ Tambah Paket\n\n"
-        "Fitur ini sedang kita bangun..."
+        "Silakan masukkan nama paket baru."
     )
     
 async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -783,6 +788,154 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
             )
             return
 
+async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id not in admin_add_waiting:
+        return
+
+    data = admin_add_waiting[user_id]
+    text = update.message.text.strip()
+
+    if data["step"] == "nama":
+        data["nama"] = text
+        data["step"] = "harga"
+
+        await update.message.reply_text(
+            "💰 Masukkan harga paket."
+        )
+        return
+
+    elif data["step"] == "harga":
+        data["harga"] = text
+        data["step"] = "deskripsi"
+
+        await update.message.reply_text(
+            "📄 Masukkan deskripsi paket."
+        )
+        return
+
+    elif data["step"] == "deskripsi":
+        data["deskripsi"] = update.message.text
+        data["step"] = "vip_link"
+
+        await update.message.reply_text(
+            "🔗 Masukkan link VIP."
+        )
+        return
+
+    elif data["step"] == "vip_link":
+        data["vip_link"] = text
+        data["step"] = "preview"
+
+        preview = (
+            "📦 Preview Paket\n\n"
+            f"💎 Nama\n{data['nama']}\n\n"
+            f"💰 Harga\n{data['harga']}\n\n"
+            f"📄 Deskripsi\n{data['deskripsi']}\n\n"
+            f"🔗 Link\n{data['vip_link']}"
+        )
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "📝 Edit Nama",
+                    callback_data="adminadd_edit_nama"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "💰 Edit Harga",
+                    callback_data="adminadd_edit_harga"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "📄 Edit Deskripsi",
+                    callback_data="adminadd_edit_deskripsi"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔗 Edit Link",
+                    callback_data="adminadd_edit_link"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "✅ Simpan",
+                    callback_data="adminadd_save"
+                ),
+                InlineKeyboardButton(
+                    "🔙 Kembali",
+                    callback_data="adminvip_back"
+                )
+            ]
+        ])
+
+        await update.message.reply_text(
+            preview,
+            reply_markup=keyboard
+        )
+        return
+        
+async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await admin_edit_receive(update, context)
+    await admin_add_receive(update, context)
+  
+        
+async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+
+    if user_id not in admin_add_waiting:
+        await query.answer("Data tidak ditemukan.", show_alert=True)
+        return
+
+    data = admin_add_waiting.pop(user_id)
+
+    packages = read_vip_packages()
+
+    new_id = 1
+    if packages["packages"]:
+        new_id = max(p["id"] for p in packages["packages"]) + 1
+
+    packages["packages"].append({
+        "id": new_id,
+        "nama": data["nama"],
+        "harga": data["harga"],
+        "deskripsi": data["deskripsi"],
+        "vip_link": data["vip_link"]
+    })
+
+    save_vip_packages(packages)
+
+    keyboard = []
+
+    for package in packages["packages"]:
+        keyboard.append([
+            InlineKeyboardButton(
+                package["nama"],
+                callback_data=f"adminvip_{package['id']}"
+            )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "➕ Tambah Paket",
+            callback_data="adminvip_add"
+        )
+    ])
+
+    await query.edit_message_text(
+        "✅ Paket berhasil ditambahkan.\n\n"
+        "⚙️ Admin VIP\n\n"
+        "Pilih paket yang ingin dikelola:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -1166,6 +1319,11 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
+        adminadd_save_callback,
+        pattern=r"^adminadd_save$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
         adminvip_delete_yes_callback,
         pattern=r"^adminvip_delete_yes_\d+$"
     ))
@@ -1199,10 +1357,9 @@ def main():
     
     app.add_handler(
     MessageHandler(
-           filters.TEXT & ~filters.COMMAND,
-           admin_edit_receive,
+        filters.TEXT & ~filters.COMMAND,
+        admin_text_receive,
     ))
-
     
     logger.info("Bot is running...")
     app.run_polling()
