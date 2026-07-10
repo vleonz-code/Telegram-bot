@@ -1738,7 +1738,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         package = get_package(data["package_id"])
         vip_link = package["vip_link"]
 
-           try:
+        try:
             await context.bot.delete_message(
                 chat_id=user_id,
                 message_id=data["status_msg_id"]
