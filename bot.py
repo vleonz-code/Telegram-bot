@@ -642,16 +642,17 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
     for package in packages["packages"]:
         if package["id"] == data["package_id"]:
 
-    if data["field"] == "nama":
-        package["nama"] = update.message.text.strip()
+            if data["field"] == "nama":
+                package["nama"] = update.message.text.strip()
 
-    elif data["field"] == "harga":
-    package["harga"] = update.message.text.strip()
+            elif data["field"] == "harga":
+                package["harga"] = update.message.text.strip()
+
             save_vip_packages(packages)
 
             await update.message.reply_text(
-            "✅ Data paket berhasil diperbarui."
-)
+                "✅ Data paket berhasil diperbarui."
+            )
             return
 
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
