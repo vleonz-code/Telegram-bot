@@ -663,7 +663,7 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.edit_message_text(
         f"🔗 Edit Link VIP\n\n"
         f"Link saat ini:\n"
-        f"{package['link_var']}\n\n"
+        f"{package['vip_link']}\n\n"
         "Silakan kirim link VIP baru.\n\n"
         "Contoh:\nhttps://t.me/..."
     )
