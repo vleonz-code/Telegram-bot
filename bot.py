@@ -228,55 +228,80 @@ def build_media_group():
     return media
 
 async def deliver_album(bot, chat_id: int):
+
     """Send the progress message, album, then confirmation to chat_id."""
+
     media = build_media_group()
+
     if not media:
+
         logger.error("One or more FILE_ID env vars are missing.")
+
         return False
 
     try:
+
         progress = await bot.send_message(
+
             chat_id,
+
             "📦 Mengirim Batch 1/1 (6 media)...\nMohon tunggu..."
+
         )
 
         await bot.send_media_group(chat_id, media=media)
+
         await progress.delete()
 
         await bot.send_message(
+
             chat_id,
+
             "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
+
             "✅ Semua 6 media terkirim!",
+
             parse_mode="HTML"
+
         )
 
-       settings = read_settings()
+        settings = read_settings()
 
-       if settings["join_vip_enabled"]:
+        if settings["join_vip_enabled"]:
 
-    keyboard = InlineKeyboardMarkup([
+            keyboard = InlineKeyboardMarkup([
 
-        [
-            InlineKeyboardButton(
-                "🗂️ BERGABUNG",
-                callback_data="vipmenu"
+                [
+
+                    InlineKeyboardButton(
+
+                        "🗂️ BERGABUNG",
+
+                        callback_data="vipmenu"
+
+                    )
+
+                ]
+
+            ])
+
+            await bot.send_message(
+
+                chat_id,
+
+                "🛒 Mau Join VIP?",
+
+                reply_markup=keyboard
 
             )
-        ]
-    ])
-
-    await bot.send_message(
-        chat_id,
-        "🛒 Mau Join VIP?",
-        reply_markup=keyboard
-    )
 
         return True
 
     except Exception as e:
-        logger.error(f"Failed to deliver album to {chat_id}: {e}")
-        return False
 
+        logger.error(f"Failed to deliver album to {chat_id}: {e}")
+
+        return False
 # ---------------------------------------------------------------------------
 # Approved users 
 # ---------------------------------------------------------------------------
