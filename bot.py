@@ -739,7 +739,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
     ]
     ])
     await query.edit_message_text(
-    f"💎 {package['nama']}\n\n"
+    f"{package['nama']}\n\n"
     f"💰 {package['harga']}",
     reply_markup=keyboard
     )
