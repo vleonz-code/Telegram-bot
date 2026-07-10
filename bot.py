@@ -1668,10 +1668,13 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
-    await update.message.reply_text(
-            "✅ Bukti transfer kamu sudah diterima.\n"
-            "⏳ Estimasi waktu: 1–3 menit.\n\nColek Admin: @BocilVIP89"
-        )
+    status_msg = await update.message.reply_text(
+    "✅ Bukti transfer kamu sudah diterima.\n"
+    "⏳ Estimasi waktu: 1–3 menit.\n\n"
+    "Chat Admin: @BocilVIP89"
+)
+
+upload_waiting[user_id]["status_msg_id"] = status_msg.message_id
 
 async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -1735,6 +1738,14 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         package = get_package(data["package_id"])
         vip_link = package["vip_link"]
 
+        try:
+           await context.bot.delete_message(
+               chat_id=user_id,
+               message_id=data["status_msg_id"]
+           )
+       except Exception:
+          pass
+    
         await context.bot.send_message(
             chat_id=user_id,
             text=(
