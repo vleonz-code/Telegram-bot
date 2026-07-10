@@ -22,7 +22,7 @@ DEEP_LINK_PAYLOAD = "UB3A6P"
 ADMIN_ID = 7602115007
 COUNTER_FILE = os.path.join(DATA_DIR, "counter.json")
 BLACKLIST_FILE = os.path.join(DATA_DIR, "blacklist.json")
-USERS_FILE     = os.path.join(os.path.dirname(__file__), "users.json")
+USERS_FILE = os.path.join(DATA_DIR, "users.json")
 APPROVED_FILE = os.path.join(DATA_DIR, "approved.json")
 VIP_PACKAGES_FILE = os.path.join(DATA_DIR, "vip_packages.json")
 
