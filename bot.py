@@ -23,7 +23,7 @@ ADMIN_ID = 7602115007
 COUNTER_FILE  = os.path.join(os.path.dirname(__file__), "counter.json")
 BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
 USERS_FILE     = os.path.join(os.path.dirname(__file__), "users.json")
-APPROVED_FILE  = os.path.join(os.path.dirname(__file__), "approved.json")
+APPROVED_FILE = os.path.join(DATA_DIR, "approved.json")
 VIP_PACKAGES_FILE = os.path.join(DATA_DIR, "vip_packages.json")
 
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
