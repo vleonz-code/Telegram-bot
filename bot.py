@@ -74,6 +74,7 @@ getid_waiting: set = set()
 upload_waiting = {}
 admin_edit_waiting = {}
 admin_add_waiting = {}
+admin_qris_waiting = set()
 
 FILE_IDS = [
     ("video", os.environ.get("FILE_ID_1", "")),
@@ -497,36 +498,41 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 )
         
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            query = update.callback_query
-            await query.answer()
-        
-            package_id = int(query.data.split("_")[1])
-            package = get_package(package_id)
+    query = update.callback_query
+    await query.answer()
 
-            if not QRIS_FILE_ID:
-                await query.message.reply_text("❌ QRIS belum dikonfigurasi.")
-                return
-        
-            await context.bot.send_photo(
-                chat_id=query.message.chat_id,
-                photo=QRIS_FILE_ID,
-               caption=(
-                    "*PEMBAYARAN GROUP BOCIL*\n"
-                    "*────── . 👇🏻 . ──────*\n"
-                   "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
-                    "*✅ Pembayaran via (Ovo, Dana, Shopeepay, Gopay, dll)*\n\n"
-                    "*Terimakasih*"
-                ),
-                parse_mode="Markdown",
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            "📤 Saya Sudah Transfer",
-                            callback_data=f"upload_bukti_{package_id}"
-                        )
-                    ]
-                ])
-            )
+    package_id = int(query.data.split("_")[1])
+    package = get_package(package_id)
+
+    settings = read_settings()
+    qris_file_id = settings.get("qris_file_id", "")
+
+    if not qris_file_id:
+        await query.message.reply_text(
+            "❌ QRIS belum dikonfigurasi."
+        )
+        return
+
+    await context.bot.send_photo(
+        chat_id=query.message.chat_id,
+        photo=qris_file_id,
+        caption=(
+            "*PEMBAYARAN GROUP BOCIL*\n"
+            "*────── . 👇🏻 . ──────*\n"
+            "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
+            "*✅ Pembayaran via (Ovo, Dana, Shopeepay, Gopay, dll)*\n\n"
+            "*Terimakasih*"
+        ),
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "📤 Saya Sudah Transfer",
+                    callback_data=f"upload_bukti_{package_id}"
+                )
+            ]
+        ])
+    )
             
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -641,11 +647,74 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
             callback_data="adminvip_add"
         )
     ])
+    keyboard.append([
+    InlineKeyboardButton(
+        "🖼 Edit QRIS",
+        callback_data="adminvip_qris"
+    )
+])
 
     await query.edit_message_text(
         "⚙️ Admin VIP\n\n"
         "Pilih paket yang ingin dikelola:",
         reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    
+async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "📷 Ganti QRIS",
+                callback_data="adminvip_qris_change"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_back"
+            )
+        ]
+    ])
+
+    if settings["qris_file_id"]:
+        await context.bot.send_photo(
+            chat_id=query.message.chat_id,
+            photo=settings["qris_file_id"],
+            caption="🖼 QRIS Saat Ini",
+            reply_markup=keyboard
+        )
+
+        await query.message.delete()
+
+    else:
+        await query.edit_message_text(
+            "⚠️ QRIS belum diatur.",
+            reply_markup=keyboard
+        )
+    
+async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    admin_qris_waiting.add(query.from_user.id)
+
+    await query.edit_message_caption(
+
+        caption=(
+
+            "📷 Silakan kirim foto QRIS baru.\n\n"
+
+            "Ketik /cancel untuk membatalkan."
+
+        )
+
     )
     
 async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1332,6 +1401,42 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ Bukti transfer kamu sudah diterima.\n"
             "⏳ Estimasi waktu: 1–3 menit.\n\nColek Admin: @BocilVIP89"
         )
+
+async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    if user_id not in admin_qris_waiting:
+
+        return
+
+    if not update.message.photo:
+
+        await update.message.reply_text(
+
+            "❌ Kirim dalam bentuk foto."
+
+        )
+
+        return
+
+    file_id = update.message.photo[-1].file_id
+
+    settings = read_settings()
+
+    settings["qris_file_id"] = file_id
+
+    save_settings(settings)
+
+    admin_qris_waiting.discard(user_id)
+
+    await update.message.reply_photo(
+
+        photo=file_id,
+
+        caption="✅ QRIS berhasil diperbarui."
+
+    )
 async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1480,6 +1585,11 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
+        adminvip_qris_change_callback,
+        pattern=r"^adminvip_qris_change$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
         vip1_callback,
         pattern=r"^vip_\d+$"
     ))
@@ -1492,6 +1602,11 @@ def main():
     CallbackQueryHandler(
             upload_bukti_callback,
             pattern=r"^upload_bukti_\d+$"
+    ))
+    app.add_handler(
+    MessageHandler(
+        filters.PHOTO,
+        admin_qris_receive,
     ))
     
     app.add_handler(
