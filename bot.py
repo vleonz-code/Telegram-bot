@@ -1585,6 +1585,11 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
+        adminvip_qris_callback,
+        pattern=r"^adminvip_qris$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
         adminvip_qris_change_callback,
         pattern=r"^adminvip_qris_change$"
     ))
