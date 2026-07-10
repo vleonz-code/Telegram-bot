@@ -1,8 +1,6 @@
 import os
 import json
 import logging
-import base64
-import requests
 import shutil
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
@@ -26,9 +24,6 @@ USERS_FILE = os.path.join(DATA_DIR, "users.json")
 APPROVED_FILE = os.path.join(DATA_DIR, "approved.json")
 VIP_PACKAGES_FILE = os.path.join(DATA_DIR, "vip_packages.json")
 
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GITHUB_REPO = os.getenv("GITHUB_REPO")
-GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
 
 def migrate_to_volume(filename):
     src = os.path.join(APP_DIR, filename)
@@ -104,85 +99,7 @@ def save_settings(data):
             indent=2
 
         )
-        
-def github_commit_file(file_path, commit_message):
-
-    if not GITHUB_TOKEN or not GITHUB_REPO:
-
-        logger.warning("GitHub belum dikonfigurasi.")
-
-        return
-
-    headers = {
-
-        "Authorization": f"token {GITHUB_TOKEN}",
-
-        "Accept": "application/vnd.github+json"
-
-    }
-
-    filename = os.path.basename(file_path)
-
-    url = (
-
-        f"https://api.github.com/repos/"
-
-        f"{GITHUB_REPO}/contents/{filename}"
-
-    )
-
-    sha = None
-
-    r = requests.get(
-
-        url,
-
-        headers=headers,
-
-        params={"ref": GITHUB_BRANCH}
-
-    )
-
-    if r.status_code == 200:
-
-        sha = r.json()["sha"]
-
-    with open(file_path, "rb") as f:
-
-        content = base64.b64encode(f.read()).decode()
-
-    payload = {
-
-        "message": commit_message,
-
-        "content": content,
-
-        "branch": GITHUB_BRANCH
-
-    }
-
-    if sha:
-
-        payload["sha"] = sha
-
-    r = requests.put(
-
-        url,
-
-        headers=headers,
-
-        json=payload
-
-    )
-
-    if r.status_code not in (200, 201):
-
-        logger.error(f"GitHub upload gagal: {r.text}")
-
-    else:
-
-        logger.info(f"{filename} berhasil disimpan ke GitHub.")
-   
+    
 WIB = timezone(timedelta(hours=7))
 
 # In-memory store for requests awaiting admin decision.
@@ -432,11 +349,6 @@ def save_user_to_registry(user_id: int, full_name: str, username: str):
                 indent=2
 
             )
-
-        #github_commit_file(
-        #USERS_FILE,
-        #"Update users.json"
-        #)
 
     except Exception as e:
 
