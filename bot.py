@@ -22,6 +22,10 @@ VIP_PACKAGES_FILE = os.path.join(os.path.dirname(__file__),"vip_packages.json")
 def read_vip_packages():
     with open(VIP_PACKAGES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
+        
+def save_vip_packages(data):
+    with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 WIB = timezone(timedelta(hours=7))
 
@@ -587,21 +591,46 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     )
     
 async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     query = update.callback_query
-
     await query.answer()
 
     package_id = int(query.data.split("_")[2])
-
     package = get_package(package_id)
 
-    await query.edit_message_text(
+    admin_edit_waiting[query.from_user.id] = {
+        "package_id": package_id,
+        "field": "nama"
+    }
 
+    await query.edit_message_text(
         f"📝 Edit Nama\n\n"
         f"Nama saat ini:\n"
-        f"{package['nama']}"
+        f"{package['nama']}\n\n"
+        "Silakan update nama baru."
     )
+    
+async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id not in admin_edit_waiting:
+        return
+
+    data = admin_edit_waiting.pop(user_id)
+
+    packages = read_vip_packages()
+
+    for package in packages["packages"]:
+        if package["id"] == data["package_id"]:
+
+            if data["field"] == "nama":
+                package["nama"] = update.message.text.strip()
+
+            save_vip_packages(packages)
+
+            await update.message.reply_text(
+                "✅ Nama berhasil diperbarui."
+            )
+            return
 
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -987,6 +1016,12 @@ def main():
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
         filters.AUDIO | filters.VOICE | filters.ANIMATION | filters.Sticker.ALL,
         getid_receive,
+    ))
+    
+    app.add_handler(
+    MessageHandler(
+           filters.TEXT & ~filters.COMMAND,
+           admin_edit_receive,
     ))
 
     
