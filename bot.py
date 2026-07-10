@@ -1899,7 +1899,7 @@ def main():
     ))
     app.add_handler(
     MessageHandler(
-        filters.PHOTO,
+        filters.PHOTO | filters.VIDEO | filters.Document.ALL,
         photo_router,
     ))
     
