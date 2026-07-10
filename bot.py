@@ -706,24 +706,21 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=query.message.chat_id,
         photo=qris_file_id,
 caption=(
-    "*💳 PEMBAYARAN GROUP BOCIL*\n"
+    "*PEMBAYARAN GROUP BOCIL*\n"
     "*────── . 👇🏻 . ──────*\n\n"
 
-    f"*📦 Paket*\n"
-    f"{package['nama']}\n\n"
+    "*📦 Paket*\n"
+    f"*{package['nama']}*\n\n"
 
-    f"*💰 Nominal*\n"
-    f"{package['harga']}\n\n"
+    "*💰 Nominal*\n"
+    f"*{package['harga']}*\n\n"
 
-    "Scan kode QR di atas sesuai nominal.\n\n"
+    "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
 
-    "Setelah pembayaran berhasil, kirim *screenshot/foto* bukti transfer di chat ini.\n\n"
+    "*✅ Pembayaran via*\n"
+    "*(Ovo, Dana, Shopeepay, Gopay, TNG, Maybank, USDT)*\n\n"
 
-    "*✅ Metode Pembayaran*\n"
-    "Ovo • Dana • ShopeePay • GoPay\n"
-    "TNG eWallet • Maybank\n\n"
-
-    "_Terima kasih._"
+    "*Terimakasih*"
 ),
         parse_mode="Markdown",
         reply_markup=InlineKeyboardMarkup([
