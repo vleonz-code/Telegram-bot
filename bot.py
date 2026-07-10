@@ -25,7 +25,10 @@ VIP_PACKAGES_FILE = os.path.join(os.path.dirname(__file__),"vip_packages.json")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPO = os.getenv("GITHUB_REPO")
 GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
+DATA_DIR = "/data"
+APP_DIR = os.path.dirname(__file__)
 
+os.makedirs(DATA_DIR, exist_ok=True)
 def read_vip_packages():
     with open(VIP_PACKAGES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
