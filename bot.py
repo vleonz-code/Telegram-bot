@@ -56,14 +56,14 @@ def read_settings():
                f,
                ensure_ascii=False,
                indent=2
-)
+               )
 
     with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
     data = json.load(f)
 
     if "join_vip_enabled" not in data:
-    data["join_vip_enabled"] = True
-    save_settings(data)
+       data["join_vip_enabled"] = True
+       save_settings(data)
 
     return data
 
