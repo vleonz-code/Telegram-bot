@@ -1797,6 +1797,12 @@ async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+migrate_to_volume("vip_packages.json")
+migrate_to_volume("settings.json")
+migrate_to_volume("users.json")
+migrate_to_volume("approved.json")
+migrate_to_volume("blacklist.json")
+migrate_to_volume("counter.json")
 
 def main():
     token = os.environ.get("BOT_TOKEN")
