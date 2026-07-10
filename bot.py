@@ -892,6 +892,24 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = admin_add_waiting[user_id]
     text = update.message.text.strip()
+    
+    if "editing" in data:
+        field = data.pop("editing")
+
+        if field == "nama":
+            data["nama"] = text
+
+        elif field == "harga":
+            data["harga"] = text
+
+        elif field == "deskripsi":
+            data["deskripsi"] = update.message.text
+
+        elif field == "vip_link":
+            data["vip_link"] = text
+
+        await show_add_preview(update.message, data)
+        return
 
     if data["step"] == "nama":
         data["nama"] = text
@@ -982,6 +1000,34 @@ async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_T
         "⚙️ Admin VIP\n\n"
         "Pilih paket yang ingin dikelola:",
         reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    
+async def adminadd_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+
+    if user_id not in admin_add_waiting:
+        await query.answer(
+            "Data tidak ditemukan.",
+            show_alert=True
+        )
+        return
+
+    field = query.data.replace("adminaddedit_", "")
+
+    admin_add_waiting[user_id]["editing"] = field
+
+    title = {
+        "nama": "📝 Kirim nama paket baru.",
+        "harga": "💰 Kirim harga baru.",
+        "deskripsi": "📄 Kirim deskripsi baru.",
+        "vip_link": "🔗 Kirim link VIP baru."
+    }
+
+    await query.edit_message_text(
+        title[field]
     )
     
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1374,6 +1420,11 @@ def main():
     CallbackQueryHandler(
         adminvip_delete_yes_callback,
         pattern=r"^adminvip_delete_yes_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminadd_edit_callback,
+        pattern=r"^adminaddedit_(nama|harga|deskripsi|vip_link)$"
     ))
     app.add_handler(
     CallbackQueryHandler(
