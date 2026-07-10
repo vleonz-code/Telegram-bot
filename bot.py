@@ -692,23 +692,14 @@ async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
     
 async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     query = update.callback_query
-
     await query.answer()
 
     admin_qris_waiting.add(query.from_user.id)
 
-    await query.edit_message_caption(
-
-        caption=(
-
-            "📷 Silakan kirim foto QRIS baru.\n\n"
-
-            "Ketik /cancel untuk membatalkan."
-
-        )
-
+    await query.message.reply_text(
+        "📷 Silakan kirim foto QRIS baru.\n\n"
+        "Ketik /cancel untuk membatalkan."
     )
     
 async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
