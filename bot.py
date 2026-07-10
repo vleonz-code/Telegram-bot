@@ -498,27 +498,28 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-                query = update.callback_query
-                await query.answer()
-            
-                user = query.from_user
-            
-                package_id = int(query.data.split("_")[2])
-                package = get_package(package_id)
+    query = update.callback_query
+    await query.answer()
 
-         upload_waiting[user.id] = {
-         "package_id": package["id"],
-         "paket": package["nama"],
-         "harga": package["harga"]
-         }
-                await query.message.reply_text(
-                    "Silakan upload screenshot bukti transfer Anda.\n\n"
-                    "Pastikan:\n"
-                    "• Nominal transfer terlihat jelas.\n"
-                    "• Waktu transaksi terlihat.\n"
-                    "• Bukti tidak terpotong.\n\n"
-                    "Ketik /cancel untuk membatalkan."
-                )
+    user = query.from_user
+
+    package_id = int(query.data.split("_")[2])
+    package = get_package(package_id)
+
+    upload_waiting[user.id] = {
+        "package_id": package["id"],
+        "paket": package["nama"],
+        "harga": package["harga"]
+    }
+
+    await query.message.reply_text(
+        "Silakan upload screenshot bukti transfer Anda.\n\n"
+        "Pastikan:\n"
+        "• Nominal transfer terlihat jelas.\n"
+        "• Waktu transaksi terlihat.\n"
+        "• Bukti tidak terpotong.\n\n"
+        "Ketik /cancel untuk membatalkan."
+    )
 # ---------------------------------------------------------------------------
 # Admin commands
 # ---------------------------------------------------------------------------
