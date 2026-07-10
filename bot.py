@@ -510,7 +510,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     "package_id": package["id"],
                     "paket": package["nama"],
                     "harga": package["harga"],
-                    "link_var": package["link_var"]
+                    "link_var": package["vip_link"]
                 }
                 await query.message.reply_text(
                     "Silakan upload screenshot bukti transfer Anda.\n\n"
@@ -657,15 +657,15 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     admin_edit_waiting[query.from_user.id] = {
         "package_id": package_id,
-        "field": "link_var"
+        "field": "vip_link"
     }
 
     await query.edit_message_text(
         f"🔗 Edit Link VIP\n\n"
         f"Link saat ini:\n"
         f"{package['link_var']}\n\n"
-        "Silakan update nama Environment Variable.\n\n"
-        "Contoh:\nVIP_LINK_1"
+        "Silakan kirim link VIP baru.\n\n"
+        "Contoh:\nhttps://t.me/..."
     )
     
 async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -690,8 +690,8 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
             elif data["field"] == "deskripsi":
                 package["deskripsi"] = update.message.text
 
-            elif data["field"] == "link_var":
-                package["link_var"] = update.message.text.strip()
+           elif data["field"] == "vip_link":
+                 package["vip_link"] = update.message.text.strip()
 
             save_vip_packages(packages)
 
@@ -972,8 +972,8 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     if action == "pay_ok":
-        package = get_package(data["package_id"])
-        vip_link = os.getenv(package["link_var"])
+       package = get_package(data["package_id"])
+       vip_link = package["vip_link"]
 
         await context.bot.send_message(
             chat_id=user_id,
