@@ -588,6 +588,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
     f"💰 {package['harga']}",
     reply_markup=keyboard
     )
+    
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -599,14 +600,21 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     for package in packages["packages"]:
         keyboard.append([
             InlineKeyboardButton(
-                f"💎 {package['nama']}",
-                callback_data=f"vip_{package['id']}"
+                package["nama"],
+                callback_data=f"adminvip_{package['id']}"
             )
         ])
 
+    keyboard.append([
+        InlineKeyboardButton(
+            "➕ Tambah Paket",
+            callback_data="adminvip_add"
+        )
+    ])
+
     await query.edit_message_text(
-        "💎 Daftar Paket VIP\n\n"
-        "Silakan pilih paket yang ingin Anda lihat.",
+        "⚙️ Admin VIP\n\n"
+        "Pilih paket yang ingin dikelola:",
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
     
