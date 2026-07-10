@@ -267,7 +267,7 @@ async def deliver_album(bot, chat_id: int):
 
                     InlineKeyboardButton(
 
-                        "📦 Pilih Paket VIPmu",
+                        "📦 Pilihan Paket VIP",
 
                         callback_data="vipmenu"
 
