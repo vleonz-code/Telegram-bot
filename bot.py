@@ -20,7 +20,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 DEEP_LINK_PAYLOAD = "UB3A6P"
 ADMIN_ID = 7602115007
-COUNTER_FILE  = os.path.join(os.path.dirname(__file__), "counter.json")
+COUNTER_FILE = os.path.join(DATA_DIR, "counter.json")
 BLACKLIST_FILE = os.path.join(DATA_DIR, "blacklist.json")
 USERS_FILE     = os.path.join(os.path.dirname(__file__), "users.json")
 APPROVED_FILE = os.path.join(DATA_DIR, "approved.json")
