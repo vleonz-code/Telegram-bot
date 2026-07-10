@@ -599,10 +599,21 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
      packages = read_vip_packages()["packages"]
      
      text = "⚙️ Menu Admin VIP\n\n"
+     
+     keyboard = []
+    
      for package in packages:
-         text += f"• {package['nama']}\n"
+         keyboard.append([
+             InlineKeyboardButton(
+                 f"📦 {package['nama']}",
+                 callback_data=f"adminvip_{package['id']}"
+            )
+         ])
         
-     await update.message.reply_text(text)
+     await update.message.reply_text(
+         text,
+         reply_markup=InlineKeyboardMarkup(keyboard)
+     )
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
