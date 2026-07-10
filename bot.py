@@ -527,6 +527,18 @@ async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "➕ Tambah Paket\n\n"
         "Fitur ini sedang kita bangun..."
     )
+    
+async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    package_id = int(query.data.split("_")[1])
+    package = get_package(package_id)
+
+    await query.edit_message_text(
+        f"💎 {package['nama']}\n\n"
+        f"💰 {package['harga']}"
+    )
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -864,6 +876,11 @@ def main():
     CallbackQueryHandler(
         vipmenu_callback,
         pattern=r"^vipmenu$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_package_callback,
+        pattern=r"^adminvip_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
