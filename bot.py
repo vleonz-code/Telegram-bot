@@ -250,20 +250,26 @@ async def deliver_album(bot, chat_id: int):
             parse_mode="HTML"
         )
 
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🗂️ BERGABUNG",
-                    callback_data="vipmenu"
-                )
-            ]
-        ])
+       settings = read_settings()
 
-        await bot.send_message(
-            chat_id,
-            "🛒 Mau Join VIP?",
-         reply_markup=keyboard
-         )
+       if settings["join_vip_enabled"]:
+
+    keyboard = InlineKeyboardMarkup([
+
+        [
+            InlineKeyboardButton(
+                "🗂️ BERGABUNG",
+                callback_data="vipmenu"
+
+            )
+        ]
+    ])
+
+    await bot.send_message(
+        chat_id,
+        "🛒 Mau Join VIP?",
+        reply_markup=keyboard
+    )
 
         return True
 
