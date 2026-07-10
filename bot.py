@@ -1668,16 +1668,13 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
-     status_msg = await update.message.reply_text(
-
+    status_msg = await update.message.reply_text(
          "✅ Bukti transfer kamu sudah diterima.\n"
-
          "⏳ Estimasi waktu: 1–3 menit.\n\n"
-
          "Colek Admin: @BocilVIP89"
-       )
+      )
 
-upload_waiting[user_id]["status_msg_id"] = status_msg.message_id
+    upload_waiting[user_id]["status_msg_id"] = status_msg.message_id
 
 async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
