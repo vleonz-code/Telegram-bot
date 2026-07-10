@@ -647,12 +647,6 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
             callback_data="adminvip_add"
         )
     ])
-    keyboard.append([
-    InlineKeyboardButton(
-        "🖼 Edit QRIS",
-        callback_data="adminvip_qris"
-    )
-])
 
     await query.edit_message_text(
         "⚙️ Admin VIP\n\n"
@@ -1247,6 +1241,17 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
              callback_data="adminvip_add"
             )
          ])
+        keyboard.append([
+
+    InlineKeyboardButton(
+
+        "🖼 Edit QRIS",
+
+        callback_data="adminvip_qris"
+
+    )
+
+])
         
      await update.message.reply_text(
          text,
