@@ -610,6 +610,25 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
         "Silakan update nama baru."
     )
     
+async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    package_id = int(query.data.split("_")[2])
+    package = get_package(package_id)
+
+    admin_edit_waiting[query.from_user.id] = {
+        "package_id": package_id,
+        "field": "harga"
+    }
+
+    await query.edit_message_text(
+        f"💰 Edit Harga\n\n"
+        f"Harga saat ini:\n"
+        f"{package['harga']}\n\n"
+        "Silakan update harga baru."
+    )
+    
 async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -623,14 +642,16 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
     for package in packages["packages"]:
         if package["id"] == data["package_id"]:
 
-            if data["field"] == "nama":
-                package["nama"] = update.message.text.strip()
+    if data["field"] == "nama":
+        package["nama"] = update.message.text.strip()
 
+    elif data["field"] == "harga":
+    package["harga"] = update.message.text.strip()
             save_vip_packages(packages)
 
             await update.message.reply_text(
-                "✅ Nama berhasil diperbarui."
-            )
+            "✅ Data paket berhasil diperbarui."
+)
             return
 
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -990,6 +1011,11 @@ def main():
     CallbackQueryHandler(
         adminvip_name_callback,
         pattern=r"^adminvip_name_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_price_callback,
+        pattern=r"^adminvip_price_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
