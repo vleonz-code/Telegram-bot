@@ -648,6 +648,26 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         "Silakan update deskripsi baru."
     )
     
+async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    package_id = int(query.data.split("_")[2])
+    package = get_package(package_id)
+
+    admin_edit_waiting[query.from_user.id] = {
+        "package_id": package_id,
+        "field": "link_var"
+    }
+
+    await query.edit_message_text(
+        f"🔗 Edit Link VIP\n\n"
+        f"Link saat ini:\n"
+        f"{package['link_var']}\n\n"
+        "Silakan update nama Environment Variable.\n\n"
+        "Contoh:\nVIP_LINK_1"
+    )
+    
 async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -669,6 +689,9 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
             elif data["field"] == "deskripsi":
                 package["deskripsi"] = update.message.text
+
+            elif data["field"] == "link_var":
+                package["link_var"] = update.message.text.strip()
 
             save_vip_packages(packages)
 
@@ -1044,6 +1067,11 @@ def main():
     CallbackQueryHandler(
         adminvip_desc_callback,
         pattern=r"^adminvip_desc_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_link_callback,
+        pattern=r"^adminvip_link_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
