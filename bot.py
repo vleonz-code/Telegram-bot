@@ -96,14 +96,6 @@ def save_settings(data):
             indent=2
 
         )
-
-    github_commit_file(
-
-        SETTINGS_FILE,
-
-        "Update settings.json"
-
-    )
         
 def github_commit_file(file_path, commit_message):
 
