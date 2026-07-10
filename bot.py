@@ -668,6 +668,89 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
         "Contoh:\nhttps://t.me/..."
     )
     
+async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    package_id = int(query.data.split("_")[2])
+    package = get_package(package_id)
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "✅ Ya, Hapus",
+                callback_data=f"adminvip_delete_yes_{package_id}"
+            ),
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data=f"adminvip_{package_id}"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        f"⚠️ Yakin ingin menghapus paket ini?\n\n"
+        f"💎 {package['nama']}\n"
+        f"💰 {package['harga']}",
+        reply_markup=keyboard
+    )
+    
+async def adminvip_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+
+    await query.answer()
+
+    package_id = int(query.data.split("_")[3])
+
+    packages = read_vip_packages()
+
+    packages["packages"] = [
+
+        p for p in packages["packages"]
+
+        if p["id"] != package_id
+
+    ]
+
+    save_vip_packages(packages)
+
+    keyboard = []
+
+    for package in packages["packages"]:
+
+        keyboard.append([
+
+            InlineKeyboardButton(
+
+                package["nama"],
+
+                callback_data=f"adminvip_{package['id']}"
+
+            )
+
+        ])
+
+    keyboard.append([
+
+        InlineKeyboardButton(
+
+            "➕ Tambah Paket",
+
+            callback_data="adminvip_add"
+
+        )
+
+    ])
+
+    await query.edit_message_text(
+
+        "⚙️ Admin VIP\n\nPilih paket yang ingin dikelola:",
+
+        reply_markup=InlineKeyboardMarkup(keyboard)
+
+    )
+    
 async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -1075,6 +1158,16 @@ def main():
     CallbackQueryHandler(
         adminvip_link_callback,
         pattern=r"^adminvip_link_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_delete_callback,
+        pattern=r"^adminvip_delete_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_delete_yes_callback,
+        pattern=r"^adminvip_delete_yes_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
