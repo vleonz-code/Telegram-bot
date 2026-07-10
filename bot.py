@@ -361,19 +361,44 @@ def read_user_registry() -> dict:
         return {}
 
 def save_user_to_registry(user_id: int, full_name: str, username: str):
-    registry = read_user_registry()
-    registry[user_id] = {"full_name": full_name, "username": username}
-    try:
-        with open(USERS_FILE, "w") as f:
-            json.dump({str(k): v for k, v in registry.items()}, f, ensure_ascii=False, indent=2)
-    
-    github_commit_file(
-    USERS_FILE,
-    "Update users.json")
-    
-    except Exception as e:
-        logger.error(f"User registry write error: {e}")
 
+    registry = read_user_registry()
+
+    registry[user_id] = {
+
+        "full_name": full_name,
+
+        "username": username
+
+    }
+
+    try:
+
+        with open(USERS_FILE, "w") as f:
+
+            json.dump(
+
+                {str(k): v for k, v in registry.items()},
+
+                f,
+
+                ensure_ascii=False,
+
+                indent=2
+
+            )
+
+        github_commit_file(
+
+            USERS_FILE,
+
+            "Update users.json"
+
+        )
+
+    except Exception as e:
+
+        logger.error(f"User registry write error: {e}")
 # ---------------------------------------------------------------------------
 # Counter
 # ---------------------------------------------------------------------------
@@ -1414,20 +1439,34 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
-        return
-    try:
-        with open(COUNTER_FILE, "w") as f:
-            json.dump({"count": 0}, f)
-    github_commit_file(
-    COUNTER_FILE,
-    "Reset counter.json"
-    )
-    except Exception as e:
-        logger.error(f"Failed to reset counter: {e}")
-        return
-    await update.message.reply_text("✅ Statistik berhasil direset!")
 
+    if update.effective_user.id != ADMIN_ID:
+
+        return
+
+    try:
+
+        with open(COUNTER_FILE, "w") as f:
+
+            json.dump({"count": 0}, f)
+            
+            github_commit_file(
+            COUNTER_FILE,
+            "Reset counter.json"
+
+        )
+        return data["count"]
+        except Exception as e:
+
+        logger.error(f"Failed to reset counter: {e}")
+
+        return
+
+    await update.message.reply_text(
+
+        "✅ Statistik berhasil direset!"
+
+    )
 # ---------------------------------------------------------------------------
 # /getid — admin tool to retrieve Telegram file_id from any media
 # ---------------------------------------------------------------------------
