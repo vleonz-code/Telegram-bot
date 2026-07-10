@@ -690,8 +690,8 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
             elif data["field"] == "deskripsi":
                 package["deskripsi"] = update.message.text
 
-           elif data["field"] == "vip_link":
-                 package["vip_link"] = update.message.text.strip()
+            elif data["field"] == "vip_link":
+                package["vip_link"] = update.message.text.strip()
 
             save_vip_packages(packages)
 
