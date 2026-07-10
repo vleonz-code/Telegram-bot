@@ -708,8 +708,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         caption=(
             "*PEMBAYARAN GROUP BOCIL*\n"
             "*────── . 👇🏻 . ──────*\n"
-            "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
-            
             f"*📦 Paket*\n"
 
             f"{package['nama']}\n\n"
@@ -718,6 +716,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             f"{package['harga']}\n\n"
             
+            "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
             "*✅ Pembayaran via (Ovo, Dana, Shopeepay, Gopay, dll)*\n\n"
             "*Terimakasih*"
         ),
