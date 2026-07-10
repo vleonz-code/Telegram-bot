@@ -519,6 +519,14 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 # Admin commands
 # ---------------------------------------------------------------------------
 
+async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text(
+        "➕ Tambah Paket\n\n"
+        "Fitur ini sedang kita bangun..."
+    )
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -607,6 +615,12 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
              InlineKeyboardButton(
                  f"📦 {package['nama']}",
                  callback_data=f"adminvip_{package['id']}"
+            )
+         ])
+     keyboard.append([
+         InlineKeyboardButton(
+             "➕ Tambah Paket",
+             callback_data="adminvip_add"
             )
          ])
         
@@ -850,6 +864,11 @@ def main():
     CallbackQueryHandler(
         vipmenu_callback,
         pattern=r"^vipmenu$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_add_callback,
+        pattern=r"^adminvip_add$"
     ))
     app.add_handler(
     CallbackQueryHandler(
