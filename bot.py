@@ -325,11 +325,6 @@ def save_approved(approved: set):
                 indent=2
             )
 
-        github_commit_file(
-            APPROVED_FILE,
-            "Update approved.json"
-        )
-
     except Exception as e:
         logger.error(f"Approved write error: {e}")
 # ---------------------------------------------------------------------------
@@ -377,11 +372,6 @@ def write_blacklist(bl: dict):
                 ensure_ascii=False,
                 indent=2
             )
-
-        github_commit_file(
-            BLACKLIST_FILE,
-            "Update blacklist.json"
-        )
 
     except Exception as e:
         logger.error(f"Blacklist write error: {e}")
@@ -442,13 +432,10 @@ def save_user_to_registry(user_id: int, full_name: str, username: str):
 
             )
 
-        github_commit_file(
-
-            USERS_FILE,
-
-            "Update users.json"
-
-        )
+        #github_commit_file(
+        #USERS_FILE,
+        #"Update users.json"
+        #)
 
     except Exception as e:
 
@@ -478,11 +465,6 @@ def increment_counter() -> int:
 
         with open(COUNTER_FILE, "w") as f:
             json.dump(data, f)
-
-        github_commit_file(
-            COUNTER_FILE,
-            "Update counter.json"
-        )
 
         return data["count"]
 
@@ -1535,14 +1517,6 @@ async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         with open(COUNTER_FILE, "w") as f:
 
             json.dump({"count": 0}, f)
-
-        github_commit_file(
-
-            COUNTER_FILE,
-
-            "Reset counter.json"
-
-        )
 
     except Exception as e:
 
