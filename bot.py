@@ -3,6 +3,7 @@ import json
 import logging
 import base64
 import requests
+import shutil
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
