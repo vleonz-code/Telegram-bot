@@ -415,17 +415,23 @@ def read_counter() -> int:
 def increment_counter() -> int:
     try:
         data = {"count": 0}
+
         if os.path.exists(COUNTER_FILE):
+            with open(COUNTER_FILE, "r") as f:
+                data = json.load(f)
+
+        data["count"] += 1
+
         with open(COUNTER_FILE, "w") as f:
             json.dump(data, f)
 
-         github_commit_file(
-         COUNTER_FILE,
-         "Update counter.json"
-)
+        github_commit_file(
+            COUNTER_FILE,
+            "Update counter.json"
+        )
 
-      return data["count"]
-    
+        return data["count"]
+
     except Exception as e:
         logger.error(f"Counter error: {e}")
         return -1
