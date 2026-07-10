@@ -33,6 +33,10 @@ def save_vip_packages(data):
     with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+    github_commit_file(
+        VIP_PACKAGES_FILE,
+        "Update vip_packages.json"
+    )
 # ==========================
 
 # SETTINGS 
