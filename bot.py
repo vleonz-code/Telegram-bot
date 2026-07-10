@@ -648,11 +648,16 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
     ])
 
-    await query.edit_message_text(
+    await query.message.delete()
+
+    await context.bot.send_message(
+       chat_id=query.message.chat_id,
+       text=(
         "⚙️ Admin VIP\n\n"
-        "Pilih paket yang ingin dikelola:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+        "Pilih paket yang ingin dikelola:"
+    ),
+    reply_markup=InlineKeyboardMarkup(keyboard)
+)
     
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
