@@ -57,6 +57,8 @@ def save_settings(data):
             indent=2
         )
         
+        logger.info(f"SETTINGS FILE = {os.path.abspath(SETTINGS_FILE)}")
+        
 WIB = timezone(timedelta(hours=7))
 
 # In-memory store for requests awaiting admin decision.
