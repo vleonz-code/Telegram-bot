@@ -46,24 +46,38 @@ def save_vip_packages(data):
 SETTINGS_FILE = "settings.json"
 
 def read_settings():
+
     if not os.path.exists(SETTINGS_FILE):
+
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+
             json.dump(
-               {
-                   "qris_file_id": "",
-                   "join_vip_enabled": True
-               },
-               f,
-               ensure_ascii=False,
-               indent=2
-               )
+
+                {
+
+                    "qris_file_id": "",
+
+                    "join_vip_enabled": True
+
+                },
+
+                f,
+
+                ensure_ascii=False,
+
+                indent=2
+
+            )
 
     with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-    data = json.load(f)
+
+        data = json.load(f)
 
     if "join_vip_enabled" not in data:
-       data["join_vip_enabled"] = True
-       save_settings(data)
+
+        data["join_vip_enabled"] = True
+
+        save_settings(data)
 
     return data
 
