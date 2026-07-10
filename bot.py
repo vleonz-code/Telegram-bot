@@ -890,6 +890,20 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
         "Ketik /cancel untuk membatalkan."
     )
     
+async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    settings["join_vip_enabled"] = not settings["join_vip_enabled"]
+
+    save_settings(settings)
+
+    await query.edit_message_reply_markup(
+        reply_markup=build_adminvip_keyboard()
+    )
+    
 async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1843,6 +1857,11 @@ def main():
     CallbackQueryHandler(
         adminvip_qris_change_callback,
         pattern=r"^adminvip_qris_change$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_toggle_join_callback,
+        pattern=r"^adminvip_toggle_join$"
     ))
     app.add_handler(
     CallbackQueryHandler(
