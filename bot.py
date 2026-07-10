@@ -1669,7 +1669,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         await context.bot.send_message(
             chat_id=user_id,
             text=(
-                "👉🏻 Pembayaran berhasil diverifikasi.\n\n"
+                "👉🏻 Pembayaran berhasil!.\n\n"
                 f"Silakan bergabung ke VIP:\n{vip_link}"
             )
         )
