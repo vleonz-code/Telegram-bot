@@ -1,6 +1,8 @@
 import os
 import json
 import logging
+import base64
+import requests
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -18,6 +20,10 @@ BLACKLIST_FILE = os.path.join(os.path.dirname(__file__), "blacklist.json")
 USERS_FILE     = os.path.join(os.path.dirname(__file__), "users.json")
 APPROVED_FILE  = os.path.join(os.path.dirname(__file__), "approved.json")
 VIP_PACKAGES_FILE = os.path.join(os.path.dirname(__file__),"vip_packages.json")
+
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_REPO = os.getenv("GITHUB_REPO")
+GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
 
 def read_vip_packages():
     with open(VIP_PACKAGES_FILE, "r", encoding="utf-8") as f:
@@ -49,16 +55,107 @@ def read_settings():
         return json.load(f)
 
 def save_settings(data):
+
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+
         json.dump(
+
             data,
+
             f,
+
             ensure_ascii=False,
+
             indent=2
+
         )
+
+    github_commit_file(
+
+        SETTINGS_FILE,
+
+        "Update settings.json"
+
+    )
         
-        logger.info(f"SETTINGS FILE = {os.path.abspath(SETTINGS_FILE)}")
-        
+def github_commit_file(file_path, commit_message):
+
+    if not GITHUB_TOKEN or not GITHUB_REPO:
+
+        logger.warning("GitHub belum dikonfigurasi.")
+
+        return
+
+    headers = {
+
+        "Authorization": f"token {GITHUB_TOKEN}",
+
+        "Accept": "application/vnd.github+json"
+
+    }
+
+    filename = os.path.basename(file_path)
+
+    url = (
+
+        f"https://api.github.com/repos/"
+
+        f"{GITHUB_REPO}/contents/{filename}"
+
+    )
+
+    sha = None
+
+    r = requests.get(
+
+        url,
+
+        headers=headers,
+
+        params={"ref": GITHUB_BRANCH}
+
+    )
+
+    if r.status_code == 200:
+
+        sha = r.json()["sha"]
+
+    with open(file_path, "rb") as f:
+
+        content = base64.b64encode(f.read()).decode()
+
+    payload = {
+
+        "message": commit_message,
+
+        "content": content,
+
+        "branch": GITHUB_BRANCH
+
+    }
+
+    if sha:
+
+        payload["sha"] = sha
+
+    r = requests.put(
+
+        url,
+
+        headers=headers,
+
+        json=payload
+
+    )
+
+    if r.status_code not in (200, 201):
+
+        logger.error(f"GitHub upload gagal: {r.text}")
+
+    else:
+
+        logger.info(f"{filename} berhasil disimpan ke GitHub.")
+   
 WIB = timezone(timedelta(hours=7))
 
 # In-memory store for requests awaiting admin decision.
