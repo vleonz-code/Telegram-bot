@@ -267,7 +267,7 @@ async def deliver_album(bot, chat_id: int):
 
                     InlineKeyboardButton(
 
-                        "🗂️ BERGABUNG",
+                        "📦 Pilih Paket VIPmu",
 
                         callback_data="vipmenu"
 
@@ -281,7 +281,8 @@ async def deliver_album(bot, chat_id: int):
 
                 chat_id,
 
-                "🛒 Mau Join VIP?",
+                "🎬 Penasaran dengan previewnya?\n\n"
+                 "Join VIP untuk akses lebih lengkap.",
 
                 reply_markup=keyboard
 
