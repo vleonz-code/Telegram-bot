@@ -1377,7 +1377,7 @@ def build_adminvip_keyboard():
 
     keyboard.append([
     InlineKeyboardButton(
-        f"{'🟢' if settings['join_vip_enabled'] else '🔴'} Join VIP : {'ON' if settings['join_vip_enabled'] else 'OFF'}",
+        f"{'🟢' if settings['join_vip_enabled'] else '🔴'} ORDER VIP : {'ON' if settings['join_vip_enabled'] else 'OFF'}",
         callback_data="adminvip_toggle_join"
     )
     ])
