@@ -1352,6 +1352,18 @@ async def getid_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("⚠️ Tidak ada media yang terdeteksi. Kirim ulang atau /cancel.")
         getid_waiting.add(user_id)
 
+async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    if user_id in admin_qris_waiting:
+
+        await admin_qris_receive(update, context)
+
+        return
+
+    await payment_receive(update, context)
+    
 async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
@@ -1637,13 +1649,7 @@ def main():
     app.add_handler(
     MessageHandler(
         filters.PHOTO,
-        admin_qris_receive,
-    ))
-    
-    app.add_handler(
-    MessageHandler(
-            filters.PHOTO,
-            payment_receive,
+        photo_router,
     ))
     
     app.add_handler(MessageHandler(
