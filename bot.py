@@ -578,6 +578,13 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
     f"💰 {package['harga']}",
     reply_markup=keyboard
     )
+async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text(
+        "🔙 Kembali berhasil."
+    )
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -925,6 +932,11 @@ def main():
     CallbackQueryHandler(
         adminvip_add_callback,
         pattern=r"^adminvip_add$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_back_callback,
+        pattern=r"^adminvip_back$"
     ))
     app.add_handler(
     CallbackQueryHandler(
