@@ -27,6 +27,36 @@ def save_vip_packages(data):
     with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+# ==========================
+
+# SETTINGS
+
+# ==========================
+
+SETTINGS_FILE = "settings.json"
+
+def read_settings():
+    if not os.path.exists(SETTINGS_FILE):
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(
+                {"qris_file_id": ""},
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
+
+    with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_settings(data):
+    with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+        
 WIB = timezone(timedelta(hours=7))
 
 # In-memory store for requests awaiting admin decision.
