@@ -840,25 +840,25 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [
                 InlineKeyboardButton(
                     "📝 Edit Nama",
-                    callback_data="adminadd_edit_nama"
+                    callback_data="adminaddedit_nama"
                 )
             ],
             [
                 InlineKeyboardButton(
                     "💰 Edit Harga",
-                    callback_data="adminadd_edit_harga"
+                    callback_data="adminaddedit_harga"
                 )
             ],
             [
                 InlineKeyboardButton(
                     "📄 Edit Deskripsi",
-                    callback_data="adminadd_edit_deskripsi"
+                    callback_data="adminaddedit_deskripsi"
                 )
             ],
             [
                 InlineKeyboardButton(
                     "🔗 Edit Link",
-                    callback_data="adminadd_edit_link"
+                    callback_data="adminaddedit_vip_link"
                 )
             ],
             [
@@ -871,7 +871,7 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     callback_data="adminvip_back"
                 )
             ]
-        ])
+        ]) 
 
         await update.message.reply_text(
             preview,
