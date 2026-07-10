@@ -678,8 +678,8 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         f"{package['deskripsi']}\n\n"
 
-        "━━━━━━━━━━━━━━\n\n"
-
+        "──────────────\n"
+        
         f"💰 Harga :{package['harga']}",
 
         reply_markup=keyboard
