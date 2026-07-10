@@ -42,6 +42,7 @@ getid_waiting: set = set()
 #     "harga": "Rp50.000"
 # }
 upload_waiting = {}
+admin_edit_waiting = {}
 
 FILE_IDS = [
     ("video", os.environ.get("FILE_ID_1", "")),
