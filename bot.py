@@ -13,6 +13,10 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+DATA_DIR = "/data"
+APP_DIR = os.path.dirname(__file__)
+
+os.makedirs(DATA_DIR, exist_ok=True)
 
 DEEP_LINK_PAYLOAD = "UB3A6P"
 ADMIN_ID = 7602115007
@@ -25,10 +29,6 @@ VIP_PACKAGES_FILE = os.path.join(DATA_DIR, "vip_packages.json")
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 GITHUB_REPO = os.getenv("GITHUB_REPO")
 GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
-DATA_DIR = "/data"
-APP_DIR = os.path.dirname(__file__)
-
-os.makedirs(DATA_DIR, exist_ok=True)
 
 def migrate_to_volume(filename):
     src = os.path.join(APP_DIR, filename)
