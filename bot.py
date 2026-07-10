@@ -971,61 +971,40 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
         return
 
-if action == "pay_ok":
+    if action == "pay_ok":
+        package = get_package(data["package_id"])
+        vip_link = package["vip_link"]
 
-    package = get_package(data["package_id"])
-
-    vip_link = package["vip_link"]
-
-    await context.bot.send_message(
-
-        chat_id=user_id,
-
-        text=(
-
-            "👉🏻 Pembayaran berhasil diverifikasi.\n\n"
-
-            f"Silakan bergabung ke VIP:\n{vip_link}"
-
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=(
+                "👉🏻 Pembayaran berhasil diverifikasi.\n\n"
+                f"Silakan bergabung ke VIP:\n{vip_link}"
+            )
         )
 
-    )
+        upload_waiting.pop(user_id, None)
 
-    upload_waiting.pop(user_id, None)
+        try:
+            await query.edit_message_text(
+                "✅ Pembayaran telah disetujui."
+            )
+        except Exception as e:
+            logger.error(f"Edit admin message error: {e}")
 
-    try:
+    elif action == "pay_no":
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=(
+                "❌ Bukti transfer ditolak.\n\n"
+                "Silakan upload ulang bukti transfer."
+            )
+        )
 
         await query.edit_message_text(
-
-            "✅ Pembayaran telah disetujui."
-
+            "❌ Pembayaran ditolak."
         )
-
-    except Exception as e:
-
-        logger.error(f"Edit admin message error: {e}")
-
-elif action == "pay_no":
-
-    await context.bot.send_message(
-
-        chat_id=user_id,
-
-        text=(
-
-            "❌ Bukti transfer ditolak.\n\n"
-
-            "Silakan upload ulang bukti transfer."
-
-        )
-
-    )
-
-    await query.edit_message_text(
-
-        "❌ Pembayaran ditolak."
-
-    )
+        
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
