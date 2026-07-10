@@ -1465,6 +1465,8 @@ async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
     settings["qris_file_id"] = file_id
 
     save_settings(settings)
+    
+    logger.info(settings)
 
     admin_qris_waiting.discard(user_id)
 
