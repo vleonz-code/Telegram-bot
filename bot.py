@@ -591,6 +591,18 @@ async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🚫 *Blacklisted Users*\n\n" + "\n\n".join(lines),
         parse_mode="Markdown",
     )
+    
+async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+     if update.effective_user.id != ADMIN_ID:
+         return
+
+     packages = read_vip_packages()["packages"]
+     
+     text = "⚙️ Menu Admin VIP\n\n"
+     for package in packages:
+         text += f"• {package['nama']}\n"
+        
+     await update.message.reply_text(text)
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
@@ -809,6 +821,7 @@ def main():
     app = ApplicationBuilder().token(token).build()
 
     app.add_handler(CommandHandler("start",      start))
+    app.add_handler(CommandHandler("adminvip",   adminvip))
     app.add_handler(CommandHandler("stats",      stats))
     app.add_handler(CommandHandler("resetstats", resetstats))
     app.add_handler(CommandHandler("ban",        ban))
