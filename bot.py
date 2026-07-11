@@ -1410,13 +1410,6 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            "➕ Tambah Pakettt",
-            callback_data="adminvip_add"
-        )
-    ])
-
-    keyboard.append([
-        InlineKeyboardButton(
             "💳 Pembayaran",
             callback_data="adminvip_payment"
         )
