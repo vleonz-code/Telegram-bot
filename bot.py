@@ -1471,6 +1471,12 @@ def build_adminvip_keyboard():
             callback_data="adminvip_packages"
         )
     ])
+    keyboard.append([
+        InlineKeyboardButton(
+            "📊 Statistik",
+            callback_data="adminvip_stats"
+        )
+    ])
 
     keyboard.append([
         InlineKeyboardButton(
