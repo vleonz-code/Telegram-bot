@@ -1006,6 +1006,22 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
+async def payment_history_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    tanggal = query.data.replace("history_", "")
+
+    history = read_order_history()
+
+    orders = []
+
+    for order in history["orders"]:
+
+        if order["time"].startswith(tanggal):
+
+            orders.append(order)
+    
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2166,6 +2182,11 @@ def main():
     CallbackQueryHandler(
         payment_history_callback,
         pattern=r"^payment_history$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_history_detail_callback,
+        pattern=r"^history_"
     ))
     app.add_handler(
     CallbackQueryHandler(
