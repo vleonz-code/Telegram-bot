@@ -903,22 +903,28 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
         text="💳 Pembayaran",
         reply_markup=keyboard
     )
+    
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    await query.edit_message_text(
-        "📋 Order History\n\n"
-        "Belum ada transaksi.",
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🔙 Pembayaran",
-                    callback_data="adminvip_payment"
-                )
-            ]
-        ])
-    )
+    history = read_order_history()
+
+    if not history["orders"]:
+
+        await query.edit_message_text(
+            "📋 Order History\n\n"
+            "Belum ada transaksi.",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "🔙 Pembayaran",
+                        callback_data="adminvip_payment"
+                    )
+                ]
+            ])
+        )
+        return
     
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
