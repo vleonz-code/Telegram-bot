@@ -40,6 +40,22 @@ def read_vip_packages():
 def save_vip_packages(data):
     with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+def read_order_history():
+    if not os.path.exists(ORDER_HISTORY_FILE):
+        return {"orders": []}
+
+    with open(ORDER_HISTORY_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_order_history(data):
+    with open(ORDER_HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
 # ==========================
 
 # SETTINGS
