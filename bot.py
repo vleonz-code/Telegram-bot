@@ -845,21 +845,44 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
         ],
         [
             InlineKeyboardButton(
-                "🖼 Edit QRIS",
-                callback_data="adminvip_qris"
-            )
-        ],
-        [
+            "🖼 Edit QRIS",
+            callback_data="payment_qris"
+        )
+    ],
+    [
             InlineKeyboardButton(
-                "🔙 Kembali",
-                callback_data="adminvip_back"
-            )
-        ]
+            "📋 Order History",
+            callback_data="payment_history"
+        )
+    ],
+    [
+            InlineKeyboardButton(
+            "🔙 Menu Admin",
+            callback_data="adminvip_back"
+        )
+    ]
     ])
 
     await query.edit_message_text(
         "💳 Pembayaran",
         reply_markup=keyboard
+    )
+    
+async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text(
+        "📋 Order History\n\n"
+        "Belum ada transaksi.",
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "🔙 Pembayaran",
+                    callback_data="adminvip_payment"
+                )
+            ]
+        ])
     )
     
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2004,6 +2027,11 @@ def main():
     CallbackQueryHandler(
         adminvip_payment_callback,
         pattern=r"^adminvip_payment$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_history_callback,
+        pattern=r"^payment_history$"
     ))
     app.add_handler(
     CallbackQueryHandler(
