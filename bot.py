@@ -742,12 +742,11 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     }
     
     await query.message.reply_text(
-        "Silakan upload screenshot bukti transfer Anda.\n\n"
+        "Silakan upload screenshot bukti transfer disini.\n\n"
         "Pastikan:\n"
         "• Nominal transfer terlihat jelas.\n"
         "• Waktu transaksi terlihat.\n"
         "• Bukti tidak terpotong.\n\n"
-        "Ketik /cancel untuk membatalkan."
     )
 # ---------------------------------------------------------------------------
 # Admin commands
