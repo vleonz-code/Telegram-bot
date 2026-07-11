@@ -911,6 +911,18 @@ async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         query.message.chat_id,
         context.bot
     )
+    
+async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        return
+
+    await do_reset_stats(
+        query.message.chat_id,
+        context.bot
+    )
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
     
@@ -1591,28 +1603,27 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.bot
     )
 
+async def do_reset_stats(chat_id: int, bot):
+    try:
+        with open(COUNTER_FILE, "w") as f:
+            json.dump({"count": 0}, f)
+    except Exception as e:
+        logger.error(f"Failed to reset counter: {e}")
+        return
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text="✅ Statistik berhasil direset!"
+    )
+
 async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.effective_user.id != ADMIN_ID:
-
         return
 
-    try:
-
-        with open(COUNTER_FILE, "w") as f:
-
-            json.dump({"count": 0}, f)
-
-    except Exception as e:
-
-        logger.error(f"Failed to reset counter: {e}")
-
-        return
-
-    await update.message.reply_text(
-
-        "✅ Statistik berhasil direset!"
-
+    await do_reset_stats(
+        update.effective_chat.id,
+        context.bot
     )
 # ---------------------------------------------------------------------------
 # /getid — admin tool to retrieve Telegram file_id from any media
@@ -1924,6 +1935,11 @@ def main():
     CallbackQueryHandler(
         stats_view_callback,
         pattern=r"^stats_view$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        stats_reset_callback,
+        pattern=r"^stats_reset$"
     ))
     app.add_handler(
     CallbackQueryHandler(
