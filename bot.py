@@ -900,6 +900,17 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         reply_markup=keyboard
     )
     
+async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        return
+
+    await send_stats(
+        query.message.chat_id,
+        context.bot
+    )
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
     
@@ -1908,6 +1919,11 @@ def main():
     CallbackQueryHandler(
         adminvip_stats_callback,
         pattern=r"^adminvip_stats$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        stats_view_callback,
+        pattern=r"^stats_view$"
     ))
     app.add_handler(
     CallbackQueryHandler(
