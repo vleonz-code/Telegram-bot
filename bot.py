@@ -739,7 +739,7 @@ async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TY
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "🔙 Kembali",
+                "❌ Batal",
                 callback_data="adminvip_packages"
             )
         ]
