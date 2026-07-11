@@ -31,6 +31,7 @@ USERS_FILE = os.path.join(DATA_DIR, "users.json")
 APPROVED_FILE = os.path.join(DATA_DIR, "approved.json")
 VIP_PACKAGES_FILE = os.path.join(DATA_DIR, "vip_packages.json")
 ORDER_HISTORY_FILE = os.path.join(DATA_DIR, "order_history.json")
+PENDING_ORDERS_FILE = os.path.join(DATA_DIR, "pending_orders.json")
 
 def migrate_to_volume(filename):
     src = os.path.join(APP_DIR, filename)
@@ -57,6 +58,23 @@ def read_order_history():
 
 def save_order_history(data):
     with open(ORDER_HISTORY_FILE, "w", encoding="utf-8") as f:
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+        
+def read_pending_orders():
+    if not os.path.exists(PENDING_ORDERS_FILE):
+        return {"orders": []}
+
+    with open(PENDING_ORDERS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_pending_orders(data):
+    with open(PENDING_ORDERS_FILE, "w", encoding="utf-8") as f:
         json.dump(
             data,
             f,
@@ -722,6 +740,16 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "full_name": user.full_name,
         "username": username
     }
+    
+    pending = read_pending_orders()
+
+    pending["orders"].append(
+
+        upload_waiting[order_id].copy()
+
+    )
+
+    save_pending_orders(pending)
 
     await query.message.reply_text(
         "Silakan upload screenshot bukti transfer Anda.\n\n"
@@ -2371,12 +2399,35 @@ migrate_to_volume("approved.json")
 migrate_to_volume("blacklist.json")
 migrate_to_volume("counter.json")
 migrate_to_volume("order_history.json")
+migrate_to_volume("pending_orders.json")
 
+def restore_pending_orders():
+    global upload_waiting
+    global next_order_id
+
+    pending = read_pending_orders()
+
+    upload_waiting = {}
+
+    max_order_id = 0
+
+    for order in pending["orders"]:
+
+        order_id = order["order_id"]
+
+        upload_waiting[order_id] = order
+
+        if order_id > max_order_id:
+            max_order_id = order_id
+
+    next_order_id = max_order_id + 1
+    
 def main():
     token = os.environ.get("BOT_TOKEN")
     if not token:
         raise ValueError("BOT_TOKEN environment variable is not set.")
 
+    restore_pending_orders()
     app = ApplicationBuilder().token(token).build()
 
     app.add_handler(CommandHandler("start",      start))
