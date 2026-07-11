@@ -1285,7 +1285,7 @@ async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard.append([
         InlineKeyboardButton(
-            "➕ 998Tambah Paket",
+            "➕ Tambah Paket",
             callback_data="adminvip_add"
         )
     ])
@@ -1410,7 +1410,7 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            "➕ Tambah Paket",
+            "➕ Tambah Pakettt",
             callback_data="adminvip_add"
         )
     ])
