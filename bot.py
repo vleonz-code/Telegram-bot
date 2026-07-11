@@ -955,6 +955,42 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
         if harga.isdigit():
             total_pendapatan += int(harga)
+    
+    tanggal_order = {}
+
+    for order in history["orders"]:
+
+        tanggal = order["time"].split(",")[0]
+
+        if tanggal not in tanggal_order:
+
+            tanggal_order[tanggal] = 0
+
+        tanggal_order[tanggal] += 1
+        
+            keyboard = []
+
+    for tanggal, jumlah in sorted(
+
+        tanggal_order.items(),
+
+        reverse=True
+
+    ):
+
+        keyboard.append([
+            InlineKeyboardButton(
+                f"📅 {tanggal} ({jumlah})",
+                callback_data=f"history_{tanggal}"
+            )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Pembayaran",
+            callback_data="adminvip_payment"
+        )
+    ])
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
