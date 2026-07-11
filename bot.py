@@ -1109,11 +1109,21 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
         "field": "nama"
     }
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data=f"adminvip_{package_id}"
+            )
+        ]
+    ])
+
     await query.edit_message_text(
         f"📝 Edit Nama\n\n"
         f"Nama saat ini:\n"
         f"{package['nama']}\n\n"
-        "Silakan update nama baru."
+        "Silakan update nama baru.",
+        reply_markup=keyboard
     )
     
 async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
