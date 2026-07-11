@@ -121,6 +121,7 @@ upload_waiting = {}
 admin_edit_waiting = {}
 admin_add_waiting = {}
 admin_qris_waiting = set()
+last_stats_message = {}
 
 FILE_IDS = [
     ("video", os.environ.get("FILE_ID_1", "")),
@@ -1586,14 +1587,28 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def send_stats(chat_id: int, bot):
     count = read_counter()
 
-    await bot.send_message(
+    old_message = last_stats_message.get(chat_id)
+
+    if old_message:
+        try:
+            await bot.delete_message(
+                chat_id=chat_id,
+                message_id=old_message
+            )
+        except Exception:
+            pass
+
+    msg = await bot.send_message(
         chat_id=chat_id,
         text=(
             f"📊 *Stats Bot*\n\n"
             f"Total penggunaan `UB3A6P`: *{count}x*"
         ),
         parse_mode="Markdown",
+
     )
+
+    last_stats_message[chat_id] = msg.message_id
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
