@@ -1001,7 +1001,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         f"📦 Total Order\n"
         f"{total_order}\n\n"
 
-        "────────────",
+        "📅 Pilih tanggal transaksi di bawah ini.",
 
         reply_markup=InlineKeyboardMarkup(keyboard)
     )
@@ -1037,10 +1037,19 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
 
         jam = order["time"].split(",")[1].strip()
 
+        harga = (
+            package["harga"]
+            if package
+            else "-"
+        )
+
         text += (
-            f"{i}.\n"
+            f"📋 Order #{nomor}.\n\n"
             f"👤 {order['full_name']}\n"
+            f"🆔 {order['user_id']}\n"
+            f"🔗 {order['username']}\n\n"
             f"📦 {package['nama']}\n"
+            f"💰 {harga}\n\n"
             f"🕒 {jam}\n\n"
         )
 
