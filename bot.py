@@ -1496,19 +1496,6 @@ def build_adminvip_keyboard():
     ])
     settings = read_settings()
 
-    keyboard.append([
-    InlineKeyboardButton(
-        f"{'🟢' if settings['join_vip_enabled'] else '🔴'} ORDER VIP : {'ON' if settings['join_vip_enabled'] else 'OFF'}",
-        callback_data="adminvip_toggle_join"
-    )
-    ])
-    keyboard.append([
-    InlineKeyboardButton(
-        f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} CEK PREVIEW : {'ON' if settings['preview_approval_enabled'] else 'OFF'}",
-        callback_data="adminvip_toggle_preview"
-    )
-    ])
-
     return InlineKeyboardMarkup(keyboard)
     
 async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
