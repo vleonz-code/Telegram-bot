@@ -1072,6 +1072,69 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         reply_markup=keyboard
     )
     
+async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    history = read_order_history()
+
+    total_order = len(history["orders"])
+
+    total_pendapatan = 0
+
+    packages = read_vip_packages()["packages"]
+
+    for order in history["orders"]:
+
+        package = next(
+            (
+                p for p in packages
+                if p["id"] == order["package_id"]
+            ),
+            None
+        )
+
+        if not package:
+            continue
+
+        harga = (
+            package["harga"]
+            .replace("Rp", "")
+            .replace(".", "")
+            .replace(",", "")
+            .strip()
+        )
+
+        if harga.isdigit():
+            total_pendapatan += int(harga)
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data="adminvip_payment"
+            ),
+            InlineKeyboardButton(
+                "✅ Ya, Clear",
+                callback_data="payment_clear_yes"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "⚠️ Clear Order\n\n"
+        "Seluruh Order History akan dihapus.\n\n"
+
+        f"📦 Total Order\n"
+        f"{total_order}\n\n"
+
+        f"💰 Total Pendapatan\n"
+        f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+
+        "Data tidak dapat dikembalikan.",
+        reply_markup=keyboard
+    )
+    
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2232,6 +2295,11 @@ def main():
     CallbackQueryHandler(
         payment_history_callback,
         pattern=r"^payment_history$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_clear_callback,
+        pattern=r"^payment_clear$"
     ))
     app.add_handler(
     CallbackQueryHandler(
