@@ -1626,10 +1626,23 @@ async def do_reset_stats(chat_id: int, bot):
         logger.error(f"Failed to reset counter: {e}")
         return
 
-    await bot.send_message(
+    old_message = last_stats_message.get(chat_id)
+
+    if old_message:
+        try:
+            await bot.delete_message(
+                chat_id=chat_id,
+                message_id=old_message
+            )
+        except Exception:
+            pass
+            
+        msg = await bot.send_message(
         chat_id=chat_id,
         text="✅ Statistik berhasil direset!"
     )
+
+    last_stats_message[chat_id] = msg.message_id
 
 async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
