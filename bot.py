@@ -1799,6 +1799,11 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
+        adminvip_packages_back_callback,
+        pattern=r"^adminvip_packages_back$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
         adminvip_package_callback,
         pattern=r"^adminvip_\d+$"
     ))
