@@ -706,10 +706,14 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
 
+    username = f"@{user.username}" if user.username else "-"
+
     upload_waiting[user.id] = {
         "package_id": package["id"],
         "paket": package["nama"],
-        "harga": package["harga"]
+        "harga": package["harga"],
+        "full_name": user.full_name,
+        "username": username
     }
 
     await query.message.reply_text(
