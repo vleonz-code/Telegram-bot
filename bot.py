@@ -2232,11 +2232,11 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             InlineKeyboardButton(
                 "✅ Terima",
-                callback_data=f"pay_ok|{user.id}"
+                callback_data=f"pay_ok|{order_id}"
             ),
             InlineKeyboardButton(
                 "❌ Tolak",
-                callback_data=f"pay_no|{user.id}"
+                callback_data=f"pay_no|{order_id}"
             )
         ]
     ])
@@ -2257,7 +2257,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
          "Colek Admin: @BocilVIP89"
       )
 
-    upload_waiting[user_id]["status_msg_id"] = status_msg.message_id
+    upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
 
 async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
