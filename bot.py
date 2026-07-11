@@ -765,6 +765,43 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
     reply_markup=keyboard
     )
     
+async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    packages = read_vip_packages()["packages"]
+
+    keyboard = []
+
+    for package in packages:
+        keyboard.append([
+            InlineKeyboardButton(
+                f"📦 {package['nama']}",
+                callback_data=f"adminvip_{package['id']}"
+            )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "➕ Tambah Paket",
+            callback_data="adminvip_add"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="adminvip_back"
+        )
+    ])
+
+    await query.edit_message_text(
+        "📦 Kelola Paket\n\n"
+        "Pilih paket yang ingin dikelola:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+
+    )
+    
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1381,17 +1418,14 @@ async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
 def build_adminvip_keyboard():
-    packages = read_vip_packages()["packages"]
-
     keyboard = []
-
-    for package in packages:
-        keyboard.append([
-            InlineKeyboardButton(
-                f"📦 {package['nama']}",
-                callback_data=f"adminvip_{package['id']}"
-            )
-        ])
+    
+    keyboard.append([
+        InlineKeyboardButton(
+            "📦 Kelola Paket",
+            callback_data="adminvip_packages"
+        )
+    ])
 
     keyboard.append([
         InlineKeyboardButton(
