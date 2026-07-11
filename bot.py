@@ -859,7 +859,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         ],
         [
             InlineKeyboardButton(
-                f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} PERSETUJUAN ADMIN : {'ON' if settings['preview_approval_enabled'] else 'OFF'}",
+                f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} Cek Preview : {'ON' if settings['preview_approval_enabled'] else 'OFF'}",
                 callback_data="adminvip_toggle_preview"
             )
         ],
@@ -959,9 +959,7 @@ async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes
     settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
     save_settings(settings)
 
-    await query.edit_message_reply_markup(
-        reply_markup=build_adminvip_keyboard()
-    )
+    await adminvip_settings_callback(update, context)
     
 async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
