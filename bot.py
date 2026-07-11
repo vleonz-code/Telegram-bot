@@ -949,9 +949,7 @@ async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DE
 
     save_settings(settings)
 
-    await query.edit_message_reply_markup(
-        reply_markup=build_adminvip_keyboard()
-    )
+    await adminvip_settings_callback(update, context)
     
 async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
