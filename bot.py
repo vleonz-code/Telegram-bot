@@ -1035,6 +1035,19 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
             f"📦 {package['nama']}\n"
             f"🕒 {jam}\n\n"
         )
+            keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="payment_history"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        text,
+        reply_markup=keyboard
+    )
     
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
