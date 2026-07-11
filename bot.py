@@ -1014,6 +1014,14 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
 
     history = read_order_history()
 
+    orders = []
+
+    for order in history["orders"]:
+
+        if order["time"].startswith(tanggal):
+
+            orders.append(order)
+
     if not orders:
 
         await query.edit_message_text(
@@ -1035,7 +1043,8 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
             f"📦 {package['nama']}\n"
             f"🕒 {jam}\n\n"
         )
-            keyboard = InlineKeyboardMarkup([
+
+    keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
                 "🔙 Kembali",
