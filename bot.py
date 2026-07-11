@@ -1935,11 +1935,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
 
             logger.info(history)
 
-        save_order_history(history)
-
-        upload_waiting.pop(user_id, None)
-
-        save_order_history(history)
+            save_order_history(history)
 
         upload_waiting.pop(user_id, None)
 
