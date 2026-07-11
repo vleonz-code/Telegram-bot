@@ -1226,6 +1226,36 @@ async def payment_history_delete_callback(update: Update, context: ContextTypes.
         "Data tidak dapat dikembalikan.",
         reply_markup=keyboard
     )
+
+async def payment_history_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    tanggal = query.data.replace("history_delete_yes_", "")
+
+    history = read_order_history()
+
+    history["orders"] = [
+        order
+        for order in history["orders"]
+        if not order["time"].startswith(tanggal)
+    ]
+
+    save_order_history(history)
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Order History",
+                callback_data="payment_history"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "✅ Order berhasil dihapus.",
+        reply_markup=keyboard
+    )
     
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2407,6 +2437,11 @@ def main():
     CallbackQueryHandler(
         payment_history_delete_callback,
         pattern=r"^history_delete_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_history_delete_yes_callback,
+        pattern=r"^history_delete_yes_"
     ))
     app.add_handler(
     CallbackQueryHandler(
