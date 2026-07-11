@@ -69,7 +69,7 @@ def save_order_history(data):
 
 # ==========================
 
-SETTINGS_FILE = "settings.json"
+SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 
 def read_settings():
 
@@ -155,7 +155,6 @@ FILE_IDS = [
     ("photo", os.environ.get("FILE_ID_6", "")),
 ]
 
-QRIS_FILE_ID = os.environ.get("QRIS_FILE_ID", "")
 # ---------------------------------------------------------------------------
 # Media helpers
 # ---------------------------------------------------------------------------
@@ -1629,7 +1628,6 @@ def build_adminvip_keyboard():
             callback_data="adminvip_settings"
         )
     ])
-    settings = read_settings()
 
     return InlineKeyboardMarkup(keyboard)
     
