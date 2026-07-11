@@ -1560,13 +1560,24 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
          reply_markup=build_adminvip_keyboard()
      )
 
+async def send_stats(chat_id: int, bot):
+    count = read_counter()
+
+    await bot.send_message(
+        chat_id=chat_id,
+        text=(
+            f"📊 *Stats Bot*\n\n"
+            f"Total penggunaan `UB3A6P`: *{count}x*"
+        ),
+        parse_mode="Markdown",
+    )
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
-    count = read_counter()
-    await update.message.reply_text(
-        f"📊 *Stats Bot*\n\nTotal penggunaan `UB3A6P`: *{count}x*",
-        parse_mode="Markdown",
+
+    await send_stats(
+        update.effective_chat.id,
+        context.bot
     )
 
 async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
