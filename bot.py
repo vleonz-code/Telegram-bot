@@ -1632,40 +1632,13 @@ def build_adminvip_keyboard():
     return InlineKeyboardMarkup(keyboard)
     
 async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
-     if update.effective_user.id != ADMIN_ID:
-         return
+    if update.effective_user.id != ADMIN_ID:
+        return
 
-     packages = read_vip_packages()["packages"]
-     
-     text = "⚙️ Menu Admin VIP\n\n"
-     
-     keyboard = []
-    
-     for package in packages:
-         keyboard.append([
-             InlineKeyboardButton(
-                 f"📦 {package['nama']}",
-                 callback_data=f"adminvip_{package['id']}"
-            )
-         ])
-     keyboard.append([
-         InlineKeyboardButton(
-             "➕ Tambah Paket",
-             callback_data="adminvip_add"
-            )
-         ])
-     keyboard.append([
-          InlineKeyboardButton(
-            "🖼 Edit QRIS",
-            callback_data="adminvip_qris"
-        )
-    ])
-    
-        
-     await update.message.reply_text(
-         text,
-         reply_markup=build_adminvip_keyboard()
-     )
+    await update.message.reply_text(
+        "⚙️ Menu Admin VIP\n\n",
+        reply_markup=build_adminvip_keyboard()
+    )
 
 async def send_stats(chat_id: int, bot):
     count = read_counter()
