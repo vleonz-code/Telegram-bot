@@ -23,7 +23,7 @@ ORDER_HISTORY_EXCLUDED = {
     # Tambahkan User ID akun testing di bawah ini
     # Contoh:
     # 123456789
-    7955763972
+    #7955763972
 }
 COUNTER_FILE = os.path.join(DATA_DIR, "counter.json")
 BLACKLIST_FILE = os.path.join(DATA_DIR, "blacklist.json")
