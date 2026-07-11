@@ -810,7 +810,7 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     await context.bot.send_message(
         chat_id=query.message.chat_id,
-        text="⚙️ Admin VIP\n\n",
+        text="⚙️ Menu Admin VIP\n\n",
         reply_markup=build_adminvip_keyboard()
     )
     
