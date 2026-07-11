@@ -1253,7 +1253,7 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
     ])
 
     await query.edit_message_text(
-        "✅ Order berhasil dihapus.",
+        "✅ Transaksi tanggal berhasil dihapus.",
         reply_markup=keyboard
     )
     
