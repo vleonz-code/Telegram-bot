@@ -926,11 +926,27 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
-    
+   
+async def clear_last_stats(chat_id: int, bot):
+    old_message = last_stats_message.pop(chat_id, None)
+
+    if old_message:
+        try:
+            await bot.delete_message(
+                chat_id=chat_id,
+                message_id=old_message
+            )
+        except Exception:
+            pass
+ 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
+    await clear_last_stats(
+        query.message.chat_id,
+        context.bot
+    )
     await query.message.delete()
 
     await context.bot.send_message(
