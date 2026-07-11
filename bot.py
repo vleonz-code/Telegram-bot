@@ -839,12 +839,6 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
         ],
         [
             InlineKeyboardButton(
-                "📊 Statistik",
-                callback_data="payment_stats"
-            )
-        ],
-        [
-            InlineKeyboardButton(
             "🖼 Edit QRIS",
             callback_data="payment_qris"
         )
