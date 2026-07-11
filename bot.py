@@ -968,7 +968,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
         tanggal_order[tanggal] += 1
         
-            keyboard = []
+    keyboard = []
 
     for tanggal, jumlah in sorted(
 
@@ -978,7 +978,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
     ):
 
-        keyboard.append([
+    keyboard.append([
             InlineKeyboardButton(
                 f"📅 {tanggal} ({jumlah})",
                 callback_data=f"history_{tanggal}"
@@ -991,6 +991,19 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
             callback_data="adminvip_payment"
         )
     ])
+        await query.edit_message_text(
+        "📋 Order History\n\n"
+
+        f"💰 Total Pendapatan\n"
+        f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+
+        f"📦 Total Order\n"
+        f"{total_order}\n\n"
+
+        "────────────",
+
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
