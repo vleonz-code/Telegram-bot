@@ -2176,7 +2176,15 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
 
-    if user_id not in upload_waiting:
+    order_id = None
+
+    for oid, data in upload_waiting.items():
+
+        if data["full_name"] == update.effective_user.full_name:
+
+            order_id = oid
+
+    if order_id is None:
 
         return
 
@@ -2190,7 +2198,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    upload_waiting[user_id]["photo_file_id"] = update.message.photo[-1].file_id
+    upload_waiting[order_id]["photo_file_id"] = update.message.photo[-1].file_id
 
     user = update.effective_user
 
@@ -2200,7 +2208,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         chat_id=ADMIN_ID,
 
-        photo=upload_waiting[user_id]["photo_file_id"],
+        photo=upload_waiting[order_id]["photo_file_id"],
 
         caption=(
 
@@ -2237,8 +2245,8 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=(
             "📋 Verifikasi Pembayaran\n\n"
             f"👤 {user.full_name}\n"
-            f"📦 {upload_waiting[user_id]['paket']}\n"
-            f"💰 {upload_waiting[user_id]['harga']}"
+            f"📦 {upload_waiting[order_id]['paket']}\n"
+            f"💰 {upload_waiting[order_id]['harga']}"
         ),
         reply_markup=keyboard
     )
