@@ -802,6 +802,42 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
 
     )
     
+async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "📋 Order History",
+                callback_data="payment_history"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📊 Statistik",
+                callback_data="payment_stats"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🖼 Edit QRIS",
+                callback_data="adminvip_qris"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_back"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "💳 Pembayaran",
+        reply_markup=keyboard
+    )
+    
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
     
