@@ -741,16 +741,6 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "username": username
     }
     
-    pending = read_pending_orders()
-
-    pending["orders"].append(
-
-        upload_waiting[order_id].copy()
-
-    )
-
-    save_pending_orders(pending)
-
     await query.message.reply_text(
         "Silakan upload screenshot bukti transfer Anda.\n\n"
         "Pastikan:\n"
@@ -2207,6 +2197,16 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     upload_waiting[order_id]["photo_file_id"] = update.message.photo[-1].file_id
+
+    pending = read_pending_orders()
+
+    pending["orders"].append(
+
+        upload_waiting[order_id].copy()
+
+    )
+
+    save_pending_orders(pending)
 
     user = update.effective_user
 
