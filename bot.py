@@ -18,6 +18,13 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 DEEP_LINK_PAYLOAD = "UB3A6P"
 ADMIN_ID = 7602115007
+ORDER_HISTORY_EXCLUDED = {
+    ADMIN_ID,
+    # Tambahkan User ID akun testing di bawah ini
+    # Contoh:
+    # 123456789
+    7955763972
+}
 COUNTER_FILE = os.path.join(DATA_DIR, "counter.json")
 BLACKLIST_FILE = os.path.join(DATA_DIR, "blacklist.json")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
@@ -1914,15 +1921,19 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         )
         
-        history = read_order_history()
+        if user_id not in ORDER_HISTORY_EXCLUDED:
 
-        history["orders"].append({
-            "user_id": user_id,
-            "full_name": query.from_user.full_name,
-            "username": f"@{query.from_user.username}" if query.from_user.username else "-",
-            "package_id": data["package_id"],
-            "time": datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
-        })
+            history = read_order_history()
+
+            history["orders"].append({
+                "user_id": user_id,
+                "full_name": data["full_name"],
+                "username": data["username"],
+                "package_id": data["package_id"],
+                "time": datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
+            })
+
+            logger.info(history)
 
         save_order_history(history)
 
