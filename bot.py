@@ -141,6 +141,7 @@ getid_waiting: set = set()
 #     "harga": "Rp50.000"
 # }
 upload_waiting = {}
+next_order_id = 1
 admin_edit_waiting = {}
 admin_add_waiting = {}
 admin_qris_waiting = set()
@@ -702,13 +703,18 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
 
     user = query.from_user
+    global next_order_id
+
+    order_id = next_order_id
+    next_order_id += 1
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
 
     username = f"@{user.username}" if user.username else "-"
 
-    upload_waiting[user.id] = {
+    upload_waiting[order_id] = {
+        "order_id": order_id,
         "package_id": package["id"],
         "paket": package["nama"],
         "harga": package["harga"],
