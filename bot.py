@@ -2405,6 +2405,11 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
+        payment_history_delete_callback,
+        pattern=r"^history_delete_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
         adminvip_settings_callback,
         pattern=r"^adminvip_settings$"
     ))
