@@ -1987,6 +1987,7 @@ def build_adminvip_keyboard():
             callback_data="adminvip_settings"
         )
     ])
+    return InlineKeyboardMarkup(keyboard)
     
 def build_payment_keyboard():
 
@@ -2019,8 +2020,6 @@ def build_payment_keyboard():
             callback_data="adminvip_back"
         )
     ])
-
-    return InlineKeyboardMarkup(keyboard)
 
     return InlineKeyboardMarkup(keyboard)
     
