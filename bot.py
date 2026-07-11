@@ -855,6 +855,9 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
         "💳 Pembayaran",
         reply_markup=keyboard
     )
+   
+ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await adminvip_payment_callback(update, context)
     
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2015,6 +2018,11 @@ def main():
     CallbackQueryHandler(
         adminvip_payment_callback,
         pattern=r"^adminvip_payment$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_back_callback,
+        pattern=r"^payment_back$"
     ))
     app.add_handler(
     CallbackQueryHandler(
