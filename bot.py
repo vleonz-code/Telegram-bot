@@ -1135,6 +1135,28 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=keyboard
     )
     
+async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    save_order_history({
+        "orders": []
+    })
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Pembayaran",
+                callback_data="payment_back"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "✅ Order History berhasil dibersihkan.",
+        reply_markup=keyboard
+    )
+    
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2300,6 +2322,11 @@ def main():
     CallbackQueryHandler(
         payment_clear_callback,
         pattern=r"^payment_clear$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_clear_yes_callback,
+        pattern=r"^payment_clear_yes$"
     ))
     app.add_handler(
     CallbackQueryHandler(
