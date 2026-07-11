@@ -998,8 +998,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         f"💰 Total Pendapatan\n"
         f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
 
-        f"📦 Total Order\n"
-        f"{total_order}\n\n"
+        f"📦 Total Order {total_order}\n\n"
 
         "📅 Pilih tanggal transaksi di bawah ini.",
 
