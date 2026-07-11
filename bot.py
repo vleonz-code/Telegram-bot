@@ -955,7 +955,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
         if harga.isdigit():
             total_pendapatan += int(harga)
-    
+
     tanggal_order = {}
 
     for order in history["orders"]:
@@ -967,7 +967,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
             tanggal_order[tanggal] = 0
 
         tanggal_order[tanggal] += 1
-        
+
     keyboard = []
 
     for tanggal, jumlah in sorted(
@@ -978,7 +978,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
     ):
 
-    keyboard.append([
+        keyboard.append([
             InlineKeyboardButton(
                 f"📅 {tanggal} ({jumlah})",
                 callback_data=f"history_{tanggal}"
@@ -991,7 +991,8 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
             callback_data="adminvip_payment"
         )
     ])
-        await query.edit_message_text(
+
+    await query.edit_message_text(
         "📋 Order History\n\n"
 
         f"💰 Total Pendapatan\n"
