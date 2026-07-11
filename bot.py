@@ -1462,6 +1462,12 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
          ])
      keyboard.append([
+         InlineKeyboardButton(
+             "➕ Tambah Paket",
+             callback_data="adminvip_add"
+            )
+         ])
+     keyboard.append([
           InlineKeyboardButton(
             "🖼 Edit QRIS",
             callback_data="adminvip_qris"
