@@ -838,6 +838,44 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
         reply_markup=keyboard
     )
     
+async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🖼 Edit QRIS",
+                callback_data="adminvip_qris"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"{'🟢' if settings['join_vip_enabled'] else '🔴'} ORDER VIP : {'ON' if settings['join_vip_enabled'] else 'OFF'}",
+                callback_data="adminvip_toggle_join"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} PERSETUJUAN ADMIN : {'ON' if settings['preview_approval_enabled'] else 'OFF'}",
+                callback_data="adminvip_toggle_preview"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_back"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "⚙️ Pengaturan",
+        reply_markup=keyboard
+    )
+    
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
     
@@ -1452,8 +1490,8 @@ def build_adminvip_keyboard():
     ])
     keyboard.append([
         InlineKeyboardButton(
-            "🖼 Edit QRIS",
-            callback_data="adminvip_qris"
+            "⚙️ Pengaturan",
+            callback_data="adminvip_settings"
         )
     ])
     settings = read_settings()
