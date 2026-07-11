@@ -802,6 +802,9 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
 
     )
     
+async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await adminvip_packages_callback(update, context)
+    
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
