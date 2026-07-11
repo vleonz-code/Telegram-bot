@@ -736,9 +736,18 @@ async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "step": "nama"
     }
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_packages"
+            )
+        ]
+    ])
     await query.edit_message_text(
         "➕ Tambah Paket\n\n"
-        "Silakan masukkan nama paket baru."
+        "Silakan masukkan nama paket baru.",
+        reply_markup=keyboard
     )
     
 async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
