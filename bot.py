@@ -436,6 +436,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             increment_counter()
             await notify_admin(context.bot, full_name, username, user_id)
         return
+        
+    settings = read_settings()
+
+    if not settings["preview_approval_enabled"]:
+       ok = await deliver_album(context.bot, update.effective_chat.id)
+
+       if ok:
+        save_user_to_registry(user_id, full_name, username)
+        increment_counter()
+        await notify_admin(context.bot, full_name, username, user_id)
+
+        approved = read_approved()
+        approved.add(user_id)
+        save_approved(approved)
+
+    return
 
     # Already approved — deliver immediately
     if user_id in read_approved():
