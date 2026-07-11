@@ -2430,8 +2430,8 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
-        payment_history_detail_callback,
-        pattern=r"^history_"
+        payment_history_delete_yes_callback,
+        pattern=r"^history_delete_yes_"
     ))
     app.add_handler(
     CallbackQueryHandler(
@@ -2440,8 +2440,8 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
-        payment_history_delete_yes_callback,
-        pattern=r"^history_delete_yes_"
+        payment_history_detail_callback,
+        pattern=r"^history_"
     ))
     app.add_handler(
     CallbackQueryHandler(
