@@ -851,12 +851,6 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
     ],
     [
             InlineKeyboardButton(
-            "📋 Order History",
-            callback_data="payment_history"
-        )
-    ],
-    [
-            InlineKeyboardButton(
             "🔙 Menu Admin",
             callback_data="adminvip_back"
         )
