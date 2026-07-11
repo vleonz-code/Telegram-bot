@@ -1913,6 +1913,18 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 f"Silakan bergabung ke VIP:\n{vip_link}"
             )
         )
+        
+    history = read_order_history()
+
+    history["orders"].append({
+        "user_id": user_id,
+        "full_name": query.from_user.full_name,
+        "username": f"@{query.from_user.username}" if query.from_user.username else "-",
+        "package_id": data["package_id"],
+        "time": datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
+    })
+
+    save_order_history(history)
 
         upload_waiting.pop(user_id, None)
 
