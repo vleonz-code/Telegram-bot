@@ -1044,7 +1044,7 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         )
 
         text += (
-            f"📋 Order {nomor}\n\n"
+            f"📋 Order #{nomor}\n\n"
             f"👤 {order['full_name']}\n"
             f"🆔 {order['user_id']}\n"
             f"🔗 {order['username']}\n\n"
