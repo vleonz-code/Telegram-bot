@@ -842,36 +842,9 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
     query = update.callback_query
     await query.answer()
 
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "📋 Order History",
-                callback_data="payment_history"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-            "🖼 Edit QRIS",
-            callback_data="payment_qris"
-        )
-    ],
-        [
-            InlineKeyboardButton(
-            "🗑 Clear Order",
-            callback_data="payment_clear"
-        )
-    ],
-    [
-            InlineKeyboardButton(
-            "🔙 Menu Admin",
-            callback_data="adminvip_back"
-        )
-    ]
-    ])
-
     await query.edit_message_text(
         "💳 Pembayaran",
-        reply_markup=keyboard
+        reply_markup=build_payment_keyboard()
     )
    
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2014,6 +1987,40 @@ def build_adminvip_keyboard():
             callback_data="adminvip_settings"
         )
     ])
+    
+def build_payment_keyboard():
+
+    keyboard = []
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "📋 Order History",
+            callback_data="payment_history"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🗑 Clear Order",
+            callback_data="payment_clear"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🖼 Edit QRIS",
+            callback_data="payment_qris"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Menu Admin",
+            callback_data="adminvip_back"
+        )
+    ])
+
+    return InlineKeyboardMarkup(keyboard)
 
     return InlineKeyboardMarkup(keyboard)
     
