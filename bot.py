@@ -870,6 +870,36 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         reply_markup=keyboard
     )
     
+async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = InlineKeyboardMarkup([
+
+        [
+            InlineKeyboardButton(
+                "📈 Lihat Statistik",
+                callback_data="stats_view"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🗑 Reset Statistik",
+                callback_data="stats_reset"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Menu Admin",
+                callback_data="adminvip_back"
+            )
+        ]
+    ])
+    await query.edit_message_text(
+        "📊 Statistik",
+        reply_markup=keyboard
+    )
+    
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
     
@@ -1862,6 +1892,11 @@ def main():
     CallbackQueryHandler(
         adminvip_settings_callback,
         pattern=r"^adminvip_settings$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_stats_callback,
+        pattern=r"^adminvip_stats$"
     ))
     app.add_handler(
     CallbackQueryHandler(
