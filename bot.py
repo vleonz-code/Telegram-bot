@@ -1834,6 +1834,11 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
+        adminvip_payment_callback,
+        pattern=r"^adminvip_payment$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
         adminvip_packages_back_callback,
         pattern=r"^adminvip_packages_back$"
     ))
