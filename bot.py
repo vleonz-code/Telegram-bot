@@ -855,6 +855,12 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
             callback_data="payment_qris"
         )
     ],
+        [
+            InlineKeyboardButton(
+            "🗑 Clear Order",
+            callback_data="payment_clear"
+        )
+    ],
     [
             InlineKeyboardButton(
             "🔙 Menu Admin",
