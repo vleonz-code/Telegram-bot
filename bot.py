@@ -1117,7 +1117,6 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         ]
     ])
-
     await query.edit_message_text(
         f"📝 Edit Nama\n\n"
         f"Nama saat ini:\n"
@@ -1138,11 +1137,20 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
         "field": "harga"
     }
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data=f"adminvip_{package_id}"
+            )
+        ]
+    ])
     await query.edit_message_text(
         f"💰 Edit Harga\n\n"
         f"Harga saat ini:\n"
         f"{package['harga']}\n\n"
         "Silakan update harga baru."
+        reply_markup=keyboard
     )
     
 async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1157,11 +1165,20 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         "field": "deskripsi"
     }
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data=f"adminvip_{package_id}"
+            )
+        ]
+    ])
     await query.edit_message_text(
         f"📄 Edit Deskripsi\n\n"
         f"Deskripsi saat ini:\n"
         f"{package['deskripsi']}\n\n"
         "Silakan update deskripsi baru."
+        reply_markup=keyboard
     )
     
 async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1176,12 +1193,21 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
         "field": "vip_link"
     }
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data=f"adminvip_{package_id}"
+            )
+        ]
+    ])
     await query.edit_message_text(
         f"🔗 Edit Link VIP\n\n"
         f"Link saat ini:\n"
         f"{package['vip_link']}\n\n"
         "Silakan kirim link VIP baru.\n\n"
         "Contoh:\nhttps://t.me/..."
+        reply_markup=keyboard
     )
     
 async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
