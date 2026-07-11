@@ -753,15 +753,10 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         )
     ],
     [
-
-    InlineKeyboardButton(
-
-        "🔙 Kembali",
-
-        callback_data="adminvip_packages_back"
-
-    )
-
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="adminvip_packages_back"
+        )
 ]
     ])
     await query.edit_message_text(
