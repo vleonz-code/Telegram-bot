@@ -925,7 +925,36 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
             ])
         )
         return
-    
+        
+    total_order = len(history["orders"])
+        total_pendapatan = 0
+
+    packages = read_vip_packages()["packages"]
+
+    for order in history["orders"]:
+
+        package = next(
+            (
+                p for p in packages
+                if p["id"] == order["package_id"]
+            ),
+            None
+        )
+
+        if not package:
+            continue
+
+        harga = (
+            package["harga"]
+            .replace("Rp", "")
+            .replace(".", "")
+            .replace(",", "")
+            .strip()
+        )
+
+        if harga.isdigit():
+            total_pendapatan += int(harga)
+
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
