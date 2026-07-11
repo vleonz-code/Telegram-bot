@@ -847,12 +847,6 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "🖼 Edit QRIS",
-                callback_data="adminvip_qris"
-            )
-        ],
-        [
-            InlineKeyboardButton(
                 f"{'🟢' if settings['join_vip_enabled'] else '🔴'} ORDER VIP : {'ON' if settings['join_vip_enabled'] else 'OFF'}",
                 callback_data="adminvip_toggle_join"
             )
