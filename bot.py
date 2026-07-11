@@ -448,8 +448,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await notify_admin(context.bot, full_name, username, user_id)
 
             approved = read_approved()
-            approved.add(user_id)
-            save_approved(approved)
+            
+            if user_id not in approved:
+               approved.add(user_id)
+               save_approved(approved)
 
         return
 
