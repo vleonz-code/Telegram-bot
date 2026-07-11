@@ -23,7 +23,7 @@ BLACKLIST_FILE = os.path.join(DATA_DIR, "blacklist.json")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 APPROVED_FILE = os.path.join(DATA_DIR, "approved.json")
 VIP_PACKAGES_FILE = os.path.join(DATA_DIR, "vip_packages.json")
-
+ORDER_HISTORY_FILE = os.path.join(DATA_DIR, "order_history.json")
 
 def migrate_to_volume(filename):
     src = os.path.join(APP_DIR, filename)
@@ -1927,6 +1927,7 @@ migrate_to_volume("users.json")
 migrate_to_volume("approved.json")
 migrate_to_volume("blacklist.json")
 migrate_to_volume("counter.json")
+migrate_to_volume("order_history.json")
 
 def main():
     token = os.environ.get("BOT_TOKEN")
