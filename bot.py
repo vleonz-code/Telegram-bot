@@ -2311,6 +2311,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     data = upload_waiting.get(order_id)
 
+    user_id = data["user_id"] if data else None
     if not data:
         await query.edit_message_text(
             "⚠️ Data pembayaran sudah tidak tersedia."
@@ -2360,7 +2361,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
 
             save_order_history(history)
 
-        upload_waiting.pop(user_id, None)
+        upload_waiting.pop(order_id, None)
 
     elif action == "pay_no":
         await context.bot.send_message(
