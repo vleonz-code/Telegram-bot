@@ -806,32 +806,13 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
 
-    packages = read_vip_packages()
-
-    keyboard = []
-
-    for package in packages["packages"]:
-        keyboard.append([
-            InlineKeyboardButton(
-                package["nama"],
-                callback_data=f"adminvip_{package['id']}"
-            )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "➕ Tambah Paket",
-            callback_data="adminvip_add"
-        )
-    ])
-
     await query.message.delete()
 
     await context.bot.send_message(
        chat_id=query.message.chat_id,
        text=(
         "⚙️ Admin VIP\n\n"
-        "Pilih paket yang ingin dikelola:"
+        "Pilih menu:"
     ),
     reply_markup=build_adminvip_keyboard()
 )
