@@ -61,6 +61,7 @@ def read_settings():
                     "qris_file_id": "",
 
                     "join_vip_enabled": True
+                     "preview_approval_enabled": True
 
                 },
 
@@ -76,7 +77,9 @@ def read_settings():
 
         data = json.load(f)
 
-    if "join_vip_enabled" not in data:
+    if "preview_approval_enabled" not in data:
+        data["preview_approval_enabled"] = True
+        save_settings(data)
 
         data["join_vip_enabled"] = True
 
@@ -840,6 +843,18 @@ async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DE
         reply_markup=build_adminvip_keyboard()
     )
     
+async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+    settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
+    save_settings(settings)
+
+    await query.edit_message_reply_markup(
+        reply_markup=build_adminvip_keyboard()
+    )
+    
 async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1379,6 +1394,12 @@ def build_adminvip_keyboard():
     InlineKeyboardButton(
         f"{'🟢' if settings['join_vip_enabled'] else '🔴'} ORDER VIP : {'ON' if settings['join_vip_enabled'] else 'OFF'}",
         callback_data="adminvip_toggle_join"
+    )
+    ])
+    keyboard.append([
+    InlineKeyboardButton(
+        f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} CEK PREVIEW : {'ON' if settings['preview_approval_enabled'] else 'OFF'}",
+        callback_data="adminvip_toggle_preview"
     )
     ])
 
