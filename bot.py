@@ -1417,6 +1417,12 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
+            "💳 Pembayaran",
+            callback_data="adminvip_payment"
+        )
+    ])
+    keyboard.append([
+        InlineKeyboardButton(
             "🖼 Edit QRIS",
             callback_data="adminvip_qris"
         )
@@ -1453,12 +1459,6 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
              InlineKeyboardButton(
                  f"📦 {package['nama']}",
                  callback_data=f"adminvip_{package['id']}"
-            )
-         ])
-     keyboard.append([
-         InlineKeyboardButton(
-             "➕ Tambah Paket",
-             callback_data="adminvip_add"
             )
          ])
      keyboard.append([
