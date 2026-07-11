@@ -1163,6 +1163,70 @@ async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAU
         reply_markup=keyboard
     )
     
+async def payment_history_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    tanggal = query.data.replace("history_delete_", "")
+
+    history = read_order_history()
+
+    packages = read_vip_packages()["packages"]
+
+    total_order = 0
+    total_pendapatan = 0
+
+    for order in history["orders"]:
+
+        if not order["time"].startswith(tanggal):
+            continue
+
+        total_order += 1
+
+        package = get_package(order["package_id"])
+
+        if not package:
+            continue
+
+        harga = (
+            package["harga"]
+            .replace("Rp", "")
+            .replace(".", "")
+            .replace(",", "")
+            .strip()
+        )
+
+        if harga.isdigit():
+            total_pendapatan += int(harga)
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data=f"history_{tanggal}"
+            ),
+            InlineKeyboardButton(
+                "✅ Ya, Hapus",
+                callback_data=f"history_delete_yes_{tanggal}"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "⚠️ Hapus Tanggal Ini\n\n"
+
+        f"📅 {tanggal}\n\n"
+
+        f"📦 Total Order\n"
+        f"{total_order}\n\n"
+
+        f"💰 Total Pendapatan\n"
+        f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+
+        "Data tidak dapat dikembalikan.",
+        reply_markup=keyboard
+    )
+    
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
