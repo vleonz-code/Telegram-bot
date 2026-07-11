@@ -1014,13 +1014,27 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
 
     history = read_order_history()
 
-    orders = []
+    if not orders:
 
-    for order in history["orders"]:
+        await query.edit_message_text(
+            "❌ Tidak ada transaksi."
+        )
+        return
 
-        if order["time"].startswith(tanggal):
+    text = f"📅 {tanggal}\n\n"
 
-            orders.append(order)
+    for i, order in enumerate(orders, start=1):
+
+        package = get_package(order["package_id"])
+
+        jam = order["time"].split(",")[1].strip()
+
+        text += (
+            f"{i}.\n"
+            f"👤 {order['full_name']}\n"
+            f"📦 {package['nama']}\n"
+            f"🕒 {jam}\n\n"
+        )
     
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
