@@ -715,6 +715,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     upload_waiting[order_id] = {
         "order_id": order_id,
+        "user_id": user.id,
         "package_id": package["id"],
         "paket": package["nama"],
         "harga": package["harga"],
@@ -2180,7 +2181,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for oid, data in upload_waiting.items():
 
-        if data["full_name"] == update.effective_user.full_name:
+        if data["user_id"] == user_id:
 
             order_id = oid
 
