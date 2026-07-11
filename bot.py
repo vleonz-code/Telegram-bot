@@ -2220,9 +2220,9 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             f"🆔 User ID : {user.id}\n\n"
 
-            f"📦 Paket : {upload_waiting[user_id]['paket']}\n"
+            f"📦 Paket : {upload_waiting[order_id]['paket']}\n"
 
-            f"💰 Harga : {upload_waiting[user_id]['harga']}"
+            f"💰 Harga : {upload_waiting[order_id]['harga']}"
 
         )
 
