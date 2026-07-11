@@ -809,13 +809,10 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.message.delete()
 
     await context.bot.send_message(
-       chat_id=query.message.chat_id,
-       text=(
-        "⚙️ Admin VIP\n\n"
-        "Pilih menu:"
-    ),
-    reply_markup=build_adminvip_keyboard()
-)
+        chat_id=query.message.chat_id,
+        text="⚙️ Admin VIP\n\n",
+        reply_markup=build_adminvip_keyboard()
+    )
     
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
