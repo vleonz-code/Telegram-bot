@@ -1831,6 +1831,11 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
+        adminvip_toggle_preview_callback,
+        pattern=r"^adminvip_toggle_preview$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
         vip1_callback,
         pattern=r"^vip_\d+$"
     ))
