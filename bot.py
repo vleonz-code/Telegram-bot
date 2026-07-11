@@ -2304,12 +2304,12 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     try:
-        action, uid = query.data.split("|", 1)
-        user_id = int(uid)
+        action, oid = query.data.split("|", 1)
+        order_id = int(oid)
     except Exception:
         return
 
-    data = upload_waiting.get(user_id)
+    data = upload_waiting.get(order_id)
 
     if not data:
         await query.edit_message_text(
