@@ -925,9 +925,10 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
             ])
         )
         return
-        
+
     total_order = len(history["orders"])
-        total_pendapatan = 0
+
+    total_pendapatan = 0
 
     packages = read_vip_packages()["packages"]
 
