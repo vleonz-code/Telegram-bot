@@ -859,7 +859,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         ],
         [
             InlineKeyboardButton(
-                f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} Cek Preview : {'ON' if settings['preview_approval_enabled'] else 'OFF'}",
+                f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} CEK PREVIEW : {'ON' if settings['preview_approval_enabled'] else 'OFF'}",
                 callback_data="adminvip_toggle_preview"
             )
         ],
