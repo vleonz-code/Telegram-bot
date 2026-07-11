@@ -60,8 +60,8 @@ def read_settings():
 
                     "qris_file_id": "",
 
-                    "join_vip_enabled": True
-                     "preview_approval_enabled": True
+                    "join_vip_enabled": True,
+                    "preview_approval_enabled": True
 
                 },
 
