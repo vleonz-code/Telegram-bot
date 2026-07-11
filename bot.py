@@ -2370,6 +2370,15 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             save_order_history(history)
 
         upload_waiting.pop(order_id, None)
+        pending = read_pending_orders()
+
+        pending["orders"] = [
+            order
+            for order in pending["orders"]
+            if order["order_id"] != order_id
+        ]
+
+        save_pending_orders(pending)
 
     elif action == "pay_no":
         await context.bot.send_message(
@@ -2383,6 +2392,18 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.edit_message_text(
             "❌ Pembayaran ditolak."
         )
+        
+        upload_waiting.pop(order_id, None)
+
+        pending = read_pending_orders()
+
+        pending["orders"] = [
+            order
+            for order in pending["orders"]
+            if order["order_id"] != order_id
+        ]
+
+        save_pending_orders(pending)
         
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
