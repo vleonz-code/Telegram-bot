@@ -857,8 +857,40 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
     )
    
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await adminvip_payment_callback(update, context)
-    
+    query = update.callback_query
+    await query.answer()
+    try:
+
+        await query.message.delete()
+
+    except:
+        pass
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "📋 Order History",
+                callback_data="payment_history"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🖼 Edit QRIS",
+                callback_data="payment_qris"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Menu Admin",
+                callback_data="adminvip_back"
+            )
+        ]
+    ])
+    await context.bot.send_message(
+        chat_id=query.message.chat_id,
+        text="💳 Pembayaran",
+        reply_markup=keyboard
+    )
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
