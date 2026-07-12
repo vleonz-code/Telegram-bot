@@ -750,7 +750,7 @@ async def send_qris_message(chat_id, context, package, package_id):
 
             "*────── . 👇🏻 . ──────*\n\n"
 
-            "*📦 Paket*\n"
+            "*Pilihan Paket*\n"
 
             f"*{package['nama']}*\n\n"
 
@@ -763,8 +763,6 @@ async def send_qris_message(chat_id, context, package, package_id):
             "*✅ Pembayaran via*\n"
 
             "*(Ovo, Dana, Shopeepay, Gopay, TNG, Maybank, USDT)*\n\n"
-
-            "*Terimakasih*"
 
         ),
 
