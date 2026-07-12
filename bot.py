@@ -2289,12 +2289,18 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
-    status_msg = await update.message.reply_text(
-         "✅ Bukti transfer kamu sudah diterima.\n"
-         "⏳ Estimasi waktu: 1–3 menit.\n\n"
-      )
+    if not upload_waiting[order_id].get("reupload"):
 
-    upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
+        status_msg = await update.message.reply_text(
+            "✅ Bukti transfer kamu sudah diterima.\n"
+            "⏳ Estimasi waktu: 1–3 menit.\n\n"
+        )
+
+        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
+
+    else:
+
+        upload_waiting[order_id]["reupload"] = False
 
 async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
