@@ -738,7 +738,7 @@ async def send_qris_message(chat_id, context, package, package_id):
 
         return
 
-    await context.bot.send_photo(
+    msg = await context.bot.send_photo(
 
         chat_id=chat_id,
 
@@ -795,6 +795,14 @@ async def send_qris_message(chat_id, context, package, package_id):
         ])
 
     )
+    for order_id, data in upload_waiting.items():
+        if (
+            data["user_id"] == chat_id
+            and data["package_id"] == package_id
+
+    ):
+        upload_waiting[order_id]["qris_msg_id"] = msg.message_id
+        break
         
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
