@@ -918,9 +918,20 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     save_pending_orders(pending)
 
-    for order_id, data in list(upload_waiting.items()):
-        if data["user_id"] == user_id:
-            upload_waiting.pop(order_id)
+for order_id, data in list(upload_waiting.items()):
+
+    if data["user_id"] == user_id:
+
+        if data.get("upload_msg_id"):
+            try:
+                await context.bot.delete_message(
+                    chat_id=query.message.chat_id,
+                    message_id=data["upload_msg_id"]
+                )
+            except Exception:
+                pass
+
+        upload_waiting.pop(order_id)
 
     await query.message.reply_text(
         "❌ Order berhasil dibatalkan.\n\n"
