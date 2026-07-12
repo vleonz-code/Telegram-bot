@@ -868,12 +868,40 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     
     save_pending_orders(pending)
     
-    await query.message.reply_text(
+    msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
         "Pastikan:\n"
         "• Nominal transfer terlihat jelas.\n"
         "• Waktu transaksi terlihat.\n"
         "• Bukti tidak terpotong.\n\n"
+    )
+
+    upload_waiting[order_id]["upload_msg_id"] = msg.message_id
+    
+async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+
+    unlock_payment(user_id)
+
+    pending = read_pending_orders()
+
+    pending["orders"] = [
+        order
+        for order in pending["orders"]
+        if order["user_id"] != user_id
+    ]
+
+    save_pending_orders(pending)
+
+    for order_id, data in list(upload_waiting.items()):
+        if data["user_id"] == user_id:
+            upload_waiting.pop(order_id)
+
+    await query.message.reply_text(
+        "❌ Order berhasil dibatalkan.\n\n"
     )
 # ---------------------------------------------------------------------------
 # Admin commands
@@ -2898,6 +2926,11 @@ def main():
     CallbackQueryHandler(
             upload_bukti_callback,
             pattern=r"^upload_bukti_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        cancel_order_callback,
+        pattern=r"^cancel_order$"
     ))
     app.add_handler(
     MessageHandler(
