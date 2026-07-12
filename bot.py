@@ -2480,9 +2480,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "🚫 Akses Anda telah dibatasi.\n\n"
-                    "Jika merasa terjadi kesalahan,\n"
-                    "silakan hubungi admin."
+                    "🚫 Akses Anda telah dibatasi."
                 )
             )
         except Exception:
