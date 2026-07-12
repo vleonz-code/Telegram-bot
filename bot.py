@@ -682,7 +682,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.edit_message_text(
         "👑 Membership VIP\n\n"
-        "Silakan pilih salah satu paket.",
+        "Silakan pilih paket vip bocil.",
         reply_markup=keyboard
     )
     
