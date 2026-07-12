@@ -810,47 +810,14 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
-    settings = read_settings()
-    qris_file_id = settings.get("qris_file_id", "")
+    await send_qris_message(
+        query.message.chat_id,
+        context,
+        package,
+        package_id
+)
 
-    if not qris_file_id:
-        await query.message.reply_text(
-            "❌ QRIS belum dikonfigurasi."
-        )
-        return
-
-
-
-    await context.bot.send_photo(
-        chat_id=query.message.chat_id,
-        photo=qris_file_id,
-caption=(
-    "*PEMBAYARAN GROUP BOCIL*\n"
-    "*────── . 👇🏻 . ──────*\n\n"
-
-    "*📦 Paket*\n"
-    f"*{package['nama']}*\n\n"
-
-    "*💰 Nominal*\n"
-    f"*{package['harga']}*\n\n"
-
-    "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
-
-    "*✅ Pembayaran via*\n"
-    "*(Ovo, Dana, Shopeepay, Gopay, TNG, Maybank, USDT)*\n\n"
-
-    "*Terimakasih*"
-),
-        parse_mode="Markdown",
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "📤 Saya Sudah Transfer",
-                    callback_data=f"upload_bukti_{package_id}"
-                )
-            ]
-        ])
-    )
+lock_payment(query.from_user.id, package_id)
     lock_payment(query.from_user.id, package_id)
             
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
