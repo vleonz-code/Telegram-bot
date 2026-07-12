@@ -108,6 +108,7 @@ def lock_payment(user_id, package_id):
         "package_id": package_id
     }
     save_payment_lock(data)
+    print(f"[LOCK] User {user_id} locked (package {package_id})")
 
 def unlock_payment(user_id):
     data = read_payment_lock()
