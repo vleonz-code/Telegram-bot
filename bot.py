@@ -299,7 +299,15 @@ async def deliver_album(bot, chat_id: int):
 
             ])
 
-            
+            await bot.send_message(
+
+                chat_id,
+
+                "👑 Membership VIP\nPilih paket yang tersedia.",
+
+                reply_markup=keyboard
+
+            )
 
         return True
 
