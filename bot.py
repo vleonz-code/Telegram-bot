@@ -2213,11 +2213,13 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     pending = read_pending_orders()
 
-    pending["orders"].append(
+    for i, order in enumerate(pending["orders"]):
 
-        upload_waiting[order_id].copy()
+        if order["order_id"] == order_id:
 
-    )
+            pending["orders"][i] = upload_waiting[order_id].copy()
+
+            break
 
     save_pending_orders(pending)
 
