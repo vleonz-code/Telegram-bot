@@ -2042,7 +2042,7 @@ async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         await context.bot.send_message(
             chat_id=user_id,
-            text=f"💬 Admin\n\n{update.message.text}"
+            text=update.message.text
         )
 
         await update.message.reply_text(
