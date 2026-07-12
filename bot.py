@@ -123,7 +123,10 @@ def unlock_payment(user_id):
 
 def get_payment_lock(user_id):
     data = read_payment_lock()
-    return data.get(user_id)
+    lock = data.get(user_id)
+    if lock:
+        print(f"[LOCK] User {user_id} already locked")
+    return lock
 # ==========================
 
 # SETTINGS
