@@ -303,7 +303,7 @@ async def deliver_album(bot, chat_id: int):
 
                 chat_id,
 
-                "Join VIP untuk akses lebih lengkap.",
+                "👑 Membership VIP\nPilih paket yang tersedia.",
 
                 reply_markup=keyboard
 
