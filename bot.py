@@ -813,6 +813,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         package_id = get_locked_package_id(query.from_user.id)
+
         package = get_package(package_id)
 
         await send_qris_message(
@@ -853,6 +854,14 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "full_name": query.from_user.full_name,
         "username": username
     }
+
+    pending = read_pending_orders()
+
+    pending["orders"].append(
+        upload_waiting[order_id].copy()
+    )
+
+    save_pending_orders(pending)
 
     await send_qris_message(
         query.message.chat_id,
