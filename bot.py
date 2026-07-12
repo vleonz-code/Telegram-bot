@@ -2508,6 +2508,11 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             reply_markup=keyboard
         )
         
+    elif action == "pay_ban_yes":
+        await query.edit_message_text(
+            "🚫 Batasi Akses sedang diproses..."
+        )
+        
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
