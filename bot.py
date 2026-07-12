@@ -928,13 +928,22 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     for order_id, data in list(upload_waiting.items()):
 
-     if data["user_id"] == user_id:
+    if data["user_id"] == user_id:
 
         if data.get("upload_msg_id"):
             try:
                 await context.bot.delete_message(
                     chat_id=query.message.chat_id,
                     message_id=data["upload_msg_id"]
+                )
+            except Exception:
+                pass
+
+        if data.get("qris_msg_id"):
+            try:
+                await context.bot.delete_message(
+                    chat_id=query.message.chat_id,
+                    message_id=data["qris_msg_id"]
                 )
             except Exception:
                 pass
