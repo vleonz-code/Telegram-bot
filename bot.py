@@ -154,7 +154,8 @@ def read_settings():
                     "qris_file_id": "",
 
                     "join_vip_enabled": True,
-                    "preview_approval_enabled": True
+                    "preview_approval_enabled": True,
+                    "live_chat_enabled": False
 
                 },
 
@@ -176,6 +177,10 @@ def read_settings():
 
         data["join_vip_enabled"] = True
 
+        save_settings(data)
+        
+    if "live_chat_enabled" not in data:
+        data["live_chat_enabled"] = False
         save_settings(data)
 
     return data
@@ -1456,6 +1461,12 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         ],
         [
             InlineKeyboardButton(
+                f"{'🟢' if settings['live_chat_enabled'] else '🔴'} LIVE CHAT : {'ON' if settings['live_chat_enabled'] else 'OFF'}",
+                callback_data="adminvip_toggle_livechat"
+        )
+        ],
+        [
+            InlineKeyboardButton(
                 "🔙 Kembali",
                 callback_data="adminvip_back"
             )
@@ -1617,6 +1628,18 @@ async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes
 
     settings = read_settings()
     settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
+    save_settings(settings)
+
+    await adminvip_settings_callback(update, context)
+
+async def adminvip_toggle_livechat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    settings["live_chat_enabled"] = not settings["live_chat_enabled"]
+
     save_settings(settings)
 
     await adminvip_settings_callback(update, context)
@@ -2966,6 +2989,11 @@ def main():
     CallbackQueryHandler(
         adminvip_toggle_preview_callback,
         pattern=r"^adminvip_toggle_preview$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_toggle_livechat_callback,
+        pattern=r"^adminvip_toggle_livechat$"
     ))
     app.add_handler(
     CallbackQueryHandler(
