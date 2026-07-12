@@ -736,6 +736,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "photo_uploaded": False,
         "processing": False,
         "processing_msg_id": None,
+        "reupload": False,
         "package_id": package["id"],
         "paket": package["nama"],
         "harga": package["harga"],
@@ -2426,6 +2427,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         )
         upload_waiting[order_id]["photo_uploaded"] = False
+        upload_waiting[order_id]["reupload"] = True
         upload_waiting[order_id]["processing"] = False
         upload_waiting[order_id]["processing_msg_id"] = None
         upload_waiting[order_id]["photo_file_id"] = None
