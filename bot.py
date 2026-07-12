@@ -735,6 +735,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "user_id": user.id,
         "photo_uploaded": False,
         "processing": False,
+        "processing_msg_id": None,
         "package_id": package["id"],
         "paket": package["nama"],
         "harga": package["harga"],
@@ -2188,10 +2189,14 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     if upload_waiting[order_id].get("processing"):
 
-        await update.message.reply_text(
-            "⏳ Bukti transfer sedang diproses.\n\n"
-            "Mohon tunggu sebentar."
-        )
+        if upload_waiting[order_id].get("processing_msg_id") is None:
+
+            msg = await update.message.reply_text(
+                "⏳ Bukti transfer sedang diproses.\n\n"
+                "Mohon tunggu sebentar."
+            )
+
+            upload_waiting[order_id]["processing_msg_id"] = msg.message_id
 
         return
         
