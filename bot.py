@@ -733,6 +733,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     upload_waiting[order_id] = {
         "order_id": order_id,
         "user_id": user.id,
+        "photo_uploaded": False,
         "package_id": package["id"],
         "paket": package["nama"],
         "harga": package["harga"],
@@ -2183,6 +2184,18 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if order_id is None:
 
         return
+        
+    if upload_waiting[order_id].get("photo_uploaded"):
+
+        await update.message.reply_text(
+
+            "✅ Bukti transfer sudah diterima.\n\n"
+
+            "Mohon tunggu verifikasi admin."
+
+        )
+
+        return
 
     if not update.message.photo:
 
@@ -2196,6 +2209,8 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     upload_waiting[order_id]["photo_file_id"] = update.message.photo[-1].file_id
 
+    upload_waiting[order_id]["photo_uploaded"] = True
+    
     pending = read_pending_orders()
 
     pending["orders"].append(
