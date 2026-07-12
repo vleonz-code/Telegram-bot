@@ -826,8 +826,33 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await query.answer()
 
+    global next_order_id
+
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
+
+    order_id = next_order_id
+    next_order_id += 1
+
+    username = (
+        f"@{query.from_user.username}"
+        if query.from_user.username
+        else "-"
+    )
+
+    upload_waiting[order_id] = {
+        "order_id": order_id,
+        "user_id": query.from_user.id,
+        "photo_uploaded": False,
+        "processing": False,
+        "processing_msg_id": None,
+        "reupload": False,
+        "package_id": package["id"],
+        "paket": package["nama"],
+        "harga": package["harga"],
+        "full_name": query.from_user.full_name,
+        "username": username
+    }
 
     await send_qris_message(
         query.message.chat_id,
