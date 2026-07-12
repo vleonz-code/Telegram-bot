@@ -2477,6 +2477,37 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             reply_markup=keyboard
         )
         
+    elif action == "pay_ban_cancel":
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "✅ Terima",
+                    callback_data=f"pay_ok|{order_id}"
+                ),
+                InlineKeyboardButton(
+                    "📷 Foto Ulang",
+                    callback_data=f"pay_no|{order_id}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🚫 Ban Users",
+                    callback_data=f"pay_ban|{order_id}"
+                )
+            ]
+        ])
+
+        await query.edit_message_text(
+            text=(
+                "📋 Verifikasi Pembayaran\n\n"
+                f"👤 {data['full_name']}\n"
+                f"📦 {data['paket']}\n"
+                f"💰 {data['harga']}"
+            ),
+            reply_markup=keyboard
+        )
+        
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
