@@ -2458,36 +2458,23 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
     elif action == "pay_ban":
 
-        blacklist = read_blacklist()
-
-        blacklist.append(user_id)
-
-        save_blacklist(blacklist)
-
-        upload_waiting.pop(order_id, None)
-
-        pending = read_pending_orders()
-
-        pending["orders"] = [
-            order
-            for order in pending["orders"]
-            if order["order_id"] != order_id
-        ]
-
-        save_pending_orders(pending)
-
-        try:
-            await context.bot.send_message(
-                chat_id=user_id,
-                text=(
-                    "🚫 Akses Anda telah dibatasi."
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "✅ Ya, Batasi",
+                    callback_data=f"pay_ban_yes|{order_id}"
+                ),
+                InlineKeyboardButton(
+                    "❌ Batal",
+                    callback_data=f"pay_ban_cancel|{order_id}"
                 )
-            )
-        except Exception:
-            pass
+            ]
+        ])
 
         await query.edit_message_text(
-            "🚫 User berhasil dibatasi."
+            "⚠️ Konfirmasi\n\n"
+            "Yakin ingin membatasi akses user ini?",
+            reply_markup=keyboard
         )
         
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
