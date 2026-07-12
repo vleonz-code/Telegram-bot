@@ -693,28 +693,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
 
-    order_id = str(uuid.uuid4())
-
-    upload_waiting[order_id] = {
-        "order_id": order_id,
-        "user_id": query.from_user.id,
-        "full_name": query.from_user.full_name,
-        "username": query.from_user.username or "",
-        "package_id": package["id"],
-        "paket": package["nama"],
-        "harga": package["harga"],
-        "link": package["link"],
-        "photo_uploaded": False,
-        "processing": False,
-        "processing_msg_id": None,
-        "photo_file_id": None,
-        "reupload": False
-    }
-
-    pending = read_pending_orders()
-    pending["orders"].append(upload_waiting[order_id].copy())
-    save_pending_orders(pending)
-
     settings = read_settings()
     qris_file_id = settings.get("qris_file_id", "")
 
