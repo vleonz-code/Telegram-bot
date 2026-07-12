@@ -743,6 +743,12 @@ caption=(
             ]
         ])
     )
+    
+    locks = read_payment_lock()
+    locks[query.from_user.id] = {
+        "package_id": package["id"]
+}
+save_payment_lock(locks)
             
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
