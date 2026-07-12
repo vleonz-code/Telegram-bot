@@ -716,8 +716,7 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-    
+
     if get_payment_lock(query.from_user.id):
         await query.answer(
             "⏳ Anda masih memiliki transaksi yang belum selesai.",
@@ -725,9 +724,10 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    await query.answer()
+
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
-
     settings = read_settings()
     qris_file_id = settings.get("qris_file_id", "")
 
