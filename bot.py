@@ -113,6 +113,10 @@ def unlock_payment(user_id):
     data = read_payment_lock()
     data.pop(user_id, None)
     save_payment_lock(data)
+
+def get_payment_lock(user_id):
+    data = read_payment_lock()
+    return data.get(user_id)
 # ==========================
 
 # SETTINGS
