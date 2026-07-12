@@ -836,6 +836,34 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
 
     user = query.from_user
+    
+    existing_order_id = None
+
+    for oid, data in upload_waiting.items():
+    if data["user_id"] == user.id:
+        existing_order_id = oid
+        break
+
+    if existing_order_id is not None:
+    if upload_waiting[existing_order_id].get("upload_msg_id"):
+        try:
+            await context.bot.delete_message(
+                chat_id=query.message.chat_id,
+                message_id=upload_waiting[existing_order_id]["upload_msg_id"]
+            )
+        except Exception:
+            pass
+
+    msg = await query.message.reply_text(
+        "Silakan upload screenshot bukti transfer disini.\n\n"
+        "Pastikan:\n"
+        "• Nominal transfer terlihat jelas.\n"
+        "• Waktu transaksi terlihat.\n"
+        "• Bukti tidak terpotong.\n\n"
+    )
+
+    upload_waiting[existing_order_id]["upload_msg_id"] = msg.message_id
+    return
     global next_order_id
 
     order_id = next_order_id
