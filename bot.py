@@ -2567,7 +2567,7 @@ def main():
     app.add_handler(
     CallbackQueryHandler(
         payment_admin_callback,
-        pattern=r"^(pay_ok|pay_no|pay_ban)\|"
+        pattern=r"^(pay_ok|pay_no|pay_ban|pay_ban_yes|pay_ban_cancel)\|"
     ))
     app.add_handler(
     CallbackQueryHandler(
