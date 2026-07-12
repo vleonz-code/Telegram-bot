@@ -2430,18 +2430,6 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             "❌ Pembayaran ditolak."
         )
         
-        upload_waiting.pop(order_id, None)
-
-        pending = read_pending_orders()
-
-        pending["orders"] = [
-            order
-            for order in pending["orders"]
-            if order["order_id"] != order_id
-        ]
-
-        save_pending_orders(pending)
-        
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
