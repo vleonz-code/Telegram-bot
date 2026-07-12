@@ -2272,7 +2272,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 callback_data=f"pay_ok|{order_id}"
             ),
             InlineKeyboardButton(
-                "❌ Tolak",
+                "📷 Foto Ulang",
                 callback_data=f"pay_no|{order_id}"
             )
         ]
