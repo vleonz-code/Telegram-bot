@@ -2276,6 +2276,12 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "📷 Foto Ulang",
                 callback_data=f"pay_no|{order_id}"
             )
+        ],
+        [
+            InlineKeyboardButton(
+                "🚫 Ban User",
+                callback_data=f"pay_ban|{order_id}"
+            )
         ]
     ])
     await context.bot.send_message(
