@@ -32,6 +32,7 @@ APPROVED_FILE = os.path.join(DATA_DIR, "approved.json")
 VIP_PACKAGES_FILE = os.path.join(DATA_DIR, "vip_packages.json")
 ORDER_HISTORY_FILE = os.path.join(DATA_DIR, "order_history.json")
 PENDING_ORDERS_FILE = os.path.join(DATA_DIR, "pending_orders.json")
+PAYMENT_LOCK_FILE = "payment_lock.json")
 
 def migrate_to_volume(filename):
     src = os.path.join(APP_DIR, filename)
@@ -100,6 +101,18 @@ def save_payment_lock(data):
         "payment_lock.json",
         {str(uid): value for uid, value in data.items()}
     )
+    
+def lock_payment(user_id, package_id):
+    data = read_payment_lock()
+    data[user_id] = {
+        "package_id": package_id
+    }
+    save_payment_lock(data)
+
+def unlock_payment(user_id):
+    data = read_payment_lock()
+    data.pop(user_id, None)
+    save_payment_lock(data)
 # ==========================
 
 # SETTINGS
