@@ -719,6 +719,82 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
 
 )
+
+async def send_qris_message(chat_id, context, package, package_id):
+
+    settings = read_settings()
+
+    qris_file_id = settings.get("qris_file_id", "")
+
+    if not qris_file_id:
+
+        await context.bot.send_message(
+
+            chat_id=chat_id,
+
+            text="❌ QRIS belum dikonfigurasi."
+
+        )
+
+        return
+
+    await context.bot.send_photo(
+
+        chat_id=chat_id,
+
+        photo=qris_file_id,
+
+        caption=(
+
+            "*PEMBAYARAN GROUP BOCIL*\n"
+
+            "*────── . 👇🏻 . ──────*\n\n"
+
+            "*📦 Paket*\n"
+
+            f"*{package['nama']}*\n\n"
+
+            "*💰 Nominal*\n"
+
+            f"*{package['harga']}*\n\n"
+
+            "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
+
+            "*✅ Pembayaran via*\n"
+
+            "*(Ovo, Dana, Shopeepay, Gopay, TNG, Maybank, USDT)*\n\n"
+
+            "*Terimakasih*"
+
+        ),
+
+        parse_mode="Markdown",
+
+        reply_markup=InlineKeyboardMarkup([
+
+            [
+
+                InlineKeyboardButton(
+
+                    "📤 Saya Sudah Transfer",
+
+                    callback_data=f"upload_bukti_{package_id}"
+
+                ),
+
+                InlineKeyboardButton(
+
+                    "❌ Batalkan Order",
+
+                    callback_data="cancel_order"
+
+                )
+
+            ]
+
+        ])
+
+    )
         
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
