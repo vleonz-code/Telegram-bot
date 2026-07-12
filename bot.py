@@ -2638,6 +2638,8 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
 
         save_pending_orders(pending)
+        
+        unlock_payment(user_id)
 
     elif action == "pay_no":
         await context.bot.send_message(
