@@ -2373,6 +2373,9 @@ async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
 
+    if user_id in getid_waiting:
+        return
+
     if user_id in admin_qris_waiting:
 
         await admin_qris_receive(update, context)
