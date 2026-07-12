@@ -2422,7 +2422,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             chat_id=user_id,
             text=(
                 "📷 Bukti transfer belum valid.\n"
-                "Silakan upload ulang bukti transfer yang lebih jelas."
+                "Silakan upload ulang bukti transfer."
             )
         )
         upload_waiting[order_id]["photo_uploaded"] = False
