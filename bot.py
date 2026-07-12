@@ -2520,9 +2520,9 @@ def main():
     app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
     app.add_handler(
     CallbackQueryHandler(
-            payment_admin_callback,
-            pattern=r"^(pay_ok|pay_no)\|"
-      ))
+        payment_admin_callback,
+        pattern=r"^(pay_ok|pay_no|pay_ban)\|"
+    ))
     app.add_handler(
     CallbackQueryHandler(
         vipmenu_callback,
