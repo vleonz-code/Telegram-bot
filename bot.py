@@ -682,7 +682,14 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
+    pending = get_pending_order(query.from_user.id)
+    if pending:
+        await query.answer(
+            "⏳ Anda masih memiliki transaksi yang belum selesai.",
+            show_alert=True
+        )
+        return
+        
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
 
@@ -694,6 +701,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "❌ QRIS belum dikonfigurasi."
         )
         return
+
+
 
     await context.bot.send_photo(
         chat_id=query.message.chat_id,
