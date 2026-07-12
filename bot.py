@@ -776,7 +776,7 @@ async def send_qris_message(chat_id, context, package, package_id):
 
                 InlineKeyboardButton(
 
-                    "📤 Saya Sudah Transfer",
+                    "📤 Sudah Transfer",
 
                     callback_data=f"upload_bukti_{package_id}"
 
