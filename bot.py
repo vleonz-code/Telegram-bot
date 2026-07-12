@@ -752,6 +752,7 @@ caption=(
             ]
         ])
     )
+    lock_payment(query.from_user.id, package_id)
             
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
