@@ -2421,11 +2421,24 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         await context.bot.send_message(
             chat_id=user_id,
             text=(
-                "❌ Bukti transfer ditolak.\n\n"
-                "Silakan upload ulang bukti transfer."
+                "📷 Bukti transfer belum valid.\n"
+                "Silakan upload ulang bukti transfer yang lebih jelas."
             )
         )
+        upload_waiting[order_id]["photo_uploaded"] = False
+        upload_waiting[order_id]["processing"] = False
+        upload_waiting[order_id]["processing_msg_id"] = None
+        upload_waiting[order_id]["photo_file_id"] = None
+        
+        pending = read_pending_orders()
 
+        for i, order in enumerate(pending["orders"]):
+            if order["order_id"] == order_id:
+                pending["orders"][i] = upload_waiting[order_id].copy()
+                break
+
+        save_pending_orders(pending)
+        
         await query.edit_message_text(
             "❌ Pembayaran ditolak."
         )
