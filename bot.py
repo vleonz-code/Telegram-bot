@@ -2070,21 +2070,19 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     ])
 
+    waktu = datetime.now(WIB).strftime("%d %b %Y • %H:%M WIB")
+
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
             "📩 Pesan Baru\n\n"
             f"👤 {update.effective_user.full_name}\n"
             f"🔗 @{update.effective_user.username if update.effective_user.username else '-'}\n"
-            f"🆔 {update.effective_user.id}"
+            f"🆔 {update.effective_user.id}\n"
+            f"🕒 {waktu}\n\n"
+            f"💬 {update.message.text}"
         ),
         reply_markup=keyboard
-    )
-
-    await context.bot.copy_message(
-        chat_id=ADMIN_ID,
-        from_chat_id=update.effective_chat.id,
-        message_id=update.message.message_id
     )
         
 async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
