@@ -2456,6 +2456,11 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.edit_message_text(
             "❌ Pembayaran ditolak."
         )
+    elif action == "pay_ban":
+        
+        await query.edit_message_text(
+            "🚫 Fitur Ban User sedang diproses..."
+        )
         
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
