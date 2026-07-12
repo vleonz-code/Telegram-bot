@@ -92,6 +92,15 @@ def save_pending_orders(data):
             indent=2
         )
 
+def read_payment_lock():
+    data = load_json("payment_lock.json", {})
+    return {int(uid): value for uid, value in data.items()}
+
+def save_payment_lock(data):
+    save_json(
+        "payment_lock.json",
+        {str(uid): value for uid, value in data.items()}
+    )
 # ==========================
 
 # SETTINGS
