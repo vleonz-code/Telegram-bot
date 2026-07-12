@@ -835,6 +835,8 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     await query.answer()
 
+    global next_order_id
+
     user = query.from_user
     
     existing_order_id = None
