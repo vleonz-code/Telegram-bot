@@ -251,8 +251,7 @@ async def deliver_album(bot, chat_id: int):
 
                 chat_id,
 
-                "🎬 Penasaran dengan previewnya?\n\n"
-                 "Join VIP untuk akses lebih lengkap.",
+                "Join VIP untuk akses lebih lengkap.",
 
                 reply_markup=keyboard
 
