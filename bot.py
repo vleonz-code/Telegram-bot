@@ -744,6 +744,14 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "username": username
     }
     
+    pending = read_pending_orders()
+    
+    pending["orders"].append(
+        upload_waiting[order_id].copy()
+    )
+    
+    save_pending_orders(pending)
+    
     await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
         "Pastikan:\n"
