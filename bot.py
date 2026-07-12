@@ -127,6 +127,12 @@ def get_payment_lock(user_id):
     if lock:
         print(f"[LOCK] User {user_id} already locked")
     return lock
+    
+def get_locked_package_id(user_id):
+    lock = get_payment_lock(user_id)
+    if not lock:
+        return None
+    return lock["package_id"]
 # ==========================
 
 # SETTINGS
