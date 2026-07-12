@@ -804,18 +804,30 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⏳ Anda masih memiliki transaksi yang belum selesai.",
             show_alert=True
         )
+
+        package_id = get_locked_package_id(query.from_user.id)
+        package = get_package(package_id)
+
+        await send_qris_message(
+            query.message.chat_id,
+            context,
+            package,
+            package_id
+        )
+
         return
 
     await query.answer()
 
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
+
     await send_qris_message(
         query.message.chat_id,
         context,
         package,
         package_id
-)
+    )
 
     lock_payment(query.from_user.id, package_id)
             
