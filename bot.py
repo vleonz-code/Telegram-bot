@@ -93,14 +93,20 @@ def save_pending_orders(data):
         )
 
 def read_payment_lock():
-    data = load_json("payment_lock.json", {})
+    if not os.path.exists(PAYMENT_LOCK_FILE):
+        return {}
+    with open(PAYMENT_LOCK_FILE, "r", encoding="utf-8") as f:
+        data = json.load(f)
     return {int(uid): value for uid, value in data.items()}
 
 def save_payment_lock(data):
-    save_json(
-        "payment_lock.json",
-        {str(uid): value for uid, value in data.items()}
-    )
+    with open(PAYMENT_LOCK_FILE, "w", encoding="utf-8") as f:
+        json.dump(
+            {str(uid): value for uid, value in data.items()},
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
     
 def lock_payment(user_id, package_id):
     data = read_payment_lock()
