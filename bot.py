@@ -221,6 +221,7 @@ admin_edit_waiting = {}
 admin_add_waiting = {}
 admin_qris_waiting = set()
 last_stats_message = {}
+admin_reply_waiting = {}
 
 FILE_IDS = [
     ("video", os.environ.get("FILE_ID_1", "")),
@@ -2032,7 +2033,59 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await admin_edit_receive(update, context)
     await admin_add_receive(update, context)
+
+    if update.effective_user.id in admin_reply_waiting:
+
+        user_id = admin_reply_waiting.pop(
+            update.effective_user.id
+        )
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"💬 Admin\n\n{update.message.text}"
+        )
+
+        await update.message.reply_text(
+            "✅ Pesan berhasil dikirim."
+        )
+        
+    await livechat_receive(update, context)
   
+async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    settings = read_settings()
+
+    if not settings["live_chat_enabled"]:
+        return
+
+    if update.effective_user.id == ADMIN_ID:
+        return
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "💬 Balas",
+                callback_data=f"reply|{update.effective_user.id}"
+            )
+        ]
+    ])
+
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=(
+            "📩 Pesan Baru\n\n"
+            f"👤 {update.effective_user.full_name}\n"
+            f"🔗 @{update.effective_user.username if update.effective_user.username else '-'}\n"
+            f"🆔 {update.effective_user.id}"
+        ),
+        reply_markup=keyboard
+    )
+
+    await context.bot.copy_message(
+        chat_id=ADMIN_ID,
+        from_chat_id=update.effective_chat.id,
+        message_id=update.message.message_id
+    )
         
 async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2774,6 +2827,18 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             "✅ User berhasil dibatasi."
         )
         
+async def livechat_reply_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = int(query.data.split("|")[1])
+
+    admin_reply_waiting[query.from_user.id] = user_id
+
+    await query.message.reply_text(
+        "💬 Silakan kirim balasan untuk user."
+    )
+        
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -3031,6 +3096,11 @@ def main():
     MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         admin_text_receive,
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        livechat_reply_callback,
+        pattern=r"^reply\|"
     ))
     
     logger.info("Bot is running...")
