@@ -73,15 +73,14 @@ def read_pending_orders():
         return json.load(f)
 
 def get_pending_order(user_id):
-
     pending = read_pending_orders()
-
     for order in pending["orders"]:
-
         if order["user_id"] == user_id:
             return order
-
     return None
+
+def is_payment_locked(user_id):
+    return get_pending_order(user_id) is not None
 
 def save_pending_orders(data):
     with open(PENDING_ORDERS_FILE, "w", encoding="utf-8") as f:
