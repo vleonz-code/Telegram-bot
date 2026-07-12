@@ -2365,6 +2365,15 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         except Exception:
             pass
+    
+            try:
+            if data.get("processing_msg_id"):
+                await context.bot.delete_message(
+                    chat_id=user_id,
+                    message_id=data["processing_msg_id"]
+                )
+        except Exception:
+            pass
             
         try:
             await query.edit_message_text(
