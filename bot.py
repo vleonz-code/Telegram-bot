@@ -905,32 +905,6 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
             upload_waiting[order_id]["upload_msg_id"] = msg.message_id
             return
 
-    order_id = next_order_id
-    next_order_id += 1
-
-    package_id = int(query.data.split("_")[2])
-    package = get_package(package_id)
-
-    username = f"@{user.username}" if user.username else "-"
-
-    upload_waiting[order_id] = {
-        "order_id": order_id,
-        "user_id": user.id,
-        "photo_uploaded": False,
-        "processing": False,
-        "processing_msg_id": None,
-        "reupload": False,
-        "package_id": package["id"],
-        "paket": package["nama"],
-        "harga": package["harga"],
-        "full_name": user.full_name,
-        "username": username
-    }
-
-    pending = read_pending_orders()
-    pending["orders"].append(upload_waiting[order_id].copy())
-    save_pending_orders(pending)
-
     msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
         "Pastikan:\n"
