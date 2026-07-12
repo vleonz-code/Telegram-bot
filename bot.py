@@ -838,35 +838,31 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     global next_order_id
 
     user = query.from_user
-    
-    existing_order_id = None
 
-    for oid, data in upload_waiting.items():
-    if data["user_id"] == user.id:
-        existing_order_id = oid
-        break
+    # Jika user sudah punya order, jangan buat order baru
+    for order_id, data in upload_waiting.items():
 
-    if existing_order_id is not None:
-    if upload_waiting[existing_order_id].get("upload_msg_id"):
-        try:
-            await context.bot.delete_message(
-                chat_id=query.message.chat_id,
-                message_id=upload_waiting[existing_order_id]["upload_msg_id"]
+        if data["user_id"] == user.id:
+
+            if data.get("upload_msg_id"):
+                try:
+                    await context.bot.delete_message(
+                        chat_id=query.message.chat_id,
+                        message_id=data["upload_msg_id"]
+                    )
+                except Exception:
+                    pass
+
+            msg = await query.message.reply_text(
+                "Silakan upload screenshot bukti transfer disini.\n\n"
+                "Pastikan:\n"
+                "• Nominal transfer terlihat jelas.\n"
+                "• Waktu transaksi terlihat.\n"
+                "• Bukti tidak terpotong.\n\n"
             )
-        except Exception:
-            pass
 
-    msg = await query.message.reply_text(
-        "Silakan upload screenshot bukti transfer disini.\n\n"
-        "Pastikan:\n"
-        "• Nominal transfer terlihat jelas.\n"
-        "• Waktu transaksi terlihat.\n"
-        "• Bukti tidak terpotong.\n\n"
-    )
-
-    upload_waiting[existing_order_id]["upload_msg_id"] = msg.message_id
-    return
-    global next_order_id
+            upload_waiting[order_id]["upload_msg_id"] = msg.message_id
+            return
 
     order_id = next_order_id
     next_order_id += 1
@@ -889,15 +885,11 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "full_name": user.full_name,
         "username": username
     }
-    
+
     pending = read_pending_orders()
-    
-    pending["orders"].append(
-        upload_waiting[order_id].copy()
-    )
-    
+    pending["orders"].append(upload_waiting[order_id].copy())
     save_pending_orders(pending)
-    
+
     msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
         "Pastikan:\n"
