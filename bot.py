@@ -782,7 +782,7 @@ async def send_qris_message(chat_id, context, package, package_id):
 
                 InlineKeyboardButton(
 
-                    "❌ Batalkan Order",
+                    "❌ Batalkan",
 
                     callback_data="cancel_order"
 
