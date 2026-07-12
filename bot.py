@@ -72,6 +72,16 @@ def read_pending_orders():
     with open(PENDING_ORDERS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
+def get_pending_order(user_id):
+
+    pending = read_pending_orders()
+
+    for order in pending["orders"]:
+
+        if order["user_id"] == user_id:
+            return order
+
+    return None
 
 def save_pending_orders(data):
     with open(PENDING_ORDERS_FILE, "w", encoding="utf-8") as f:
@@ -81,6 +91,7 @@ def save_pending_orders(data):
             ensure_ascii=False,
             indent=2
         )
+
 # ==========================
 
 # SETTINGS
@@ -2517,10 +2528,9 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
         
     elif action == "pay_ban_yes":
-
         blacklist = read_blacklist()
-
-        blacklist[str(user_id)] = {
+        
+        blacklist[user_id] = {
             "full_name": data["full_name"],
             "username": data["username"]
         }
