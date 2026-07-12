@@ -2060,6 +2060,24 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.effective_user.id == ADMIN_ID:
         return
+        
+    user_id = update.effective_user.id
+
+    if user_id in admin_add_waiting:
+
+        return
+
+    if user_id in admin_edit_waiting:
+
+        return
+
+    if user_id in admin_qris_waiting:
+
+        return
+
+    if user_id in getid_waiting:
+
+        return
 
     keyboard = InlineKeyboardMarkup([
         [
