@@ -907,10 +907,6 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
-        "Pastikan:\n"
-        "• Nominal transfer terlihat jelas.\n"
-        "• Waktu transaksi terlihat.\n"
-        "• Bukti tidak terpotong.\n\n"
     )
 
     upload_waiting[order_id]["upload_msg_id"] = msg.message_id
