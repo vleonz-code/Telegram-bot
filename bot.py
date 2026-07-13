@@ -1654,10 +1654,10 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     admin_edit_waiting[query.from_user.id] = {
         "package_id": package_id,
-        "field": "harga",
+        "field": "nama",
         "chat_id": query.message.chat.id,
         "message_id": query.message.message_id
-    }
+     }
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -1860,29 +1860,82 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if user_id not in admin_edit_waiting:
         return
 
-    data = admin_edit_waiting[user_id]
+    data = admin_edit_waiting.pop(user_id)
 
     packages = read_vip_packages()
 
-    for package in packages["packages"]:
-        if package["id"] == data["package_id"]:
+    package = None
+
+    for p in packages["packages"]:
+        if p["id"] == data["package_id"]:
+            package = p
 
             if data["field"] == "nama":
-                package["nama"] = update.message.text.strip()
+                p["nama"] = update.message.text.strip()
 
             elif data["field"] == "harga":
-                package["harga"] = update.message.text.strip()
+                p["harga"] = update.message.text.strip()
 
             elif data["field"] == "deskripsi":
-                package["deskripsi"] = update.message.text
+                p["deskripsi"] = update.message.text
 
             elif data["field"] == "vip_link":
-                package["vip_link"] = update.message.text.strip()
+                p["vip_link"] = update.message.text.strip()
 
-            save_vip_packages(packages)
-            await update.message.delete()
-            admin_edit_waiting.pop(user_id, None)
-            return
+            break
+
+    save_vip_packages(packages)
+
+    try:
+        await update.message.delete()
+    except:
+        pass
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "📝 Edit Nama",
+                callback_data=f"adminvip_name_{package['id']}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💰 Edit Harga",
+                callback_data=f"adminvip_price_{package['id']}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📄 Edit Deskripsi",
+                callback_data=f"adminvip_desc_{package['id']}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔗 Edit Link",
+                callback_data=f"adminvip_link_{package['id']}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🗑 Hapus Paket",
+                callback_data=f"adminvip_delete_{package['id']}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_packages_back"
+            )
+        ]
+    ])
+
+    await context.bot.edit_message_text(
+        chat_id=data["chat_id"],
+        message_id=data["message_id"],
+        text=f"{package['nama']}\n\n💰 {package['harga']}",
+        reply_markup=keyboard
+    )
 
 async def show_add_preview(message, data):
 
