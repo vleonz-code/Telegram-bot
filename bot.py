@@ -1660,7 +1660,7 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "🔙 Kembali",
+                "❌ Batal",
                 callback_data=f"adminvip_{package_id}"
             )
         ]
@@ -1688,7 +1688,7 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "🔙 Kembali",
+                "❌ Batal",
                 callback_data=f"adminvip_{package_id}"
             )
         ]
@@ -1716,7 +1716,7 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "🔙 Kembali",
+                "❌ Batal",
                 callback_data=f"adminvip_{package_id}"
             )
         ]
@@ -1744,7 +1744,7 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "🔙 Kembali",
+                "❌ Batal",
                 callback_data=f"adminvip_{package_id}"
             )
         ]
