@@ -1793,7 +1793,7 @@ async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT
 
     await query.edit_message_text(
         f"⚠️ Yakin ingin menghapus paket ini?\n\n"
-        f"💎 {package['nama']}\n"
+        f"{package['nama']}\n"
         f"💰 {package['harga']}",
         reply_markup=keyboard
     )
