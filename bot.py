@@ -1654,7 +1654,9 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     admin_edit_waiting[query.from_user.id] = {
         "package_id": package_id,
-        "field": "nama"
+        "field": "nama",
+        "chat_id": query.message.chat.id,
+        "message_id": query.message.message_id
     }
 
     keyboard = InlineKeyboardMarkup([
@@ -1867,7 +1869,7 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 package["vip_link"] = update.message.text.strip()
 
             save_vip_packages(packages)
-
+            await update.message.delete()
             await update.message.reply_text(
                 "✅ Data paket berhasil diperbarui."
             )
