@@ -760,7 +760,7 @@ async def send_qris_message(chat_id, context, package, package_id):
 
             f"*{package['nama']}*\n\n"
 
-            "*💰 Nominal {package['harga']}*\n"
+            f"*💰 Nominal {package['harga']}*\n"
 
             "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
 
