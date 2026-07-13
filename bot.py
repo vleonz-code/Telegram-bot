@@ -2372,8 +2372,14 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
 
+    settings = read_settings()
+
     await update.message.reply_text(
-        "⚙️ Menu Admin VIP\n\n",
+        "⚙️ Menu Admin VIP\n\n"
+        f"{'🟢' if settings['join_vip_enabled'] else '🔴'} Order VIP | "
+        f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} Preview | "
+        f"{'🟢' if settings['live_chat_enabled'] else '🔴'} Live Chat\n\n"
+        "──────────────",
         reply_markup=build_adminvip_keyboard()
     )
 
