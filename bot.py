@@ -758,7 +758,7 @@ async def send_qris_message(chat_id, context, package, package_id):
 
             "*Pilihan Paket*\n"
 
-            f"*{package['nama']}*\n\n"
+            f"*{package['nama']}*\n"
 
             f"*💰 Nominal {package['harga']}*\n\n"
 
