@@ -2375,7 +2375,8 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     await update.message.reply_text(
-        "Status Bot\n"
+        "━━━━━━━━━━━━━━\n\n"
+        "Status Bot\n\n"
         f"{'🟢' if settings['join_vip_enabled'] else '🔴'} Order VIP\n"
         f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} Preview\n"
         f"{'🟢' if settings['live_chat_enabled'] else '🔴'} Live Chat\n"
