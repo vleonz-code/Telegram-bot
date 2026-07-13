@@ -1849,7 +1849,7 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if user_id not in admin_edit_waiting:
         return
 
-    data = admin_edit_waiting.pop(user_id)
+    data = admin_edit_waiting[user_id]
 
     packages = read_vip_packages()
 
@@ -1870,9 +1870,7 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
             save_vip_packages(packages)
             await update.message.delete()
-            await update.message.reply_text(
-                "✅ Data paket berhasil diperbarui."
-            )
+            admin_edit_waiting.pop(user_id, None)
             return
 
 async def show_add_preview(message, data):
