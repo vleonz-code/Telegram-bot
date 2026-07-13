@@ -1654,7 +1654,7 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     admin_edit_waiting[query.from_user.id] = {
         "package_id": package_id,
-        "field": "nama",
+        "field": "harga",
         "chat_id": query.message.chat.id,
         "message_id": query.message.message_id
     }
@@ -1684,7 +1684,9 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
 
     admin_edit_waiting[query.from_user.id] = {
         "package_id": package_id,
-        "field": "harga"
+        "field": "harga",
+        "chat_id": query.message.chat.id,
+        "message_id": query.message.message_id
     }
 
     keyboard = InlineKeyboardMarkup([
@@ -1695,6 +1697,7 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
             )
         ]
     ])
+
     await query.edit_message_text(
         f"💰 Edit Harga\n\n"
         f"Harga saat ini:\n"
@@ -1712,7 +1715,9 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     admin_edit_waiting[query.from_user.id] = {
         "package_id": package_id,
-        "field": "deskripsi"
+        "field": "deskripsi",
+        "chat_id": query.message.chat.id,
+        "message_id": query.message.message_id
     }
 
     keyboard = InlineKeyboardMarkup([
@@ -1723,6 +1728,7 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         ]
     ])
+
     await query.edit_message_text(
         f"📄 Edit Deskripsi\n\n"
         f"Deskripsi saat ini:\n"
@@ -1740,10 +1746,13 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     admin_edit_waiting[query.from_user.id] = {
         "package_id": package_id,
-        "field": "vip_link"
+        "field": "vip_link",
+        "chat_id": query.message.chat.id,
+        "message_id": query.message.message_id
     }
 
     keyboard = InlineKeyboardMarkup([
+
         [
             InlineKeyboardButton(
                 "❌ Batal",
@@ -1751,6 +1760,7 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         ]
     ])
+
     await query.edit_message_text(
         f"🔗 Edit Link VIP\n\n"
         f"Link saat ini:\n"
@@ -1758,6 +1768,7 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
         "Silakan kirim link VIP baru.\n\n"
         "Contoh:\nhttps://t.me/...",
         reply_markup=keyboard
+
     )
     
 async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
