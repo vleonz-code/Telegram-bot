@@ -520,19 +520,24 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
 # ---------------------------------------------------------------------------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     if not context.args:
-    return
+
+        return
 
     payload = context.args[0]
 
     if payload not in DEEP_LINK_PAYLOADS:
-    return
+
+        return
 
     user = update.effective_user
-    user_id   = user.id
-    full_name = user.full_name or "-"
-    username  = f"@{user.username}" if user.username else "-"
 
+    user_id = user.id
+
+    full_name = user.full_name or "-"
+
+    username = f"@{user.username}" if user.username else "-"
     # Silently ignore banned users
     if user_id in read_blacklist():
         await context.bot.send_message(
