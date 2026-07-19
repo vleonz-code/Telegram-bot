@@ -18,13 +18,8 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 DEEP_LINK_PAYLOADS = [
 
-    "UB3A6P",
-
-    "VIP2026",
-
-    "FREEVIP",
-
-    "ABC123"
+    "UB3A6P"
+    "ZRUN09"
 
 ]
 ADMIN_ID = 7602115007
@@ -270,11 +265,11 @@ def build_media_group(file_ids):
 
     return media
 
-async def deliver_album(bot, chat_id: int):
+async def deliver_album(bot, chat_id: int, file_ids):
 
     """Send the progress message, album, then confirmation to chat_id."""
 
-    media = build_media_group()
+    media = build_media_group(file_ids)
 
     if not media:
 
@@ -533,23 +528,23 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
 # ---------------------------------------------------------------------------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
     if not context.args:
-
         return
 
     payload = context.args[0]
 
-    if payload not in DEEP_LINK_PAYLOADS:
+    if payload == DEEP_LINK_A:
+        selected_files = FILE_IDS_A
 
+    elif payload == DEEP_LINK_B:
+        selected_files = FILE_IDS_B
+
+    else:
         return
 
     user = update.effective_user
-
     user_id = user.id
-
     full_name = user.full_name or "-"
-
     username = f"@{user.username}" if user.username else "-"
     # Silently ignore banned users
     if user_id in read_blacklist():
@@ -668,7 +663,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
             # Deliver album
-            ok = await deliver_album(context.bot, chat_id)
+            ok = await deliver_album(context.bot, chat_id, selected_files)
             if ok:
                 save_user_to_registry(user_id, pending["full_name"], pending["username"])
                 increment_counter()
