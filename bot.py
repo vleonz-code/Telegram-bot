@@ -554,7 +554,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Admin always bypasses approval
     if user_id == ADMIN_ID:
-        ok = await deliver_album(context.bot, update.effective_chat.id)
+        ok = await deliver_album(
+             context.bot,
+             update.effective_chat.id,
+             selected_files
+        )
         if ok:
             save_user_to_registry(user_id, full_name, username)
             increment_counter()
@@ -564,7 +568,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     if not settings["preview_approval_enabled"]:
-        ok = await deliver_album(context.bot, update.effective_chat.id)
+        ok = await deliver_album(
+             context.bot,
+             update.effective_chat.id,
+             selected_files
+        )
 
         if ok:
             save_user_to_registry(user_id, full_name, username)
@@ -581,7 +589,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Already approved — deliver immediately
     if user_id in read_approved():
-        ok = await deliver_album(context.bot, update.effective_chat.id)
+        ok = await deliver_album(
+             context.bot,
+             update.effective_chat.id,
+             selected_files
+        )
         if ok:
             save_user_to_registry(user_id, full_name, username)
             increment_counter()
@@ -597,11 +609,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Store pending request
     pending_requests[user_id] = {
-        "chat_id":       update.effective_chat.id,
+
+        "chat_id": update.effective_chat.id,
+
         "waiting_msg_id": waiting_msg.message_id,
-        "full_name":     full_name,
-        "username":      username,
-    }
+
+        "full_name": full_name,
+
+        "username": username,
+
+        "payload": payload,
+
+}
 
     # Send approval request to admin
     keyboard = InlineKeyboardMarkup([
