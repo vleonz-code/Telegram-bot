@@ -678,12 +678,18 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.delete_message(chat_id, pending["waiting_msg_id"])
             except Exception:
                 pass
+            # Tentukan album berdasarkan payload
+            if pending["payload"] == DEEP_LINK_A:
+                selected_files = FILE_IDS_A
+            else:
+                selected_files = FILE_IDS_B
+
             # Deliver album
-            ok = await deliver_album(context.bot, chat_id, selected_files)
-            if ok:
-                save_user_to_registry(user_id, pending["full_name"], pending["username"])
-                increment_counter()
-                await notify_admin(context.bot, pending["full_name"], pending["username"], user_id)
+            ok = await deliver_album(
+                context.bot,
+                chat_id,
+                selected_files
+            )
 
     elif action == "tolak":
         name_str = pending["full_name"] if pending else str(user_id)
