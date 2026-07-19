@@ -276,28 +276,22 @@ async def deliver_album(bot, chat_id: int, file_ids):
 
     try:
 
-        progress = await bot.send_message(
-
-            chat_id,
-
-            "📦 Mengirim Batch 1/1 (6 media)...\nMohon tunggu..."
-
-        )
+    progress = await bot.send_message(
+        chat_id,
+        f"📦 Mengirim Batch 1/1 ({len(media)} media)...\nMohon tunggu..."
+    )
 
         await bot.send_media_group(chat_id, media=media)
 
         await progress.delete()
 
         await bot.send_message(
-
             chat_id,
-
-            "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
-
-            "✅ Semua 6 media terkirim!",
-
+            (
+                "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
+                f"✅ Semua {len(media)} media terkirim!"
+            ),
             parse_mode="HTML"
-
         )
 
         settings = read_settings()
