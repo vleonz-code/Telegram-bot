@@ -18,7 +18,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 DEEP_LINK_PAYLOADS = [
 
-    "UB3A6P"
+    "UB3A6P",
     "ZRUN09"
 
 ]
