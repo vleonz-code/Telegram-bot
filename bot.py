@@ -16,7 +16,17 @@ APP_DIR = os.path.dirname(__file__)
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
-DEEP_LINK_PAYLOAD = "UB3A6P"
+DEEP_LINK_PAYLOADS = [
+
+    "UB3A6P",
+
+    "VIP2026",
+
+    "FREEVIP",
+
+    "ABC123"
+
+]
 ADMIN_ID = 7602115007
 ORDER_HISTORY_EXCLUDED = {
     ADMIN_ID,
@@ -510,8 +520,13 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
 # ---------------------------------------------------------------------------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args or context.args[0] != DEEP_LINK_PAYLOAD:
-        return
+    if not context.args:
+    return
+
+    payload = context.args[0]
+
+    if payload not in DEEP_LINK_PAYLOADS:
+    return
 
     user = update.effective_user
     user_id   = user.id
