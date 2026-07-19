@@ -233,7 +233,7 @@ admin_qris_waiting = set()
 last_stats_message = {}
 admin_reply_waiting = {}
 
-FILE_IDS = [
+FILE_IDS_A = [
     ("video", os.environ.get("FILE_ID_1", "")),
     ("video", os.environ.get("FILE_ID_2", "")),
     ("video", os.environ.get("FILE_ID_3", "")),
@@ -242,19 +242,32 @@ FILE_IDS = [
     ("photo", os.environ.get("FILE_ID_6", "")),
 ]
 
+FILE_IDS_B = [
+    ("video", os.environ.get("FILE_ID_7", "")),
+]
+
 # ---------------------------------------------------------------------------
 # Media helpers
 # ---------------------------------------------------------------------------
 
-def build_media_group():
+def build_media_group(file_ids):
+
     media = []
-    for kind, fid in FILE_IDS:
+
+    for kind, fid in file_ids:
+
         if not fid:
+
             return None
+
         if kind == "video":
+
             media.append(InputMediaVideo(media=fid))
+
         else:
+
             media.append(InputMediaPhoto(media=fid))
+
     return media
 
 async def deliver_album(bot, chat_id: int):
