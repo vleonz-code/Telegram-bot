@@ -16,12 +16,9 @@ APP_DIR = os.path.dirname(__file__)
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
-DEEP_LINK_PAYLOADS = [
+DEEP_LINK_A = "UB3A6P"
+DEEP_LINK_B = "ZRUN09"
 
-    "UB3A6P",
-    "ZRUN09"
-
-]
 ADMIN_ID = 7602115007
 ORDER_HISTORY_EXCLUDED = {
     ADMIN_ID,
