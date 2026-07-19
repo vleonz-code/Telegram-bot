@@ -276,9 +276,9 @@ async def deliver_album(bot, chat_id: int, file_ids):
 
     try:
 
-    progress = await bot.send_message(
-        chat_id,
-        f"📦 Mengirim Batch 1/1 ({len(media)} media)...\nMohon tunggu..."
+        progress = await bot.send_message(
+            chat_id,
+            f"📦 Mengirim Batch 1/1 ({len(media)} media)...\nMohon tunggu..."
     )
 
         await bot.send_media_group(chat_id, media=media)
