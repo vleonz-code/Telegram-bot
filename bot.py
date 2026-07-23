@@ -150,15 +150,16 @@ def read_settings():
 
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
 
-            json.dump(
-
                 {
 
                     "qris_file_id": "",
 
                     "join_vip_enabled": True,
                     "preview_approval_enabled": True,
-                    "live_chat_enabled": False
+                    "live_chat_enabled": False,
+                    "preview_auto_delete": True,
+                    "preview_delete_delay": 600,
+                    "preview_reopen_delay": 10
 
                 },
 
@@ -184,6 +185,18 @@ def read_settings():
         
     if "live_chat_enabled" not in data:
         data["live_chat_enabled"] = False
+        save_settings(data)
+
+    if "preview_auto_delete" not in data:
+        data["preview_auto_delete"] = True
+        save_settings(data)
+
+    if "preview_delete_delay" not in data:
+        data["preview_delete_delay"] = 600
+        save_settings(data)
+
+    if "preview_reopen_delay" not in data:
+        data["preview_reopen_delay"] = 10
         save_settings(data)
 
     return data
@@ -1602,7 +1615,13 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
             InlineKeyboardButton(
                 f"{'🟢' if settings['live_chat_enabled'] else '🔴'} LIVE CHAT : {'ON' if settings['live_chat_enabled'] else 'OFF'}",
                 callback_data="adminvip_toggle_livechat"
-        )
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🖼 Preview Timer",
+                callback_data="adminvip_preview_settings"
+            )
         ],
         [
             InlineKeyboardButton(
@@ -1811,6 +1830,45 @@ async def adminvip_toggle_livechat_callback(update: Update, context: ContextType
     save_settings(settings)
 
     await adminvip_settings_callback(update, context)
+   
+    
+async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                f"{'🟢' if settings['preview_auto_delete'] else '🔴'} Auto Delete",
+                callback_data="preview_toggle"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"⏱ Preview Pertama : {settings['preview_delete_delay']} dtk",
+                callback_data="preview_timer"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"⏱ Open Ulang : {settings['preview_reopen_delay']} dtk",
+                callback_data="preview_reopen_timer"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_settings"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "🖼 Preview",
+        reply_markup=keyboard
+    )
     
 async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3291,6 +3349,11 @@ def main():
     CallbackQueryHandler(
         adminvip_toggle_join_callback,
         pattern=r"^adminvip_toggle_join$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_preview_settings_callback,
+        pattern=r"^adminvip_preview_settings$"
     ))
     app.add_handler(
     CallbackQueryHandler(
