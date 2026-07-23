@@ -641,8 +641,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     chat_id=update.effective_chat.id,
                     message_id=message_id
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"DELETE ERROR: {message_id} -> {e}")
 
         return
 
