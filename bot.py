@@ -596,8 +596,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
-                "🚫 Akses Anda dibatasi.\n\n"
-                "Silakan coba lagi nanti."
+                "🚫  Batas permintaan telah tercapai.\n"
+                "Ingin Join Grup? Chat Admin @BocilVIP89."
             )
         )
 
