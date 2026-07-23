@@ -628,7 +628,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.effective_chat.id
         ] = msg.message_id
         
-       for message_id in last_delivered_messages.pop(
+        for message_id in last_delivered_messages.pop(
             update.effective_chat.id,
             []
         ):
