@@ -349,6 +349,7 @@ async def deliver_album(bot, chat_id: int, file_ids):
             chat_id
         ] = delivered
         
+        logger.info(f"SAVED DELIVERED = {last_delivered_messages}")
         return True
 
     except Exception as e:
