@@ -1600,6 +1600,9 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
 
     settings = read_settings()
 
+    preview_minutes = settings["preview_delete_delay"] // 60
+    reopen_seconds = settings["preview_reopen_delay"]
+
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -1621,8 +1624,20 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         ],
         [
             InlineKeyboardButton(
-                "🖼 Preview Timer",
-                callback_data="adminvip_preview_settings"
+                f"{'🟢' if settings['preview_auto_delete'] else '🔴'} AUTO DELETE : {'ON' if settings['preview_auto_delete'] else 'OFF'}",
+                callback_data="preview_toggle"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"⏱ PREVIEW : {preview_minutes} Menit",
+                callback_data="preview_timer"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"⏱ OPEN ULANG : {reopen_seconds} Detik",
+                callback_data="preview_reopen_timer"
             )
         ],
         [
