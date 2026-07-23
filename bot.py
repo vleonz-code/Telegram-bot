@@ -674,6 +674,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
         
+        await deliver_album(
+            context.bot,
+            update.effective_chat.id,
+            selected_files
+        )
+        
         return
 
     if not settings["preview_approval_enabled"]:
