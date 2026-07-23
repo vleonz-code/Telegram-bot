@@ -636,11 +636,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.effective_chat.id,
             []
         ):
+            print(f"TRY DELETE: {message_id}")
             try:
                 await context.bot.delete_message(
                     chat_id=update.effective_chat.id,
                     message_id=message_id
                 )
+                print(f"DELETED: {message_id}")
             except Exception as e:
                 print(f"DELETE ERROR: {message_id} -> {e}")
 
