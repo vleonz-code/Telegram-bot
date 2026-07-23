@@ -644,21 +644,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.effective_chat.id,
             context.bot
         )
-
-        msg = await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=(
-                "✨ Permintaan ulang telah dibatasi.\n\n"
-                "Mau bergabung ke grup VIP?\n"
-                "Chat Admin @BocilVIP89"
-            )
-        )
-
-        last_repeat_message[
-            update.effective_chat.id
-        ] = msg.message_id
-        
-
         settings = read_settings()
 
         expired_message = expired_preview_messages.pop(
@@ -674,6 +659,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             except Exception:
                 pass
+
+        msg = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                "✨ Permintaan ulang telah dibatasi.\n\n"
+                "Mau bergabung ke grup VIP?\n"
+                "Chat Admin @BocilVIP89"
+            )
+        )
+
+        last_repeat_message[
+            update.effective_chat.id
+        ] = msg.message_id
 
         old_messages = last_delivered_messages.pop(
             update.effective_chat.id,
@@ -1773,28 +1771,22 @@ async def delete_messages_after_delay(
     for message_id in message_ids:
         try:
             await bot.delete_message(
-    old_message = expired_preview_messages.pop(
-        chat_id,
-        None
-    )
+        old_message = expired_preview_messages.pop(
+            update.effective_chat.id,
+            None
+        )
 
-    if old_message:
-        try:
-            await bot.delete_message(
-                chat_id=chat_id,
-                message_id=old_message
-            )
-        except Exception:
-            pass
-                chat_id=chat_id,
-                message_id=message_id
-            )
-        except Exception:
-            pass
+        if old_message:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=old_message
+                )
+            except Exception:
+                pass
 
-    try:
-        expired = await bot.send_message(
-            chat_id=chat_id,
+        msg = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
             text=(
                 "✨ Permintaan ulang telah dibatasi.\n\n"
                 "Mau bergabung ke grup VIP?\n"
