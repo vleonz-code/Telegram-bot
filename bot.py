@@ -673,12 +673,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             except Exception:
                 pass
-        
-        await deliver_album(
-            context.bot,
+        await clear_last_repeat(
             update.effective_chat.id,
-            selected_files
+            context.bot
         )
+
+        msg = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                "✨ Permintaan ulang telah dibatasi.\n\n"
+                "Mau bergabung ke grup VIP?\n"
+                "Chat Admin @BocilVIP89"
+            )
+        )
+
+        last_repeat_message[
+            update.effective_chat.id
+        ] = msg.message_id
         
         return
 
