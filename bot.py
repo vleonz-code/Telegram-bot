@@ -223,6 +223,7 @@ admin_edit_waiting = {}
 admin_add_waiting = {}
 admin_qris_waiting = set()
 last_stats_message = {}
+last_repeat_message = {}
 admin_reply_waiting = {}
 
 FILE_IDS_A = [
@@ -585,7 +586,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
         )
 
-        await context.bot.send_message(
+        await clear_last_repeat(
+            update.effective_chat.id,
+            context.bot
+        )
+
+        msg = await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
                 "✨ Permintaan ulang telah dibatasi.\n\n"
@@ -593,6 +599,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Chat Admin @BocilVIP89."
             )
         )
+
+        last_repeat_message[
+            update.effective_chat.id
+        ] = msg.message_id
 
         return
 
@@ -1625,6 +1635,18 @@ async def adminvip_packages_back_callback(update: Update, context: ContextTypes.
    
 async def clear_last_stats(chat_id: int, bot):
     old_message = last_stats_message.pop(chat_id, None)
+
+    if old_message:
+        try:
+            await bot.delete_message(
+                chat_id=chat_id,
+                message_id=old_message
+            )
+        except Exception:
+            pass
+            
+async def clear_last_repeat(chat_id: int, bot):
+    old_message = last_repeat_message.pop(chat_id, None)
 
     if old_message:
         try:
