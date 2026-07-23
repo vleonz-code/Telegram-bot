@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import shutil
+import asyncio
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -295,6 +296,14 @@ async def deliver_album(bot, chat_id: int, file_ids):
             msg.message_id
             for msg in media_messages
         ]
+
+        asyncio.create_task(
+            delete_messages_after_delay(
+                chat_id,
+                delivered.copy(),
+                bot
+            )
+        )
 
         success_msg = await bot.send_message(
             chat_id,
@@ -1695,6 +1704,23 @@ async def clear_last_repeat(chat_id: int, bot):
         except Exception:
             pass
  
+async def delete_messages_after_delay(
+    chat_id: int,
+    message_ids: list,
+    bot,
+    delay: int = 10
+):
+    await asyncio.sleep(delay)
+
+    for message_id in message_ids:
+        try:
+            await bot.delete_message(
+                chat_id=chat_id,
+                message_id=message_id
+            )
+        except Exception:
+            pass
+            
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
