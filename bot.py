@@ -615,6 +615,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.bot
         )
 
+        for message_id in last_delivered_messages.pop(
+            update.effective_chat.id,
+            []
+        ):
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
+
         msg = await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
@@ -628,18 +640,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.effective_chat.id
         ] = msg.message_id
 
-        for message_id in last_delivered_messages.pop(
-            update.effective_chat.id,
-            []
-        ):
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=message_id
-                )
-            except Exception:
-                pass
-                
         return
 
     if not settings["preview_approval_enabled"]:
