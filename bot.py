@@ -1942,6 +1942,54 @@ async def preview_set_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         context
     )
     
+async def preview_reopen_timer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "5 Detik",
+                callback_data="preview_reopen_set_5"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "10 Detik",
+                callback_data="preview_reopen_set_10"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "15 Detik",
+                callback_data="preview_reopen_set_15"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "30 Detik",
+                callback_data="preview_reopen_set_30"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "60 Detik",
+                callback_data="preview_reopen_set_60"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_settings"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "⏱ Open Ulang",
+        reply_markup=keyboard
+    )
+    
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3489,6 +3537,11 @@ def main():
     CallbackQueryHandler(
         preview_set_callback,
         pattern=r"^preview_set_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        preview_reopen_timer_callback,
+        pattern=r"^preview_reopen_timer$"
     ))
     app.add_handler(
     CallbackQueryHandler(
