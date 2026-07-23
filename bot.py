@@ -348,8 +348,6 @@ async def deliver_album(bot, chat_id: int, file_ids):
         last_delivered_messages[
             chat_id
         ] = delivered
-    
-        print("SAVED:", last_delivered_messages)
 
         return True
 
@@ -629,23 +627,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         last_repeat_message[
             update.effective_chat.id
         ] = msg.message_id
-    
-        print("BEFORE POP:", last_delivered_messages)
 
         for message_id in last_delivered_messages.pop(
             update.effective_chat.id,
             []
         ):
-            print(f"TRY DELETE: {message_id}")
             try:
                 await context.bot.delete_message(
                     chat_id=update.effective_chat.id,
                     message_id=message_id
                 )
-                print(f"DELETED: {message_id}")
-            except Exception as e:
-                print(f"DELETE ERROR: {message_id} -> {e}")
-
+            except Exception:
+                pass
+                
         return
 
     if not settings["preview_approval_enabled"]:
