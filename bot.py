@@ -366,6 +366,21 @@ async def deliver_album(bot, chat_id: int, file_ids):
             chat_id
         ] = delivered
 
+        settings = read_settings()
+
+        if settings["preview_auto_delete"]:
+            asyncio.create_task(
+                delete_messages_after_delay(
+                    chat_id,
+                    preview_messages,
+                    bot,
+                    settings["preview_delete_delay"]
+                )
+            )
+
+        return True
+
+
         return True
 
     except Exception as e:
