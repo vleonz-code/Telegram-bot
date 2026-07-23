@@ -664,14 +664,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.effective_chat.id,
             []
         )
-        asyncio.create_task(
-            delete_messages_after_delay(
-                update.effective_chat.id,
-                old_messages,
-                context.bot,
-                settings["preview_reopen_delay"]
-            )
-        )
+
+        for message_id in old_messages:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
 
         return
 
