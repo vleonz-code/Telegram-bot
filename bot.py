@@ -675,9 +675,10 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         return
 
-    pending = pending_requests.pop(user_id, None)
-
     if action == "izin":
+        
+        pending = pending_requests.pop(user_id, None)
+        
         # Edit admin message to reflect decision
         name_str = pending["full_name"] if pending else str(user_id)
         await query.edit_message_text(f"✅ Diizinkan — {name_str}")
@@ -730,6 +731,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     elif action == "tolak":
+        pending = pending_requests.pop(user_id, None)
         name_str = pending["full_name"] if pending else str(user_id)
         await query.edit_message_text(f"❌ Ditolak — {name_str}")
 
