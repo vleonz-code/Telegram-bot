@@ -560,27 +560,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     settings = read_settings()
-
-    if not settings["preview_approval_enabled"]:
-        ok = await deliver_album(
-             context.bot,
-             update.effective_chat.id,
-             selected_files
-        )
-
-        if ok:
-            save_user_to_registry(user_id, full_name, username)
-            increment_counter()
-            await notify_admin(context.bot, full_name, username, user_id)
-
-            approved = read_approved()
-            
-            if user_id not in approved:
-               approved.add(user_id)
-               save_approved(approved)
-
-        return
-
+    
     # Already approved
     if user_id in read_approved():
 
@@ -613,6 +593,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "Chat Admin @BocilVIP89."
             )
         )
+
+        return
+
+    if not settings["preview_approval_enabled"]:
+        ok = await deliver_album(
+             context.bot,
+             update.effective_chat.id,
+             selected_files
+        )
+
+        if ok:
+            save_user_to_registry(user_id, full_name, username)
+            increment_counter()
+            await notify_admin(context.bot, full_name, username, user_id)
+
+            approved = read_approved()
+            
+            if user_id not in approved:
+               approved.add(user_id)
+               save_approved(approved)
 
         return
 
