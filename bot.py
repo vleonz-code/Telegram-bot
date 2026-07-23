@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import shutil
+import asyncio
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -615,18 +616,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.bot
         )
 
-        for message_id in last_delivered_messages.pop(
-            update.effective_chat.id,
-            []
-        ):
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=message_id
-                )
-            except Exception:
-                pass
-
         msg = await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
@@ -640,25 +629,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.effective_chat.id
         ] = msg.message_id
 
-        return
+        await asyncio.sleep(10)
 
-    if not settings["preview_approval_enabled"]:
-        ok = await deliver_album(
-             context.bot,
-             update.effective_chat.id,
-             selected_files
-        )
-
-        if ok:
-            save_user_to_registry(user_id, full_name, username)
-            increment_counter()
-            await notify_admin(context.bot, full_name, username, user_id)
-
-            approved = read_approved()
-            
-            if user_id not in approved:
-               approved.add(user_id)
-               save_approved(approved)
+        for message_id in last_delivered_messages.pop(
+            update.effective_chat.id,
+            []
+        ):
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
 
         return
 
