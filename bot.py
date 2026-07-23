@@ -609,18 +609,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]
             ])
         )
-        
-        for message_id in last_delivered_messages.pop(
-            update.effective_chat.id,
-            []
-        ):
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=message_id
-                )
-            except Exception:
-                pass
 
         await clear_last_repeat(
             update.effective_chat.id,
@@ -639,6 +627,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         last_repeat_message[
             update.effective_chat.id
         ] = msg.message_id
+        
+       for message_id in last_delivered_messages.pop(
+            update.effective_chat.id,
+            []
+        ):
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
 
         return
 
