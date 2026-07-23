@@ -2,7 +2,6 @@ import os
 import json
 import logging
 import shutil
-import asyncio
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -616,6 +615,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.bot
         )
 
+        for message_id in last_delivered_messages.pop(
+            update.effective_chat.id,
+            []
+        ):
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
+
         msg = await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
@@ -628,20 +639,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         last_repeat_message[
             update.effective_chat.id
         ] = msg.message_id
-
-        await asyncio.sleep(10)
-
-        for message_id in last_delivered_messages.pop(
-            update.effective_chat.id,
-            []
-        ):
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=message_id
-                )
-            except Exception:
-                pass
 
         return
 
