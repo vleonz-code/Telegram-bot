@@ -587,10 +587,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=ADMIN_ID,
             text=(
-                "⚠️ Percobaan Deeplink 2x\n\n"
+                "⚠️ Percobaan Deeplink Ulang\n\n"
                 f"👤 {full_name}\n"
                 f"📦 {payload}"
-            )
+            ),
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "🔄 Reset Akses",
+                        callback_data=f"reset|{user_id}"
+                    ),
+                    InlineKeyboardButton(
+                        "❌ Abaikan",
+                        callback_data=f"ignore|{user_id}"
+                    ),
+                ]
+            ])
         )
 
         await context.bot.send_message(
@@ -695,6 +707,28 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 selected_files
             )
 
+    elif action == "reset":
+
+        approved = read_approved()
+
+        approved.discard(user_id)
+
+        save_approved(approved)
+
+        await query.edit_message_text(
+            "✅ Akses user berhasil direset"
+        )
+
+        return
+        
+    elif action == "ignore":
+
+        await query.edit_message_text(
+            "🚫 Permintaan diabaikan."
+        )
+
+        return
+        
     elif action == "tolak":
         name_str = pending["full_name"] if pending else str(user_id)
         await query.edit_message_text(f"❌ Ditolak — {name_str}")
@@ -3016,7 +3050,12 @@ def main():
     app.add_handler(CommandHandler("banned",     banned))
     app.add_handler(CommandHandler("getid",      getid_start))
     app.add_handler(CommandHandler("cancel",     getid_cancel))
-    app.add_handler(CallbackQueryHandler(approval_callback, pattern=r"^(izin|tolak)\|"))
+    app.add_handler(
+        CallbackQueryHandler(
+            approval_callback,
+            pattern=r"^(izin|tolak|reset|ignore)\|"
+        )
+    )
     app.add_handler(
     CallbackQueryHandler(
         payment_admin_callback,
