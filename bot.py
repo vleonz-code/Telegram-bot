@@ -660,24 +660,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
-        msg = await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=(
-                "✨ Permintaan ulang telah dibatasi.\n\n"
-                "Mau bergabung ke grup VIP?\n"
-                "Chat Admin @BocilVIP89"
-            )
-        )
-
-        last_repeat_message[
-            update.effective_chat.id
-        ] = msg.message_id
-
-        expired_preview_messages[
-            update.effective_chat.id
-        ] = msg.message_id
-
-
         old_messages = last_delivered_messages.pop(
             update.effective_chat.id,
             []
