@@ -581,17 +581,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    # Already approved — deliver immediately
+    # Already approved
     if user_id in read_approved():
-        ok = await deliver_album(
-             context.bot,
-             update.effective_chat.id,
-             selected_files
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "⚠️ User mencoba menggunakan deeplink kedua kali.\n\n"
+                f"Name: {full_name}\n"
+                f"Username: {username}\n"
+                f"User ID: `{user_id}`\n\n"
+                f"Payload: {payload}"
+            ),
+            parse_mode="Markdown"
         )
-        if ok:
-            save_user_to_registry(user_id, full_name, username)
-            increment_counter()
-            await notify_admin(context.bot, full_name, username, user_id)
         return
 
     # Already waiting for approval — ignore duplicate taps
