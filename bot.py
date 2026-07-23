@@ -1848,6 +1848,17 @@ async def adminvip_toggle_livechat_callback(update: Update, context: ContextType
 
     await adminvip_settings_callback(update, context)
    
+async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    settings["preview_auto_delete"] = not settings["preview_auto_delete"]
+
+    save_settings(settings)
+
+    await adminvip_settings_callback(update, context)
     
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3381,6 +3392,11 @@ def main():
     CallbackQueryHandler(
         adminvip_toggle_livechat_callback,
         pattern=r"^adminvip_toggle_livechat$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        preview_toggle_callback,
+        pattern=r"^preview_toggle$"
     ))
     app.add_handler(
     CallbackQueryHandler(
