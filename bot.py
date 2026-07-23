@@ -1771,22 +1771,15 @@ async def delete_messages_after_delay(
     for message_id in message_ids:
         try:
             await bot.delete_message(
-        old_message = expired_preview_messages.pop(
-            update.effective_chat.id,
-            None
-        )
+                chat_id=chat_id,
+                message_id=message_id
+            )
+        except Exception:
+            pass
 
-        if old_message:
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=old_message
-                )
-            except Exception:
-                pass
-
-        msg = await context.bot.send_message(
-            chat_id=update.effective_chat.id,
+    try:
+        expired = await bot.send_message(
+            chat_id=chat_id,
             text=(
                 "✨ Permintaan ulang telah dibatasi.\n\n"
                 "Mau bergabung ke grup VIP?\n"
