@@ -1990,6 +1990,28 @@ async def preview_reopen_timer_callback(update: Update, context: ContextTypes.DE
         reply_markup=keyboard
     )
     
+async def preview_reopen_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    seconds = int(
+        query.data.replace(
+            "preview_reopen_set_",
+            ""
+        )
+    )
+
+    settings = read_settings()
+
+    settings["preview_reopen_delay"] = seconds
+
+    save_settings(settings)
+
+    await adminvip_settings_callback(
+        update,
+        context
+    )
+    
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3542,6 +3564,11 @@ def main():
     CallbackQueryHandler(
         preview_reopen_timer_callback,
         pattern=r"^preview_reopen_timer$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        preview_reopen_set_callback,
+        pattern=r"^preview_reopen_set_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
