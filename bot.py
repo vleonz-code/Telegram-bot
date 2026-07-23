@@ -297,14 +297,6 @@ async def deliver_album(bot, chat_id: int, file_ids):
             for msg in media_messages
         ]
 
-        asyncio.create_task(
-            delete_messages_after_delay(
-                chat_id,
-                delivered.copy(),
-                bot
-            )
-        )
-
         success_msg = await bot.send_message(
             chat_id,
             (
