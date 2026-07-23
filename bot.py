@@ -312,7 +312,6 @@ async def deliver_album(bot, chat_id: int, file_ids):
             msg.message_id
             for msg in media_messages
         ]
-        preview_messages = delivered.copy()
         
         success_msg = await bot.send_message(
             chat_id,
@@ -362,7 +361,8 @@ async def deliver_album(bot, chat_id: int, file_ids):
             delivered.append(
                 success_msg.message_id
             )
-
+        preview_messages = delivered.copy()
+        
         last_delivered_messages[
             chat_id
         ] = delivered
