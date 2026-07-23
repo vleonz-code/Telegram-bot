@@ -380,9 +380,6 @@ async def deliver_album(bot, chat_id: int, file_ids):
 
         return True
 
-
-        return True
-
     except Exception as e:
 
         logger.error(f"Failed to deliver album to {chat_id}: {e}")
@@ -661,6 +658,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ] = msg.message_id
         
 
+        settings = read_settings()
+
         old_messages = last_delivered_messages.pop(
             update.effective_chat.id,
             []
@@ -670,7 +669,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             delete_messages_after_delay(
                 update.effective_chat.id,
                 old_messages,
-                context.bot
+                context.bot,
+                settings["preview_reopen_delay"]
             )
         )
 
