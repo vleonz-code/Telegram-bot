@@ -1773,6 +1773,19 @@ async def delete_messages_after_delay(
     for message_id in message_ids:
         try:
             await bot.delete_message(
+    old_message = expired_preview_messages.pop(
+        chat_id,
+        None
+    )
+
+    if old_message:
+        try:
+            await bot.delete_message(
+                chat_id=chat_id,
+                message_id=old_message
+            )
+        except Exception:
+            pass
                 chat_id=chat_id,
                 message_id=message_id
             )
@@ -1783,9 +1796,9 @@ async def delete_messages_after_delay(
         expired = await bot.send_message(
             chat_id=chat_id,
             text=(
-                "⌛ Preview telah berakhir.\n\n"
-                "Ingin bergabung grup VIP?\n"
-                "Chat admin @BocilVIP89"
+                "✨ Permintaan ulang telah dibatasi.\n\n"
+                "Mau bergabung ke grup VIP?\n"
+                "Chat Admin @BocilVIP89"
             )
         )
 
