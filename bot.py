@@ -1701,7 +1701,7 @@ async def delete_messages_after_delay(
     chat_id: int,
     message_ids: list,
     bot,
-    delay: int = 10
+    delay: int = 6
 ):
     await asyncio.sleep(delay)
 
