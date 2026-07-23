@@ -596,8 +596,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
-                "🚫  Batas permintaan telah tercapai.\n"
-                "Ingin Join Grup? Chat Admin @BocilVIP89."
+                "🚫 Permintaan ulang telah dibatasi.\n\n"
+                "Mau bergabung ke grup VIP?\n"
+                "Chat Admin @BocilVIP89."
             )
         )
 
