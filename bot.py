@@ -622,7 +622,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=(
                 "✨ Permintaan ulang telah dibatasi.\n\n"
                 "Mau bergabung ke grup VIP?\n"
-                "Chat Admin @BocilVIP89."
+                "Chat Admin @BocilVIP89"
             )
         )
 
