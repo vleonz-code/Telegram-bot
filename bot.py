@@ -628,6 +628,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.effective_chat.id
         ] = msg.message_id
         
+        print(last_delivered_messages)
+
         for message_id in last_delivered_messages.pop(
             update.effective_chat.id,
             []
