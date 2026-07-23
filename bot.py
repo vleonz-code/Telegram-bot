@@ -1920,6 +1920,28 @@ async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=keyboard
     )
     
+async def preview_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    seconds = int(
+        query.data.replace(
+            "preview_set_",
+            ""
+        )
+    )
+
+    settings = read_settings()
+
+    settings["preview_delete_delay"] = seconds
+
+    save_settings(settings)
+
+    await adminvip_settings_callback(
+        update,
+        context
+    )
+    
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3457,6 +3479,16 @@ def main():
     CallbackQueryHandler(
         preview_toggle_callback,
         pattern=r"^preview_toggle$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        preview_timer_callback,
+        pattern=r"^preview_timer$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        preview_set_callback,
+        pattern=r"^preview_set_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
