@@ -640,44 +640,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
         )
 
-        await clear_last_repeat(
-            update.effective_chat.id,
-            context.bot
-        )
-        settings = read_settings()
-
-        expired_message = expired_preview_messages.pop(
-            update.effective_chat.id,
-            None
-        )
-
-        if expired_message:
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=expired_message
-                )
-            except Exception:
-                pass
-
-        old_messages = last_delivered_messages.pop(
-            update.effective_chat.id,
-            []
-        )
-
-        for message_id in old_messages:
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=message_id
-                )
-            except Exception:
-                pass
-        await clear_last_repeat(
-            update.effective_chat.id,
-            context.bot
-        )
-
         msg = await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
@@ -1793,7 +1755,6 @@ async def delete_messages_after_delay(
         )
 
         last_repeat_message[chat_id] = msg.message_id
-        expired_preview_messages[chat_id] = msg.message_id
 
     except Exception:
         pass
