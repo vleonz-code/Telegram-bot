@@ -1860,6 +1860,66 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
     await adminvip_settings_callback(update, context)
     
+async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "1 Menit",
+                callback_data="preview_set_60"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "3 Menit",
+                callback_data="preview_set_180"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "5 Menit",
+                callback_data="preview_set_300"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "10 Menit",
+                callback_data="preview_set_600"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "15 Menit",
+                callback_data="preview_set_900"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "30 Menit",
+                callback_data="preview_set_1800"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "60 Menit",
+                callback_data="preview_set_3600"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_settings"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "⏱ Preview Timer",
+        reply_markup=keyboard
+    )
+    
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
