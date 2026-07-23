@@ -348,11 +348,9 @@ async def deliver_album(bot, chat_id: int, file_ids):
         last_delivered_messages[
             chat_id
         ] = delivered
-        
-        logger.info(
-        f"CHAT={update.effective_chat.id} "
-        f"LAST={last_delivered_messages}"
-        )
+    
+        print("SAVED:", last_delivered_messages)
+
         return True
 
     except Exception as e:
@@ -631,7 +629,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         last_repeat_message[
             update.effective_chat.id
         ] = msg.message_id
-        
+    
+        print("BEFORE POP:", last_delivered_messages)
 
         for message_id in last_delivered_messages.pop(
             update.effective_chat.id,
