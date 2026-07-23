@@ -2056,7 +2056,7 @@ async def preview_reopen_set_callback(update: Update, context: ContextTypes.DEFA
     await adminvip_settings_callback(
         update,
         context
-    ))
+    )
     
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
