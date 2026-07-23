@@ -242,6 +242,7 @@ last_stats_message = {}
 last_repeat_message = {}
 
 last_delivered_messages = {}
+expired_preview_messages = {}
 admin_reply_waiting = {}
 
 FILE_IDS_A = [
@@ -660,11 +661,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         settings = read_settings()
 
+        expired_message = expired_preview_messages.pop(
+            update.effective_chat.id,
+            None
+        )
+
+        if expired_message:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=expired_message
+                )
+            except Exception:
+                pass
+
         old_messages = last_delivered_messages.pop(
             update.effective_chat.id,
             []
         )
-
         asyncio.create_task(
             delete_messages_after_delay(
                 update.effective_chat.id,
@@ -1749,10 +1763,10 @@ async def clear_last_repeat(chat_id: int, bot):
             pass
  
 async def delete_messages_after_delay(
-    chat_id: int,
-    message_ids: list,
+    chat_id,
+    message_ids,
     bot,
-    delay: int = 6
+    delay=6
 ):
     await asyncio.sleep(delay)
 
@@ -1764,6 +1778,23 @@ async def delete_messages_after_delay(
             )
         except Exception:
             pass
+
+    try:
+        expired = await bot.send_message(
+            chat_id=chat_id,
+            text=(
+                "⌛ Preview telah berakhir.\n\n"
+                "Ingin bergabung grup VIP?\n"
+                "Chat admin @BocilVIP89"
+            )
+        )
+
+        expired_preview_messages[
+            chat_id
+        ] = expired.message_id
+
+    except Exception:
+        pass
             
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2025,7 +2056,7 @@ async def preview_reopen_set_callback(update: Update, context: ContextTypes.DEFA
     await adminvip_settings_callback(
         update,
         context
-    )
+    ))
     
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
