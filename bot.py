@@ -673,6 +673,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             update.effective_chat.id
         ] = msg.message_id
 
+        expired_preview_messages[
+            update.effective_chat.id
+        ] = msg.message_id
+
+
         old_messages = last_delivered_messages.pop(
             update.effective_chat.id,
             []
