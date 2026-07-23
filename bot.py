@@ -583,17 +583,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Already approved
     if user_id in read_approved():
+
         await context.bot.send_message(
             chat_id=ADMIN_ID,
             text=(
-                "⚠️ User mencoba menggunakan deeplink kedua kali.\n\n"
-                f"Name: {full_name}\n"
-                f"Username: {username}\n"
-                f"User ID: `{user_id}`\n\n"
-                f"Payload: {payload}"
-            ),
-            parse_mode="Markdown"
+                "⚠️ Percobaan Deeplink 2x\n\n"
+                f"👤 {full_name}\n"
+                f"📦 {payload}"
+            )
         )
+
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                "🚫 Akses Anda dibatasi.\n\n"
+                "Silakan coba lagi nanti."
+            )
+        )
+
         return
 
     # Already waiting for approval — ignore duplicate taps
