@@ -224,6 +224,8 @@ admin_add_waiting = {}
 admin_qris_waiting = set()
 last_stats_message = {}
 last_repeat_message = {}
+
+last_delivered_messages = {}
 admin_reply_waiting = {}
 
 FILE_IDS_A = [
@@ -282,11 +284,19 @@ async def deliver_album(bot, chat_id: int, file_ids):
             f"📦 Mengirim Batch 1/1 ({len(media)} media)...\nMohon tunggu..."
     )
 
-        await bot.send_media_group(chat_id, media=media)
+        media_messages = await bot.send_media_group(
+            chat_id,
+            media=media
+        )
 
         await progress.delete()
+        
+        delivered = [
+            msg.message_id
+            for msg in media_messages
+        ]
 
-        await bot.send_message(
+        success_msg = await bot.send_message(
             chat_id,
             (
                 "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
@@ -315,7 +325,7 @@ async def deliver_album(bot, chat_id: int, file_ids):
 
             ])
 
-            await bot.send_message(
+            join_msg = await bot.send_message(
 
                 chat_id,
 
@@ -324,7 +334,21 @@ async def deliver_album(bot, chat_id: int, file_ids):
                 reply_markup=keyboard
 
             )
+            
+            delivered.extend([
+                success_msg.message_id,
+                join_msg.message_id
+            ])
 
+        if not settings["join_vip_enabled"]:
+            delivered.append(
+                success_msg.message_id
+            )
+
+        last_delivered_messages[
+            chat_id
+        ] = delivered
+        
         return True
 
     except Exception as e:
