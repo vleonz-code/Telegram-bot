@@ -150,6 +150,8 @@ def read_settings():
 
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
 
+            json.dump(
+
                 {
 
                     "qris_file_id": "",
