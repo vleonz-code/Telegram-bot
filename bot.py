@@ -350,14 +350,6 @@ async def deliver_album(bot, chat_id: int, file_ids):
         last_delivered_messages[
             chat_id
         ] = delivered
-        
-        asyncio.create_task(
-            delete_messages_after_delay(
-                chat_id,
-                delivered.copy(),
-                bot
-            )
-        )
 
         return True
 
@@ -639,17 +631,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ] = msg.message_id
         
 
-        for message_id in last_delivered_messages.pop(
+        old_messages = last_delivered_messages.pop(
             update.effective_chat.id,
             []
-        ):
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=message_id
-                )
-            except Exception:
-                pass
+        )
+
+        asyncio.create_task(
+            delete_messages_after_delay(
+                update.effective_chat.id,
+                old_messages,
+                context.bot
+            )
+        )
 
         return
 
