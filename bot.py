@@ -348,6 +348,7 @@ async def deliver_album(bot, chat_id: int, file_ids):
         last_delivered_messages[
             chat_id
         ] = delivered
+        
 
         return True
 
@@ -615,18 +616,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.bot
         )
 
-        for message_id in last_delivered_messages.pop(
-            update.effective_chat.id,
-            []
-        ):
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.effective_chat.id,
-                    message_id=message_id
-                )
-            except Exception:
-                pass
-
         msg = await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
@@ -639,6 +628,39 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         last_repeat_message[
             update.effective_chat.id
         ] = msg.message_id
+        
+
+        for message_id in last_delivered_messages.pop(
+            update.effective_chat.id,
+            []
+        ):
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
+
+        return
+
+    if not settings["preview_approval_enabled"]:
+        ok = await deliver_album(
+             context.bot,
+             update.effective_chat.id,
+             selected_files
+        )
+
+        if ok:
+            save_user_to_registry(user_id, full_name, username)
+            increment_counter()
+            await notify_admin(context.bot, full_name, username, user_id)
+
+            approved = read_approved()
+            
+            if user_id not in approved:
+               approved.add(user_id)
+               save_approved(approved)
 
         return
 
