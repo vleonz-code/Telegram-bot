@@ -674,6 +674,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
+        msg = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                "✨ Permintaan ulang telah dibatasi.\n\n"
+                "Mau bergabung ke grup VIP?\n"
+                "Chat Admin @BocilVIP89"
+            )
+        )
+
+        last_repeat_message[
+            update.effective_chat.id
+        ] = msg.message_id
+
+        expired_preview_messages[
+            update.effective_chat.id
+        ] = msg.message_id
+        
         return
 
     if not settings["preview_approval_enabled"]:
@@ -1764,23 +1781,6 @@ async def delete_messages_after_delay(
             )
         except Exception:
             pass
-
-    try:
-        expired = await bot.send_message(
-            chat_id=chat_id,
-            text=(
-                "✨ Permintaan ulang telah dibatasi.\n\n"
-                "Mau bergabung ke grup VIP?\n"
-                "Chat Admin @BocilVIP89"
-            )
-        )
-
-        expired_preview_messages[
-            chat_id
-        ] = expired.message_id
-
-    except Exception:
-        pass
             
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
