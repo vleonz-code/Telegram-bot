@@ -666,7 +666,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=update.effective_chat.id,
             text=(
                 "📍 Permintaan ulang belum tersedia.\n\n"
-                "Silahkan coba lagi nanti ya."
+                "Coba lagi nanti ya ୨୧"
             ),
             reply_markup=keyboard
         )
