@@ -606,8 +606,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=ADMIN_ID,
             text=(
                 "⚠️ Percobaan Deeplink Ulang\n\n"
-                f"👤 {full_name}\n"
-                f"📦 {payload}"
+                f"👤 {full_name}"
             ),
             reply_markup=InlineKeyboardMarkup([
                 [
