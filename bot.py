@@ -1776,6 +1776,7 @@ async def delete_messages_after_delay(
     delay=6
 ):
     try:
+        current_task = asyncio.current_task()
         await asyncio.sleep(delay)
 
         for message_id in message_ids:
@@ -1810,10 +1811,14 @@ async def delete_messages_after_delay(
             pass
 
     finally:
-        preview_delete_tasks.pop(
-            chat_id,
-            None
-        )
+        if (
+            preview_delete_tasks.get(chat_id)
+            is current_task
+        ):
+            preview_delete_tasks.pop(
+                chat_id,
+                None
+            )
             
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
