@@ -1923,11 +1923,13 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
     await adminvip_settings_callback(update, context)
     
-async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
     keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "30 Detik",
+                callback_data="preview_set_30"
+            )
+        ],
         [
             InlineKeyboardButton(
                 "1 Menit",
@@ -1962,12 +1964,6 @@ async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_T
             InlineKeyboardButton(
                 "30 Menit",
                 callback_data="preview_set_1800"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "60 Menit",
-                callback_data="preview_set_3600"
             )
         ],
         [
