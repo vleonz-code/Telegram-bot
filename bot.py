@@ -667,8 +667,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=update.effective_chat.id,
             text=(
                 "✨ Permintaan ulang telah dibatasi.\n\n"
-                "Mau bergabung ke grup VIP?\n"
-                "Chat Admin @BocilVIP89"
+                "Jika ingin bergabung ke grup VIP\n"
+                "Silahkan DM @BocilVIP89"
             ),
             reply_markup=keyboard
         )
@@ -1791,8 +1791,8 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "✨ Permintaan ulang telah dibatasi.\n\n"
-                    "Mau bergabung ke grup VIP?\n"
-                    "Chat Admin @BocilVIP89"
+                    "Jika ingin bergabung ke grup VIP\n"
+                    "Silahkan DM @BocilVIP89"
                 ),
                 reply_markup=keyboard
             )
