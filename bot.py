@@ -235,6 +235,7 @@ admin_add_waiting = {}
 admin_qris_waiting = set()
 last_stats_message = {}
 last_repeat_message = {}
+admin_request_messages = {}
 
 last_delivered_messages = {}
 preview_delete_tasks = {}
@@ -726,7 +727,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("❌ Tolak",   callback_data=f"tolak|{user_id}"),
         ]
     ])
-    await context.bot.send_message(
+    admin_msg = await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
             f"🔔 *Permintaan Akses VIP*\n\n"
@@ -736,6 +737,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         parse_mode="Markdown",
         reply_markup=keyboard,
+    )
+
+    admin_request_messages[user_id] = (
+        admin_msg.message_id
     )
 
 # ---------------------------------------------------------------------------
@@ -759,10 +764,22 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if action == "izin":
         
         pending = pending_requests.pop(user_id, None)
-        
+        admin_request_messages.pop(
+            user_id,
+            None
+        )
         # Edit admin message to reflect decision
         name_str = pending["full_name"] if pending else str(user_id)
-        await query.edit_message_text(f"✅ Diizinkan — {name_str}")
+
+        try:
+            await query.edit_message_text(
+                f"✅ Diizinkan — {name_str}"
+            )
+        finally:
+            admin_request_messages.pop(
+                user_id,
+                None
+            )
 
         # Add to approved list
         approved = read_approved()
@@ -813,6 +830,10 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     elif action == "tolak":
         pending = pending_requests.pop(user_id, None)
+        admin_request_messages.pop(
+            user_id,
+            None
+        )
         name_str = pending["full_name"] if pending else str(user_id)
         await query.edit_message_text(f"❌ Ditolak — {name_str}")
 
