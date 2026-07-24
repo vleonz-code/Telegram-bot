@@ -1793,10 +1793,10 @@ async def delete_messages_after_delay(
             else:
                 keyboard = None
 
-            msg = await bot.send_message(
+             msg = await bot.send_message(
                 chat_id=chat_id,
                 text=(
-                    "✨ Permintaan ulang telah dibatasi.\n\n"
+                    "⏰ Waktu preview telah habis.\n\n"
                     "Jika ingin bergabung ke grup VIP\n"
                     "Silahkan DM @BocilVIP89"
                 ),
