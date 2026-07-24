@@ -322,6 +322,9 @@ async def deliver_album(bot, chat_id: int, file_ids):
         delivered.append(
             success_msg.message_id
         )
+        
+        if chat_id == ADMIN_ID:
+             return True
             
             
         preview_messages = delivered.copy()
@@ -1746,6 +1749,10 @@ async def delete_messages_after_delay(
 ):
     try:
         current_task = asyncio.current_task()
+
+        if chat_id == ADMIN_ID:
+            return
+
         await asyncio.sleep(delay)
 
         for message_id in message_ids:
