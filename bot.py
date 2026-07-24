@@ -161,7 +161,6 @@ def read_settings():
                     "live_chat_enabled": False,
                     "preview_auto_delete": True,
                     "preview_delete_delay": 600,
-                    "preview_reopen_delay": 10
 
                 },
 
@@ -195,10 +194,6 @@ def read_settings():
 
     if "preview_delete_delay" not in data:
         data["preview_delete_delay"] = 600
-        save_settings(data)
-
-    if "preview_reopen_delay" not in data:
-        data["preview_reopen_delay"] = 10
         save_settings(data)
 
     return data
@@ -1637,7 +1632,6 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
     settings = read_settings()
 
     preview_minutes = settings["preview_delete_delay"] // 60
-    reopen_seconds = settings["preview_reopen_delay"]
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -2099,12 +2093,6 @@ async def adminvip_preview_settings_callback(update: Update, context: ContextTyp
             InlineKeyboardButton(
                 f"⏱ Preview Pertama : {settings['preview_delete_delay']} dtk",
                 callback_data="preview_timer"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                f"⏱ Open Ulang : {settings['preview_reopen_delay']} dtk",
-                callback_data="preview_reopen_timer"
             )
         ],
         [
@@ -3629,16 +3617,6 @@ def main():
     CallbackQueryHandler(
         preview_set_callback,
         pattern=r"^preview_set_\d+$"
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-        preview_reopen_timer_callback,
-        pattern=r"^preview_reopen_timer$"
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-        preview_reopen_set_callback,
-        pattern=r"^preview_reopen_set_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
