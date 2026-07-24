@@ -319,43 +319,11 @@ async def deliver_album(bot, chat_id: int, file_ids):
 
         settings = read_settings()
 
-        if settings["join_vip_enabled"]:
-
-            keyboard = InlineKeyboardMarkup([
-
-                [
-
-                    InlineKeyboardButton(
-
-                        "📦 Pilih Paket VIP",
-
-                        callback_data="vipmenu"
-
-                    )
-
-                ]
-
-            ])
-
-            join_msg = await bot.send_message(
-
-                chat_id,
-
-                "👑 Gabung Membership",
-
-                reply_markup=keyboard
-
-            )
+        delivered.append(
+            success_msg.message_id
+        )
             
-            delivered.extend([
-                success_msg.message_id,
-                join_msg.message_id
-            ])
-
-        if not settings["join_vip_enabled"]:
-            delivered.append(
-                success_msg.message_id
-            )
+            
         preview_messages = delivered.copy()
         
         last_delivered_messages[
@@ -677,13 +645,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             context.bot
         )
 
+        if settings["join_vip_enabled"]:
+            keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "📦 Pilih Paket VIP",
+                        callback_data="vipmenu"
+                    )
+                ]
+            ])
+        else:
+            keyboard = None
+
         msg = await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
                 "✨ Permintaan ulang telah dibatasi.\n\n"
                 "Mau bergabung ke grup VIP?\n"
                 "Chat Admin @BocilVIP89"
-            )
+            ),
+            reply_markup=keyboard
         )
 
         last_repeat_message[
