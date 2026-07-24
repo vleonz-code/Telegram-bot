@@ -609,9 +609,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Already approved
     if user_id in read_approved():
 
-        admin_request_counts[user_id] = (
-            admin_request_counts.get(user_id, 1) + 1
-        )
+        if user_id not in admin_request_counts:
+            admin_request_counts[user_id] = 1
+        else:
+            admin_request_counts[user_id] += 1
 
         old_message_id = admin_request_messages.get(user_id)
 
