@@ -242,6 +242,7 @@ last_stats_message = {}
 last_repeat_message = {}
 
 last_delivered_messages = {}
+preview_delete_tasks = {}
 admin_reply_waiting = {}
 
 FILE_IDS_A = [
@@ -369,7 +370,16 @@ async def deliver_album(bot, chat_id: int, file_ids):
         settings = read_settings()
 
         if settings["preview_auto_delete"]:
-            asyncio.create_task(
+
+            old_task = preview_delete_tasks.pop(
+                chat_id,
+                None
+            )
+
+            if old_task:
+                old_task.cancel()
+
+            task = asyncio.create_task(
                 delete_messages_after_delay(
                     chat_id,
                     preview_messages,
@@ -377,6 +387,8 @@ async def deliver_album(bot, chat_id: int, file_ids):
                     settings["preview_delete_delay"]
                 )
             )
+
+            preview_delete_tasks[chat_id] = task
 
         return True
 
@@ -641,6 +653,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]
             ])
         )
+        
+        old_task = preview_delete_tasks.pop(
+            update.effective_chat.id,
+            None
+        )
+
+        if old_task:
+            old_task.cancel()
 
         old_messages = last_delivered_messages.pop(
             update.effective_chat.id,
@@ -1755,38 +1775,45 @@ async def delete_messages_after_delay(
     bot,
     delay=6
 ):
-    await asyncio.sleep(delay)
+    try:
+        await asyncio.sleep(delay)
 
-    for message_id in message_ids:
+        for message_id in message_ids:
+            try:
+                await bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
+
         try:
-            await bot.delete_message(
-                chat_id=chat_id,
-                message_id=message_id
+            await clear_last_repeat(
+                chat_id,
+                bot
             )
+
+            msg = await bot.send_message(
+                chat_id=chat_id,
+                text=(
+                    "✨ Permintaan ulang telah dibatasi.\n\n"
+                    "Mau bergabung ke grup VIP?\n"
+                    "Chat Admin @BocilVIP89"
+                )
+            )
+
+            last_repeat_message[
+                chat_id
+            ] = msg.message_id
+
         except Exception:
             pass
 
-    try:
-        await clear_last_repeat(
+    finally:
+        preview_delete_tasks.pop(
             chat_id,
-            bot
+            None
         )
-
-        msg = await bot.send_message(
-            chat_id=chat_id,
-            text=(
-                "✨ Permintaan ulang telah dibatasi.\n\n"
-                "Mau bergabung ke grup VIP?\n"
-                "Chat Admin @BocilVIP89"
-            )
-        )
-
-        last_repeat_message[
-            chat_id
-        ] = msg.message_id
-
-    except Exception:
-        pass
             
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
