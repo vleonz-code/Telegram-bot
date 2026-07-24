@@ -1666,12 +1666,6 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         ],
         [
             InlineKeyboardButton(
-                f"⏱ OPEN ULANG : {reopen_seconds} Detik",
-                callback_data="preview_reopen_timer"
-            )
-        ],
-        [
-            InlineKeyboardButton(
                 "🔙 Kembali",
                 callback_data="adminvip_back"
             )
