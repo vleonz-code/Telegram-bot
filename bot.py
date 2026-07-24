@@ -335,7 +335,10 @@ async def deliver_album(bot, chat_id: int, file_ids):
 
         settings = read_settings()
 
-        if settings["preview_auto_delete"]:
+        if (
+            chat_id != ADMIN_ID
+            and settings["preview_auto_delete"]
+        ):
 
             old_task = preview_delete_tasks.pop(
                 chat_id,
