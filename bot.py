@@ -630,7 +630,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=(
                 "⚠️ Percobaan Deeplink Ulang\n\n"
                 f"👤 {full_name}\n\n"
-                f"🔁 {admin_request_counts[user_id]}x"
+                f"🔁 Percobaan: {admin_request_counts[user_id]}x"
             ),
             reply_markup=InlineKeyboardMarkup([
                 [
