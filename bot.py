@@ -1872,7 +1872,7 @@ async def delete_messages_after_delay(
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
                     "Koleksi selengkapnya ada di grup VIP.\n\n"
-                    "Langsung DM 👉🏻 @BocilVIP89"
+                    "Langsung DM Aja 👉🏻 @BocilVIP89"
                 ),
                 reply_markup=keyboard
             )
