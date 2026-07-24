@@ -616,48 +616,51 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
     
     # Already approved
-if user_id in read_approved():
+    settings = read_settings()
 
-    await context.bot.send_message(
-        chat_id=ADMIN_ID,
-        text=(
-            "⚠️ Percobaan Deeplink Ulang\n\n"
-            f"👤 {full_name}\n"
-            f"📦 {payload}"
-        ),
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🔄 Reset Akses",
-                    callback_data=f"reset|{user_id}"
-                ),
-                InlineKeyboardButton(
-                    "❌ Abaikan",
-                    callback_data=f"ignore|{user_id}"
-                ),
-            ]
-        ])
-    )
+    # Already approved
+    if user_id in read_approved():
 
-    await clear_last_repeat(
-        update.effective_chat.id,
-        context.bot
-    )
-
-    msg = await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=(
-            "✨ Permintaan ulang telah dibatasi.\n\n"
-            "Mau bergabung ke grup VIP?\n"
-            "Chat Admin @BocilVIP89"
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "⚠️ Percobaan Deeplink Ulang\n\n"
+                f"👤 {full_name}\n"
+                f"📦 {payload}"
+            ),
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "🔄 Reset Akses",
+                        callback_data=f"reset|{user_id}"
+                    ),
+                    InlineKeyboardButton(
+                        "❌ Abaikan",
+                        callback_data=f"ignore|{user_id}"
+                    ),
+                ]
+            ])
         )
-    )
 
-    last_repeat_message[
-        update.effective_chat.id
-    ] = msg.message_id
+        await clear_last_repeat(
+            update.effective_chat.id,
+            context.bot
+        )
 
-    return
+        msg = await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=(
+                "✨ Permintaan ulang telah dibatasi.\n\n"
+                "Mau bergabung ke grup VIP?\n"
+                "Chat Admin @BocilVIP89"
+            )
+        )
+
+        last_repeat_message[
+            update.effective_chat.id
+        ] = msg.message_id
+
+        return
 
     if not settings["preview_approval_enabled"]:
         ok = await deliver_album(
