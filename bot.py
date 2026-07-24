@@ -1793,7 +1793,7 @@ async def delete_messages_after_delay(
             else:
                 keyboard = None
 
-             msg = await bot.send_message(
+            msg = await bot.send_message(
                 chat_id=chat_id,
                 text=(
                     "⏰ Waktu preview telah habis.\n\n"
