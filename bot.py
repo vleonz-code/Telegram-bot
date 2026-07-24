@@ -235,7 +235,8 @@ admin_add_waiting = {}
 admin_qris_waiting = set()
 last_stats_message = {}
 last_repeat_message = {}
-admin_request_messages = {}
+admin_request_messages = {}   # user_id -> message_id
+admin_request_counts = {}     # user_id -> jumlah percobaan
 
 last_delivered_messages = {}
 preview_delete_tasks = {}
@@ -606,13 +607,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     # Already approved
-    if user_id in read_approved():
+     if user_id in read_approved():
 
-        await context.bot.send_message(
+        admin_request_counts[user_id] = (
+            admin_request_counts.get(user_id, 1) + 1
+        )
+
+        old_message_id = admin_request_messages.get(user_id)
+
+        if old_message_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=old_message_id
+                )
+            except Exception:
+                pass
+
+        admin_msg = await context.bot.send_message(
             chat_id=ADMIN_ID,
             text=(
                 "⚠️ Percobaan Deeplink Ulang\n\n"
-                f"👤 {full_name}"
+                f"👤 {full_name}\n\n"
+                f"🔁 {admin_request_counts[user_id]}x"
             ),
             reply_markup=InlineKeyboardMarkup([
                 [
@@ -627,7 +644,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ]
             ])
         )
-        
+
+        admin_request_messages[user_id] = (
+            admin_msg.message_id
+        )
         old_task = preview_delete_tasks.pop(
             update.effective_chat.id,
             None
@@ -833,9 +853,12 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             None
         )
 
-        await query.edit_message_text(
-            "✅ Akses user berhasil direset"
+        admin_request_counts.pop(
+            user_id,
+            None
         )
+
+        await query.message.delete()
 
         return
         
@@ -846,9 +869,12 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             None
         )
 
-        await query.edit_message_text(
-            "🚫 Permintaan diabaikan."
+        admin_request_counts.pop(
+            user_id,
+            None
         )
+
+        await query.message.delete()
 
         return
         
