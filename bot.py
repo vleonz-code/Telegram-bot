@@ -666,8 +666,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=update.effective_chat.id,
             text=(
                 "✨ Permintaan ulang telah dibatasi.\n\n"
-                "Coba cek lagi nanti ya.\n"
-                "Join VIP? DM @BocilVIP89"
+                "Silahkan coba lagi nanti ya."
             ),
             reply_markup=keyboard
         )
