@@ -607,7 +607,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     # Already approved
-     if user_id in read_approved():
+    if user_id in read_approved():
 
         admin_request_counts[user_id] = (
             admin_request_counts.get(user_id, 1) + 1
