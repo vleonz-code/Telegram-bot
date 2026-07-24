@@ -747,6 +747,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_request_messages[user_id] = (
         admin_msg.message_id
     )
+    admin_request_order.append(
+        user_id
+    )
 
 # ---------------------------------------------------------------------------
 # Callback query — admin presses ✅ Izinkan or ❌ Tolak
@@ -791,6 +794,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         except Exception:
             pass
+            
         # Add to approved list
         approved = read_approved()
         approved.add(user_id)
@@ -855,7 +859,9 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             None
         )
         name_str = pending["full_name"] if pending else str(user_id)
-        await query.edit_message_text(f"❌ Ditolak — {name_str}")
+        await query.edit_message_text(
+            f"❌ Ditolak — {name_str}"
+        )
 
         # Add to blacklist
         full_name = pending["full_name"] if pending else "-"
