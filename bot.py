@@ -1795,8 +1795,8 @@ async def delete_messages_after_delay(
             msg = await bot.send_message(
                 chat_id=chat_id,
                 text=(
-                    "⏰ Preview berakhir.\n\n"
-                    "Koleksi lengkap tersedia di grup VIP.\n"
+                    "⏰ Masa Preview sudah selesai.\n\n"
+                    "Koleksi selengkapnya ada di grup VIP.\n\n"
                     "Langsung DM 👉🏻 @BocilVIP89"
                 ),
                 reply_markup=keyboard
