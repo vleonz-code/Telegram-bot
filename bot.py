@@ -546,7 +546,12 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
         f"Time: {now}"
     )
     try:
-        await bot.send_message(chat_id=ADMIN_ID, text=text, parse_mode="Markdown")
+        await bot.send_message(
+            chat_id=ADMIN_ID,
+            text=text,
+            parse_mode="Markdown",
+            disable_notification=True
+        )
     except Exception as e:
         logger.error(f"Failed to notify admin: {e}")
 
@@ -780,7 +785,12 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 user_id,
                 None
             )
-
+        try:
+            await query.message.pin(
+                disable_notification=True
+            )
+        except Exception:
+            pass
         # Add to approved list
         approved = read_approved()
         approved.add(user_id)
@@ -814,6 +824,11 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         save_approved(approved)
 
+        admin_request_messages.pop(
+            user_id,
+            None
+        )
+
         await query.edit_message_text(
             "✅ Akses user berhasil direset"
         )
@@ -821,6 +836,11 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
         
     elif action == "ignore":
+
+        admin_request_messages.pop(
+            user_id,
+            None
+        )
 
         await query.edit_message_text(
             "🚫 Permintaan diabaikan."
