@@ -665,7 +665,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         msg = await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=(
-                "📍 Permintaan ulang telah dibatasi.\n\n"
+                "📍 Permintaan ulang belum tersedia.\n\n"
                 "Silahkan coba lagi nanti ya."
             ),
             reply_markup=keyboard
