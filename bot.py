@@ -1763,29 +1763,29 @@ async def delete_messages_after_delay(
                 bot
             )
 
-        settings = read_settings()
+            settings = read_settings()
 
-        if settings["join_vip_enabled"]:
-            keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "📦 Pilih Paket VIP",
-                        callback_data="vipmenu"
-                    )
-                ]
-            ])
-        else:
-            keyboard = None
+            if settings["join_vip_enabled"]:
+                keyboard = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "📦 Pilih Paket VIP",
+                            callback_data="vipmenu"
+                        )
+                    ]
+                ])
+            else:
+                keyboard = None
 
-        msg = await bot.send_message(
-            chat_id=chat_id,
-            text=(
-                "✨ Permintaan ulang telah dibatasi.\n\n"
-                "Mau bergabung ke grup VIP?\n"
-                "Chat Admin @BocilVIP89"
-            ),
-            reply_markup=keyboard
-        )
+            msg = await bot.send_message(
+                chat_id=chat_id,
+                text=(
+                    "✨ Permintaan ulang telah dibatasi.\n\n"
+                    "Mau bergabung ke grup VIP?\n"
+                    "Chat Admin @BocilVIP89"
+                ),
+                reply_markup=keyboard
+            )
 
             last_repeat_message[
                 chat_id
