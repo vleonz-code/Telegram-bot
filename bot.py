@@ -1923,6 +1923,10 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
     await adminvip_settings_callback(update, context)
     
+async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
