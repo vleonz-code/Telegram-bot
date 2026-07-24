@@ -1618,9 +1618,13 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
     settings = read_settings()
 
     if settings["preview_delete_delay"] < 60:
-    preview_time = f"{settings['preview_delete_delay']} Detik"
+        preview_time = (
+            f"{settings['preview_delete_delay']} Detik"
+        )
     else:
-    preview_time = f"{settings['preview_delete_delay'] // 60} Menit"
+        preview_time = (
+            f"{settings['preview_delete_delay'] // 60} Menit"
+        )
 
     keyboard = InlineKeyboardMarkup([
         [
