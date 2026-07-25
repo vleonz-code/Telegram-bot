@@ -1913,7 +1913,7 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         f"🗑️ Auto Delete : {'🟢 ON' if settings['preview_auto_delete'] else '🔴 OFF'}\n"
         f"⏱️ Timer       : {settings['preview_delete_delay']} detik\n"
         "────────────",
-        reply_markup=build_adminvip_keyboard()
+        reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
      )
     
@@ -2934,7 +2934,7 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🗑️ Auto Delete : {'🟢 ON' if settings['preview_auto_delete'] else '🔴 OFF'}\n"
         f"⏱️ Timer       : {settings['preview_delete_delay']} detik\n"
         "────────────",
-        reply_markup=build_adminvip_keyboard()
+        reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
      )
 
