@@ -1929,7 +1929,10 @@ async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_T
             caption="🖼 QRIS Saat Ini",
             reply_markup=keyboard
         )
-
+        try:
+            await query.message.delete()
+        except Exception:
+            pass
     else:
         await query.edit_message_text(
             "⚠️ QRIS belum diatur.",
