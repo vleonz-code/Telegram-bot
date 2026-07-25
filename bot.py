@@ -2918,11 +2918,11 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👑 ADMIN VIP PANEL\n\n"
         "🟢 Online\n\n"
-        "━━━━━━━━━━━━━━━━\n"
+        "────────────\n"
         "👥 Users      : -\n"
         "📦 Packages   : -\n"
         "💬 Live Chat  : -\n"
-        "━━━━━━━━━━━━━━━━",
+        "────────────",
         reply_markup=build_adminvip_keyboard()
     )
 
