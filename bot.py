@@ -1327,17 +1327,6 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     await query.answer()
 
-    if "_" in query.data:
-        try:
-            photo_message_id = int(query.data.replace("payment_back_", ""))
-
-            await context.bot.delete_message(
-                chat_id=query.message.chat_id,
-                message_id=photo_message_id
-            )
-        except Exception:
-            pass
-
     await query.edit_message_text(
         "💳 Pembayaran",
         reply_markup=build_payment_keyboard()
@@ -1928,7 +1917,7 @@ async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_T
         [
             InlineKeyboardButton(
                 "🔙 Kembali",
-                callback_data=f"payment_back_{query.message.message_id}"
+                callback_data="payment_back"
             )
         ]
     ])
@@ -3536,7 +3525,7 @@ def main():
     app.add_handler(
     CallbackQueryHandler(
         payment_back_callback,
-        pattern=r"^payment_back"
+        pattern=r"^payment_back$"
     ))
     app.add_handler(
     CallbackQueryHandler(
