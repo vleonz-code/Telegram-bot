@@ -1914,7 +1914,8 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         f"⏱️ Timer       : {settings['preview_delete_delay']} detik\n"
         "────────────",
         reply_markup=build_adminvip_keyboard()
-    )
+        parse_mode="HTML",
+     )
     
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2934,7 +2935,8 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⏱️ Timer       : {settings['preview_delete_delay']} detik\n"
         "────────────",
         reply_markup=build_adminvip_keyboard()
-    )
+        parse_mode="HTML",
+     )
 
 async def send_stats(chat_id: int, bot):
     count = read_counter()
