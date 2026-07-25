@@ -2916,11 +2916,13 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     await update.message.reply_text(
-        "Status Bot:\n"
-        f"{'🟢' if settings['join_vip_enabled'] else '🔴'} Order\n"
-        f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} Preview\n"
-        f"{'🟢' if settings['live_chat_enabled'] else '🔴'} Live Chat\n\n"
-        "⚙️ Menu Admin VIP\n",
+        "👑 ADMIN VIP PANEL\n\n"
+        "🟢 Online\n\n"
+        "━━━━━━━━━━━━━━━━\n"
+        "👥 Users      : -\n"
+        "📦 Packages   : -\n"
+        "💬 Live Chat  : -\n"
+        "━━━━━━━━━━━━━━━━",
         reply_markup=build_adminvip_keyboard()
     )
 
