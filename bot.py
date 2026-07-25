@@ -2917,11 +2917,11 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "👑 ADMIN VIP PANEL\n\n"
-        f"🟢 Online • {datetime.now().strftime('%d %b %Y • %H:%M WIB')}\n\n"
         "────────────\n"
         f"👥 Users      : {len(read_user_registry())}\n"
         f"📦 Packages   : {len(read_vip_packages()['packages'])}\n"
         f"💬 Live Chat  : {'🟢 ON' if settings['live_chat_enabled'] else '🔴 OFF'}\n"
+        f"🗑️ Auto Delete : {settings['preview_delete_delay']} dtk\n"
         "────────────",
         reply_markup=build_adminvip_keyboard()
     )
