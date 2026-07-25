@@ -17,7 +17,7 @@ APP_DIR = os.path.dirname(__file__)
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
-DEEP_LINK_A = "UB3A6P"
+DEEP_LINK_A = "UC3A6P"
 DEEP_LINK_B = "ZRUN09"
 
 ADMIN_ID = 7602115007
@@ -2942,7 +2942,7 @@ async def send_stats(chat_id: int, bot):
         chat_id=chat_id,
         text=(
             f"📊 *Stats Bot*\n\n"
-            f"Total penggunaan `UB3A6P`: *{count}x*"
+            f"Total penggunaan `UC3A6P`: *{count}x*"
         ),
         parse_mode="Markdown",
 
