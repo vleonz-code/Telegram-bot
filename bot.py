@@ -1902,10 +1902,13 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         query.message.chat_id,
         context.bot
     )
-    await query.edit_message_text(
-        "⚙️ Menu Admin VIP\n\n",
-        reply_markup=build_adminvip_keyboard()
-    )
+
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+
+    await adminvip(update, context)
     
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
