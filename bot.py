@@ -1329,6 +1329,15 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=build_payment_keyboard()
     ) 
    
+async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text(
+        "💳 Pembayaran",
+        reply_markup=build_payment_keyboard()
+    )
+    
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
