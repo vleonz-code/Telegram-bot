@@ -2921,7 +2921,7 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "────────────\n"
         "👥 Users      : -\n"
         "📦 Packages   : -\n"
-        "💬 Live Chat  : -\n"
+        f"💬 Live Chat  : {'🟢 ON' if settings['live_chat_enabled'] else '🔴 OFF'}\n"
         "────────────",
         reply_markup=build_adminvip_keyboard()
     )
