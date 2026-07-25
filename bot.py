@@ -2677,7 +2677,10 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.effective_user.id == ADMIN_ID:
         return
-        
+
+    if update.effective_user.id in read_blacklist():
+        return
+
     user_id = update.effective_user.id
 
     keyboard = InlineKeyboardMarkup([
