@@ -1905,17 +1905,19 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     settings = read_settings()
 
     await query.edit_message_text(
-        "👑 <b>ADMIN VIP PANEL</b>\n"
+        "<b>👑 ADMIN VIP PANEL</b>\n"
+        "<pre>"
         "────────────\n"
-        f"👥 Users      : {len(read_user_registry())}\n"
-        f"📦 Packages   : {len(read_vip_packages()['packages'])}\n"
-        f"💬 Live Chat  : {'🟢' if settings['live_chat_enabled'] else '🔴'}\n"
-        f"🗑️ Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
-        f"⏱️ Timer       : {settings['preview_delete_delay']} detik\n"
-        "────────────",
+        f"👥 Users       : {len(read_user_registry())}\n"
+        f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
+        f"💬 Live Chat   : {'🟢' if settings['live_chat_enabled'] else '🔴'}\n"
+        f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
+        f"⏱ Timer        : {settings['preview_delete_delay']} detik\n"
+        "────────────"
+        "</pre>",
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
-     )
+    )
     
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2926,17 +2928,19 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     await update.message.reply_text(
-        "👑 <b>ADMIN VIP PANEL</b>\n"
+        "<b>👑 ADMIN VIP PANEL</b>\n"
+        "<pre>"
         "────────────\n"
-        f"👥 Users      : {len(read_user_registry())}\n"
-        f"📦 Packages   : {len(read_vip_packages()['packages'])}\n"
-        f"💬 Live Chat  : {'🟢' if settings['live_chat_enabled'] else '🔴'}\n"
-        f"🗑️ Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
-        f"⏱️ Timer       : {settings['preview_delete_delay']} detik\n"
-        "────────────",
+        f"👥 Users       : {len(read_user_registry())}\n"
+        f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
+        f"💬 Live Chat   : {'🟢' if settings['live_chat_enabled'] else '🔴'}\n"
+        f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
+        f"⏱ Timer        : {settings['preview_delete_delay']} detik\n"
+        "────────────"
+        "</pre>",
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
-     )
+    )
 
 async def send_stats(chat_id: int, bot):
     count = read_counter()
