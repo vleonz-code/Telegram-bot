@@ -1902,13 +1902,18 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         query.message.chat_id,
         context.bot
     )
+    settings = read_settings()
 
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
-
-    await adminvip(update, context)
+    await query.edit_message_text(
+        "👑 ADMIN VIP PANEL\n\n"
+        "────────────\n"
+        f"👥 Users      : {len(read_user_registry())}\n"
+        f"📦 Packages   : {len(read_vip_packages()['packages'])}\n"
+        f"💬 Live Chat  : {'🟢 ON' if settings['live_chat_enabled'] else '🔴 OFF'}\n"
+        f"🗑️ Auto Delete : {settings['preview_delete_delay']} dtk\n"
+        "────────────",
+        reply_markup=build_adminvip_keyboard()
+    )
     
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
