@@ -1317,20 +1317,6 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_payment_callback(update, context)
    
-async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
-
-    await context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text="💳 Pembayaran",
-        reply_markup=build_payment_keyboard()
-    )
     
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
