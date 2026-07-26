@@ -241,6 +241,7 @@ admin_request_counts = {}     # user_id -> jumlah percobaan
 last_delivered_messages = {}
 preview_delete_tasks = {}
 admin_reply_waiting = {}
+blocked_notified = set()
 
 FILE_IDS_A = [
     ("video", os.environ.get("FILE_ID_1", "")),
@@ -581,11 +582,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = f"@{user.username}" if user.username else "-"
     # Silently ignore banned users
     if user_id in read_blacklist():
+    if user_id not in blocked_notified:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="🚫 Akses Anda telah dibatasi."
         )
-        return
+        blocked_notified.add(user_id)
+    return
 
 
     # Admin always bypasses approval
@@ -2840,6 +2843,7 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     bl = read_blacklist()
     bl.pop(target_id, None)
     write_blacklist(bl)
+    blocked_notified.discard(target_id)
     await update.message.reply_text("✅ User unbanned.")
 
 async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
