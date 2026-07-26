@@ -582,14 +582,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = f"@{user.username}" if user.username else "-"
     # Silently ignore banned users
     if user_id in read_blacklist():
-    if user_id not in blocked_notified:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="🚫 Akses Anda telah dibatasi."
-        )
-        blocked_notified.add(user_id)
-    return
-
+        if user_id not in blocked_notified:
+            await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text="🚫 Akses Anda telah dibatasi."
+            )
+            blocked_notified.add(user_id)
+        return
 
     # Admin always bypasses approval
     if user_id == ADMIN_ID:
