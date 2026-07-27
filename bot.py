@@ -1436,9 +1436,6 @@ async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
     settings["channel_auto_post"] = not settings["channel_auto_post"]
 
-    if settings["channel_auto_post"]:
-        settings["channel_last_post"] = int(time.time())
-
     save_settings(settings)
 
     await adminvip_channel_callback(update, context)
@@ -3794,7 +3791,7 @@ def main():
         asyncio.create_task(channel_auto_post_loop(app))
 
     app.post_init = start_background
-    
+
     app.add_handler(CommandHandler("getid", getid_start))
     app.add_handler(CommandHandler("cancel", getid_cancel))
     app.add_handler(CommandHandler("channeltest", channeltest))
