@@ -1478,7 +1478,6 @@ async def channel_set_interval_callback(update: Update, context: ContextTypes.DE
     
 async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     settings = read_settings()
 
