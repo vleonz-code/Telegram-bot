@@ -3787,6 +3787,12 @@ def main():
 
     restore_pending_orders()
     app = ApplicationBuilder().token(token).build()
+
+    async def start_background(app):
+        asyncio.create_task(channel_auto_post_loop(app))
+
+    app.post_init = start_background
+
     
     app.add_handler(CommandHandler("getid", getid_start))
     app.add_handler(CommandHandler("cancel", getid_cancel))
