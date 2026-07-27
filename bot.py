@@ -154,9 +154,7 @@ def read_settings():
             json.dump(
 
                 {
-
                     "qris_file_id": "",
-
                     "join_vip_enabled": True,
                     "preview_approval_enabled": True,
                     "live_chat_enabled": False,
@@ -164,9 +162,9 @@ def read_settings():
                     "preview_delete_delay": 600,
                     "channel_post_text": "",
                     "channel_auto_post": False,
-                     "channel_interval": 60,
-                     "channel_last_message_id": None,
-
+                    "channel_interval": 60,
+                    "channel_last_post": 0,
+                    "channel_last_message_id": None,
                 },
 
                 f,
