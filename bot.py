@@ -1373,36 +1373,32 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
     settings = read_settings()
 
     keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "📝 Edit Pesan",
-                callback_data="channel_edit"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "⏱ Edit Interval",
-                callback_data="channel_interval"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                f"{'🟢' if settings['channel_auto_post'] else '🔴'} Auto Post",
-                callback_data="channel_toggle"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "📤 Kirim",
-                callback_data="channel_send"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 Kembali",
-                callback_data="adminvip_back"
-            )
-        ]
+    [
+        InlineKeyboardButton(
+            "📝 Edit Pesan",
+            callback_data="channel_edit"
+        ),
+        InlineKeyboardButton(
+            "⏱ Edit Interval",
+            callback_data="channel_interval"
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            f"{'🟢' if settings['channel_auto_post'] else '🔴'} Auto Post",
+            callback_data="channel_toggle"
+        ),
+        InlineKeyboardButton(
+            "📤 Kirim",
+            callback_data="channel_send"
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="adminvip_back"
+        )
+    ]
     ])
 
     await query.edit_message_text(
