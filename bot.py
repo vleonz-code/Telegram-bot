@@ -1489,11 +1489,21 @@ async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return
 
-    await context.bot.send_message(
+    if settings["channel_last_message_id"]:
+        try:
+            await context.bot.delete_message(
+                chat_id=CHANNEL_ID,
+                message_id=settings["channel_last_message_id"]
+            )
+        except Exception:
+            pass
+
+    msg = await context.bot.send_message(
         chat_id=CHANNEL_ID,
         text=settings["channel_post_text"]
     )
 
+    settings["channel_last_message_id"] = msg.message_id
     settings["channel_last_post"] = int(time.time())
     save_settings(settings)
 
