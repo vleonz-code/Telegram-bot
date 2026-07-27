@@ -21,6 +21,7 @@ DEEP_LINK_A = "UC3A6P"
 DEEP_LINK_B = "ZRUN09"
 
 ADMIN_ID = 7602115007
+CHANNEL_ID = -1004363191859
 ORDER_HISTORY_EXCLUDED = {
     ADMIN_ID,
     # Tambahkan User ID akun testing di bawah ini
@@ -3479,6 +3480,21 @@ async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     getid_waiting.discard(update.effective_user.id)
     await update.message.reply_text("❌ /getid dibatalkan.")
+#---------------------------------------------------------------------------
+# POST DARI BOT
+#---------------------------------------------------------------------------
+async def channeltest(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        return
+
+    await context.bot.send_message(
+        chat_id=CHANNEL_ID,
+        text="✅ Test post dari bot."
+    )
+
+    await update.message.reply_text(
+        "Berhasil mengirim ke channel."
+    )
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -3519,7 +3535,11 @@ def main():
 
     restore_pending_orders()
     app = ApplicationBuilder().token(token).build()
-
+    
+    app.add_handler(CommandHandler("getid", getid_start))
+    app.add_handler(CommandHandler("cancel", getid_cancel))
+    app.add_handler(CommandHandler("channeltest", channeltest))
+    
     app.add_handler(CommandHandler("start",      start))
     app.add_handler(CommandHandler("adminvip",   adminvip))
     app.add_handler(CommandHandler("stats",      stats))
