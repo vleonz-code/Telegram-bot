@@ -1436,6 +1436,9 @@ async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
     settings["channel_auto_post"] = not settings["channel_auto_post"]
 
+    if settings["channel_auto_post"]:
+        settings["channel_last_post"] = int(time.time())
+
     save_settings(settings)
 
     await adminvip_channel_callback(update, context)
@@ -3737,6 +3740,48 @@ def restore_pending_orders():
 
     next_order_id = max_order_id + 1
     
+# ---------------------------------------------------------------------------
+# AUTO CHANNEL POST
+# ---------------------------------------------------------------------------
+
+async def channel_auto_post_loop(app):
+    while True:
+        try:
+            settings = read_settings()
+
+            if (
+                settings["channel_auto_post"]
+                and settings["channel_post_text"]
+            ):
+                now = int(time.time())
+                interval = settings["channel_interval"] * 60
+
+                if now - settings["channel_last_post"] >= interval:
+
+                    if settings["channel_last_message_id"]:
+                        try:
+                            await app.bot.delete_message(
+                                chat_id=CHANNEL_ID,
+                                message_id=settings["channel_last_message_id"]
+                            )
+                        except Exception:
+                            pass
+
+                    msg = await app.bot.send_message(
+                        chat_id=CHANNEL_ID,
+                        text=settings["channel_post_text"]
+                    )
+
+                    settings["channel_last_message_id"] = msg.message_id
+                    settings["channel_last_post"] = now
+
+                    save_settings(settings)
+
+        except Exception as e:
+            logger.error(f"Channel Auto Post Error: {e}")
+
+        await asyncio.sleep(30)
+    
 def main():
     token = os.environ.get("BOT_TOKEN")
     if not token:
@@ -3744,6 +3789,11 @@ def main():
 
     restore_pending_orders()
     app = ApplicationBuilder().token(token).build()
+
+    async def start_background(app):
+        asyncio.create_task(channel_auto_post_loop(app))
+
+    app.post_init = start_background
     
     app.add_handler(CommandHandler("getid", getid_start))
     app.add_handler(CommandHandler("cancel", getid_cancel))
