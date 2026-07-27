@@ -1390,7 +1390,7 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
         ],
         [
             InlineKeyboardButton(
-                "📤 Kirim Sekarang",
+                "📤 Kirim",
                 callback_data="channel_send"
             )
         ],
@@ -1436,11 +1436,33 @@ async def channel_interval_callback(update: Update, context: ContextTypes.DEFAUL
     query = update.callback_query
     await query.answer()
 
-    admin_channel_interval_waiting.add(update.effective_user.id)
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("15 Menit", callback_data="channel_set_15")],
+        [InlineKeyboardButton("30 Menit", callback_data="channel_set_30")],
+        [InlineKeyboardButton("1 Jam", callback_data="channel_set_60")],
+        [InlineKeyboardButton("2 Jam", callback_data="channel_set_120")],
+        [InlineKeyboardButton("6 Jam", callback_data="channel_set_360")],
+        [InlineKeyboardButton("12 Jam", callback_data="channel_set_720")],
+        [InlineKeyboardButton("24 Jam", callback_data="channel_set_1440")],
+        [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_channel")]
+    ])
 
     await query.edit_message_text(
-        "⏱ Kirim jumlah menit.\n\nContoh:\n30 = 30 menit\n60 = 1 jam\n120 = 2 jam"
+        "⏱ Interval Channel Post",
+        reply_markup=keyboard
     )
+    
+async def channel_set_interval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    minutes = int(query.data.replace("channel_set_", ""))
+
+    settings = read_settings()
+    settings["channel_interval"] = minutes
+    save_settings(settings)
+
+    await adminvip_channel_callback(update, context)
     
 async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3777,6 +3799,11 @@ def main():
     CallbackQueryHandler(
         channel_interval_callback,
         pattern=r"^channel_interval$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        channel_set_interval_callback,
+        pattern=r"^channel_set_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
