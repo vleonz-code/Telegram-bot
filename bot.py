@@ -1397,6 +1397,18 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "Silakan kirim teks Channel Post baru."
     )
     
+async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    settings["channel_auto_post"] = not settings["channel_auto_post"]
+
+    save_settings(settings)
+
+    await adminvip_channel_callback(update, context)
+    
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2727,6 +2739,27 @@ async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
         
     await livechat_receive(update, context)
   
+async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    if update.effective_user.id in admin_channel_waiting:
+
+        admin_channel_waiting.remove(update.effective_user.id)
+
+        settings = read_settings()
+
+        settings["channel_post_text"] = update.message.text
+
+        save_settings(settings)
+
+        await update.message.reply_text(
+            "✅ Channel Post berhasil disimpan."
+        )
+
+        return
+
+    await admin_edit_receive(update, context)
+    await admin_add_receive(update, context)
+    
 async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     settings = read_settings()
@@ -3646,6 +3679,11 @@ def main():
     CallbackQueryHandler(
         channel_edit_callback,
         pattern=r"^channel_edit$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        channel_toggle_callback,
+        pattern=r"^channel_toggle$"
     ))
     app.add_handler(
     CallbackQueryHandler(
