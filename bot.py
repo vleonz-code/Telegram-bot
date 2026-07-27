@@ -164,6 +164,8 @@ def read_settings():
                     "preview_delete_delay": 600,
                     "channel_post_text": "",
                     "channel_auto_post": False,
+                     "channel_interval": 60,
+                     "channel_last_message_id": None,
 
                 },
 
@@ -207,6 +209,14 @@ def read_settings():
         data["channel_auto_post"] = False
         save_settings(data)
         
+    if "channel_interval" not in data:
+        data["channel_interval"] = 60
+        save_settings(data)
+
+    if "channel_last_message_id" not in data:
+        data["channel_last_message_id"] = None
+        save_settings(data)
+        
     return data
 
 def save_settings(data):
@@ -245,6 +255,7 @@ admin_edit_waiting = {}
 admin_add_waiting = {}
 admin_qris_waiting = set()
 admin_channel_waiting = set()
+admin_channel_interval_waiting = set()
 last_stats_message = {}
 last_repeat_message = {}
 admin_request_messages = {}   # user_id -> message_id
@@ -1367,6 +1378,12 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
         ],
         [
             InlineKeyboardButton(
+                "⏱ Edit Interval",
+                callback_data="channel_interval"
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 f"{'🟢' if settings['channel_auto_post'] else '🔴'} Auto Post",
                 callback_data="channel_toggle"
             )
@@ -1415,6 +1432,16 @@ async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
     await adminvip_channel_callback(update, context)
   
+async def channel_interval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    admin_channel_interval_waiting.add(update.effective_user.id)
+
+    await query.edit_message_text(
+        "⏱ Kirim jumlah menit.\n\nContoh:\n30 = 30 menit\n60 = 1 jam\n120 = 2 jam"
+    )
+    
 async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
