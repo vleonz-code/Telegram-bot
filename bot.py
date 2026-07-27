@@ -1404,8 +1404,10 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
 
     await query.edit_message_text(
         "📢 Channel Post\n\n"
-        f"Auto Post : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n\n"
-        "Menu ini masih kosong.",
+        f"Auto Post : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
+        f"Interval : {settings['channel_interval']} menit\n\n"
+        "Pesan:\n"
+        f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}",
         reply_markup=keyboard
     )
     
