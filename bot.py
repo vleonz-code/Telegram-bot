@@ -3084,9 +3084,7 @@ def build_adminvip_keyboard():
         InlineKeyboardButton(
             "📦 Kelola Paket",
             callback_data="adminvip_packages"
-        )
-    ])
-    keyboard.append([
+        ),
         InlineKeyboardButton(
             "📊 Statistik",
             callback_data="adminvip_stats"
@@ -3097,20 +3095,20 @@ def build_adminvip_keyboard():
         InlineKeyboardButton(
             "💳 Pembayaran",
             callback_data="adminvip_payment"
-        )
-    ])
-    keyboard.append([
+        ),
         InlineKeyboardButton(
             "📢 Channel Post",
             callback_data="adminvip_channel"
         )
     ])
+
     keyboard.append([
         InlineKeyboardButton(
             "⚙️ Pengaturan",
             callback_data="adminvip_settings"
         )
     ])
+
     return InlineKeyboardMarkup(keyboard)
     
 def build_payment_keyboard():
