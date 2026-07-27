@@ -1373,6 +1373,12 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
         ],
         [
             InlineKeyboardButton(
+                "📤 Kirim Sekarang",
+                callback_data="channel_send"
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🔙 Kembali",
                 callback_data="adminvip_back"
             )
