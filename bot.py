@@ -244,6 +244,7 @@ next_order_id = 1
 admin_edit_waiting = {}
 admin_add_waiting = {}
 admin_qris_waiting = set()
+admin_channel_waiting = set()
 last_stats_message = {}
 last_repeat_message = {}
 admin_request_messages = {}   # user_id -> message_id
@@ -1360,6 +1361,18 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
+                "📝 Edit Pesan",
+                callback_data="channel_edit"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"{'🟢' if settings['channel_auto_post'] else '🔴'} Auto Post",
+                callback_data="channel_toggle"
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🔙 Kembali",
                 callback_data="adminvip_back"
             )
@@ -1371,6 +1384,17 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
         f"Auto Post : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n\n"
         "Menu ini masih kosong.",
         reply_markup=keyboard
+    )
+    
+async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    admin_channel_waiting.add(query.from_user.id)
+
+    await query.edit_message_text(
+        "📝 Edit Channel Post\n\n"
+        "Silakan kirim teks Channel Post baru."
     )
     
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3617,6 +3641,11 @@ def main():
     CallbackQueryHandler(
         adminvip_channel_callback,
         pattern=r"^adminvip_channel$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        channel_edit_callback,
+        pattern=r"^channel_edit$"
     ))
     app.add_handler(
     CallbackQueryHandler(
