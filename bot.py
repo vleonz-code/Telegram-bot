@@ -1414,6 +1414,29 @@ async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
     save_settings(settings)
 
     await adminvip_channel_callback(update, context)
+  
+async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    if not settings["channel_post_text"]:
+        await query.answer(
+            "⚠️ Channel Post masih kosong.",
+            show_alert=True
+        )
+        return
+
+    await context.bot.send_message(
+        chat_id=CHANNEL_ID,
+        text=settings["channel_post_text"]
+    )
+
+    await query.answer(
+        "✅ Berhasil dikirim.",
+        show_alert=True
+    )
     
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3690,6 +3713,11 @@ def main():
     CallbackQueryHandler(
         channel_toggle_callback,
         pattern=r"^channel_toggle$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        channel_send_callback,
+        pattern=r"^channel_send$"
     ))
     app.add_handler(
     CallbackQueryHandler(
