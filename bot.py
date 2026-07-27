@@ -3748,6 +3748,11 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
+        channel_interval_callback,
+        pattern=r"^channel_interval$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
         payment_back_callback,
         pattern=r"^payment_back$"
     ))
