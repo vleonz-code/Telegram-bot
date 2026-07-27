@@ -214,6 +214,10 @@ def read_settings():
     if "channel_last_message_id" not in data:
         data["channel_last_message_id"] = None
         save_settings(data)
+
+    if "channel_last_post" not in data:
+        data["channel_last_post"] = 0
+        save_settings(data)
         
     return data
 
