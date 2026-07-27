@@ -1409,9 +1409,13 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
         "📢 Channel Post\n\n"
         f"Auto Post : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
         f"Interval : {settings['channel_interval']} menit\n\n"
-        "Pesan:\n"
-        f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}",
-        reply_markup=keyboard
+        "<pre>"
+        "Pesan\n"
+        "────────────────────\n"
+        f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
+        "</pre>",
+        reply_markup=keyboard,
+        parse_mode="HTML"
     )
     
 async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
