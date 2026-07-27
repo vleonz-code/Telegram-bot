@@ -2773,29 +2773,12 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await show_add_preview(update.message, data)
         return
-        
-async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await admin_edit_receive(update, context)
-    await admin_add_receive(update, context)
-
-    if update.effective_user.id in admin_reply_waiting:
-
-        user_id = admin_reply_waiting.pop(
-            update.effective_user.id
-        )
-
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=update.message.text
-        )
-
-        await update.message.reply_text(
-            "✅ Pesan berhasil dikirim."
-        )
-        
-    await livechat_receive(update, context)
   
 async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    await admin_edit_receive(update, context)
+
+    await admin_add_receive(update, context)
 
     if update.effective_user.id in admin_channel_waiting:
 
@@ -2813,8 +2796,52 @@ async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         return
 
-    await admin_edit_receive(update, context)
-    await admin_add_receive(update, context)
+    if update.effective_user.id in admin_channel_interval_waiting:
+
+        admin_channel_interval_waiting.remove(
+            update.effective_user.id
+        )
+
+        if not update.message.text.isdigit():
+
+            await update.message.reply_text(
+                "❌ Interval harus berupa angka."
+            )
+
+            return
+
+        settings = read_settings()
+
+        settings["channel_interval"] = int(
+            update.message.text
+        )
+
+        save_settings(settings)
+
+        await update.message.reply_text(
+            "✅ Interval berhasil disimpan."
+        )
+
+        return
+
+    if update.effective_user.id in admin_reply_waiting:
+
+        user_id = admin_reply_waiting.pop(
+            update.effective_user.id
+        )
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=update.message.text
+        )
+
+        await update.message.reply_text(
+            "✅ Pesan berhasil dikirim."
+        )
+
+        return
+
+    await livechat_receive(update, context)
     
 async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
