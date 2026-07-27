@@ -1874,9 +1874,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
             InlineKeyboardButton(
                 f"{'🟢' if settings['join_vip_enabled'] else '🔴'} ORDER VIP : {'ON' if settings['join_vip_enabled'] else 'OFF'}",
                 callback_data="adminvip_toggle_join"
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} CEK PREVIEW : {'ON' if settings['preview_approval_enabled'] else 'OFF'}",
                 callback_data="adminvip_toggle_preview"
@@ -1886,9 +1884,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
             InlineKeyboardButton(
                 f"{'🟢' if settings['live_chat_enabled'] else '🔴'} LIVE CHAT : {'ON' if settings['live_chat_enabled'] else 'OFF'}",
                 callback_data="adminvip_toggle_livechat"
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 f"{'🟢' if settings['preview_auto_delete'] else '🔴'} AUTO DELETE : {'ON' if settings['preview_auto_delete'] else 'OFF'}",
                 callback_data="preview_toggle"
@@ -1898,9 +1894,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
             InlineKeyboardButton(
                 f"⏱ PREVIEW : {preview_time}",
                 callback_data="preview_timer"
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 "🔙 Kembali",
                 callback_data="adminvip_back"
