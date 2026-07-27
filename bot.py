@@ -1912,26 +1912,24 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
     await query.answer()
 
     keyboard = InlineKeyboardMarkup([
-
         [
             InlineKeyboardButton(
-                "📈 Lihat Statistik",
+                "📈 Lihat",
                 callback_data="stats_view"
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
-                "🗑 Reset Statistik",
+                "🗑 Reset",
                 callback_data="stats_reset"
             )
         ],
         [
             InlineKeyboardButton(
-                "🔙 Menu Admin",
+                "🔙 Kembali",
                 callback_data="adminvip_back"
             )
         ]
     ])
+
     await query.edit_message_text(
         "📊 Statistik",
         reply_markup=keyboard
