@@ -1896,7 +1896,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
                 callback_data="preview_timer"
             ),
             InlineKeyboardButton(
-                "⬅️ Kembali",
+                "🔙 Kembali",
                 callback_data="adminvip_back"
             )
         ]
