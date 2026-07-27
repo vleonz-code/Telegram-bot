@@ -1419,7 +1419,10 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     await query.edit_message_text(
         "📝 Edit Channel Post\n\n"
-        "Silakan kirim teks Channel Post baru."
+        "Silakan kirim teks Channel Post baru.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_channel")]
+        ])
     )
     
 async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
