@@ -708,13 +708,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if settings["join_vip_enabled"]:
             keyboard = InlineKeyboardMarkup([
-                    [
-        InlineKeyboardButton(
-            "1 Menit",
-            callback_data="channel_set_1"
-        )
-    ],
-[
+                [
                     InlineKeyboardButton(
                         "📦 Pilih Paket VIP",
                         callback_data="vipmenu"
@@ -1451,6 +1445,7 @@ async def channel_interval_callback(update: Update, context: ContextTypes.DEFAUL
     await query.answer()
 
     keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("1 Menit", callback_data="channel_set_1")],
         [InlineKeyboardButton("15 Menit", callback_data="channel_set_15")],
         [InlineKeyboardButton("30 Menit", callback_data="channel_set_30")],
         [InlineKeyboardButton("1 Jam", callback_data="channel_set_60")],
