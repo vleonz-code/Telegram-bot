@@ -1487,6 +1487,9 @@ async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TY
         text=settings["channel_post_text"]
     )
 
+    settings["channel_last_post"] = int(time.time())
+    save_settings(settings)
+
     await query.answer(
         "✅ Berhasil dikirim.",
         show_alert=True
