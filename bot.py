@@ -3078,8 +3078,7 @@ async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{i}.\nName: {info['full_name']}\nUsername: {uname}\nUser ID: `{uid}`"
         )
     await update.message.reply_text(
-        f"🚫 *Blacklisted Users*\n\n" + "\n\n".join(lines),
-        parse_mode="Markdown",
+        f"🚫 Blacklisted Users\n\n" + "\n\n".join(lines)
     )
     
 def build_adminvip_keyboard():
