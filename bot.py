@@ -162,6 +162,8 @@ def read_settings():
                     "live_chat_enabled": False,
                     "preview_auto_delete": True,
                     "preview_delete_delay": 600,
+                    "channel_post_text": "",
+                    "channel_auto_post": False,
 
                 },
 
@@ -197,6 +199,14 @@ def read_settings():
         data["preview_delete_delay"] = 600
         save_settings(data)
 
+    if "channel_post_text" not in data:
+        data["channel_post_text"] = ""
+        save_settings(data)
+    
+    if "channel_auto_post" not in data:
+        data["channel_auto_post"] = False
+        save_settings(data)
+        
     return data
 
 def save_settings(data):
@@ -1339,6 +1349,28 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
     await query.edit_message_text(
         "💳 Pembayaran",
         reply_markup=build_payment_keyboard()
+    )
+    
+async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_back"
+            )
+        ]
+    ])
+
+    await query.edit_message_text(
+        "📢 Channel Post\n\n"
+        f"Auto Post : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n\n"
+        "Menu ini masih kosong.",
+        reply_markup=keyboard
     )
     
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2888,6 +2920,12 @@ def build_adminvip_keyboard():
     ])
     keyboard.append([
         InlineKeyboardButton(
+            "📢 Channel Post",
+            callback_data="adminvip_channel"
+        )
+    ])
+    keyboard.append([
+        InlineKeyboardButton(
             "⚙️ Pengaturan",
             callback_data="adminvip_settings"
         )
@@ -3574,6 +3612,11 @@ def main():
     CallbackQueryHandler(
         adminvip_payment_callback,
         pattern=r"^adminvip_payment$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_channel_callback,
+        pattern=r"^adminvip_channel$"
     ))
     app.add_handler(
     CallbackQueryHandler(
