@@ -427,10 +427,21 @@ def save_approved(approved: set):
 # Blacklist
 # ---------------------------------------------------------------------------
 
+# In-memory cache for blacklist.json — avoids re-reading the file from disk
+# on every /banned interaction. Refreshed automatically after every
+# successful write (ban, unban, reset) via write_blacklist().
+_blacklist_cache = None
+
 def read_blacklist() -> dict:
+    global _blacklist_cache
+
+    if _blacklist_cache is not None:
+        return dict(_blacklist_cache)
+
     try:
         if not os.path.exists(BLACKLIST_FILE):
-            return {}
+            _blacklist_cache = {}
+            return dict(_blacklist_cache)
         with open(BLACKLIST_FILE, "r") as f:
             data = json.load(f)
         entries = data.get("banned", [])
@@ -445,12 +456,14 @@ def read_blacklist() -> dict:
                     }
             elif isinstance(entry, int):
                 result[entry] = {"full_name": "-", "username": "-"}
-        return result
+        _blacklist_cache = result
+        return dict(_blacklist_cache)
     except Exception as e:
         logger.error(f"Blacklist read error: {e}")
         return {}
 
 def write_blacklist(bl: dict):
+    global _blacklist_cache
     try:
         entries = [
             {
@@ -468,6 +481,8 @@ def write_blacklist(bl: dict):
                 ensure_ascii=False,
                 indent=2
             )
+
+        _blacklist_cache = dict(bl)
 
     except Exception as e:
         logger.error(f"Blacklist write error: {e}")
@@ -2814,9 +2829,13 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
   
 async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    await admin_edit_receive(update, context)
+    user_id = update.effective_user.id
 
-    await admin_add_receive(update, context)
+    if user_id in admin_edit_waiting:
+        await admin_edit_receive(update, context)
+
+    if user_id in admin_add_waiting:
+        await admin_add_receive(update, context)
 
     if update.effective_user.id in admin_channel_waiting:
 
@@ -4301,6 +4320,38 @@ def main():
     app.add_handler(CommandHandler("banned",     banned))
     app.add_handler(CommandHandler("getid",      getid_start))
     app.add_handler(CommandHandler("cancel",     getid_cancel))
+    # High-frequency customer callbacks registered first so they are matched
+    # with the fewest possible regex checks (order impacts routing latency).
+    app.add_handler(
+        CallbackQueryHandler(
+            vip1_callback,
+            pattern=r"^vip_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            bayar1_callback,
+            pattern=r"^bayar_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            upload_bukti_callback,
+            pattern=r"^upload_bukti_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            cancel_order_callback,
+            pattern=r"^cancel_order$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            livechat_reply_callback,
+            pattern=r"^reply\|"
+        )
+    )
     app.add_handler(
         CallbackQueryHandler(
             approval_callback,
@@ -4613,26 +4664,6 @@ def main():
         pattern=r"^preview_set_\d+$"
     ))
     app.add_handler(
-    CallbackQueryHandler(
-        vip1_callback,
-        pattern=r"^vip_\d+$"
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-    bayar1_callback,
-    pattern=r"^bayar_\d+$"
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-            upload_bukti_callback,
-            pattern=r"^upload_bukti_\d+$"
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-        cancel_order_callback,
-        pattern=r"^cancel_order$"
-    ))
-    app.add_handler(
     MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL,
         photo_router,
@@ -4648,11 +4679,6 @@ def main():
     MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         admin_text_receive,
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-        livechat_reply_callback,
-        pattern=r"^reply\|"
     ))
     
     logger.info("Bot is running...")
