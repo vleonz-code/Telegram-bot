@@ -3586,8 +3586,8 @@ def build_adminvip_keyboard():
             callback_data="adminvip_payment"
         ),
         InlineKeyboardButton(
-            "📢 Channel Post",
-            callback_data="adminvip_channel"
+            "🚫 Blacklist",
+            callback_data="adminvip_blacklist"
         )
     ])
 
@@ -3597,8 +3597,8 @@ def build_adminvip_keyboard():
             callback_data="filemgr_list"
         ),
         InlineKeyboardButton(
-            "🚫 Blacklist",
-            callback_data="adminvip_blacklist"
+            "📢 Channel Post",
+            callback_data="adminvip_channel"
         )
     ])
 
