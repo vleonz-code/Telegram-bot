@@ -3082,10 +3082,8 @@ def build_blacklist_view(page: int = 1):
     lines = [
         "🚫 Blacklist",
         "",
-        f"📊 Total : {total} user",
-        f"📄 Halaman : {page}/{total_pages}",
-        BLACKLIST_DIVIDER,
-        ""
+        f"📊 {total} user • Halaman {page}/{total_pages}",
+        BLACKLIST_DIVIDER
     ]
 
     keyboard_rows = []
@@ -3121,7 +3119,6 @@ def build_blacklist_view(page: int = 1):
 
     if nav_row:
         keyboard_rows.append(nav_row)
-    keyboard_rows.append([InlineKeyboardButton("🗑 Reset", callback_data=f"banned_reset_ask_{page}")])
     keyboard_rows.append([InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")])
 
     keyboard = InlineKeyboardMarkup(keyboard_rows)
