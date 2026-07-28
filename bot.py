@@ -3061,9 +3061,9 @@ def build_blacklist_view(page: int = 1):
     total = len(bl)
 
     if total == 0:
-        text = "🚫 Blacklist\n\nNo banned users."
+        text = "🚫 Blacklist\n\nTidak ada user yang di-blacklist."
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔙 Back", callback_data="adminvip_back")]
+            [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")]
         ])
         return text, keyboard
 
@@ -3103,7 +3103,7 @@ def build_blacklist_view(page: int = 1):
 
         keyboard_rows.append([
             InlineKeyboardButton(
-                f"⚙️ Manage • {info['full_name']}",
+                f"⚙️ Kelola • {info['full_name']}",
                 callback_data=f"banned_manage_{uid}_{page}"
             )
         ])
@@ -3112,14 +3112,14 @@ def build_blacklist_view(page: int = 1):
 
     nav_row = []
     if page > 1:
-        nav_row.append(InlineKeyboardButton("◀ Prev", callback_data=f"banned_page_{page - 1}"))
+        nav_row.append(InlineKeyboardButton("◀ Sebelumnya", callback_data=f"banned_page_{page - 1}"))
     if page < total_pages:
-        nav_row.append(InlineKeyboardButton("Next ▶", callback_data=f"banned_page_{page + 1}"))
+        nav_row.append(InlineKeyboardButton("Selanjutnya ▶", callback_data=f"banned_page_{page + 1}"))
 
     if nav_row:
         keyboard_rows.append(nav_row)
     keyboard_rows.append([InlineKeyboardButton("🗑 Reset", callback_data=f"banned_reset_ask_{page}")])
-    keyboard_rows.append([InlineKeyboardButton("🔙 Back", callback_data="adminvip_back")])
+    keyboard_rows.append([InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")])
 
     keyboard = InlineKeyboardMarkup(keyboard_rows)
 
@@ -3149,13 +3149,13 @@ async def banned_reset_ask_callback(update: Update, context: ContextTypes.DEFAUL
     bl = read_blacklist()
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("❌ Cancel", callback_data=f"banned_page_{page}"),
-            InlineKeyboardButton("✅ Yes, Reset", callback_data="banned_reset_yes")
+            InlineKeyboardButton("❌ Batal", callback_data=f"banned_page_{page}"),
+            InlineKeyboardButton("✅ Ya, Reset", callback_data="banned_reset_yes")
         ]
     ])
     await query.edit_message_text(
-        "⚠️ Reset the entire blacklist?\n\n"
-        f"All {len(bl)} banned users will be restored.",
+        "⚠️ Reset seluruh blacklist?\n\n"
+        f"Total {len(bl)} user yang di-blacklist akan dipulihkan.",
         reply_markup=keyboard
     )
 
@@ -3192,11 +3192,11 @@ async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_T
         f"🔗 {uname}\n"
         f"🆔 {uid}\n\n"
         f"{BLACKLIST_DIVIDER}\n\n"
-        "Choose an action."
+        "Pilih tindakan."
     )
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("🚫 Unban", callback_data=f"banned_unban_ask_{uid}_{page}")],
-        [InlineKeyboardButton("🔙 Back to Blacklist", callback_data=f"banned_page_{page}")]
+        [InlineKeyboardButton("🔙 Kembali ke Blacklist", callback_data=f"banned_page_{page}")]
     ])
     await query.edit_message_text(text, reply_markup=keyboard)
 
@@ -3219,12 +3219,12 @@ async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAUL
 
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("❌ Cancel", callback_data=f"banned_manage_{uid}_{page}"),
-            InlineKeyboardButton("✅ Yes, Unban", callback_data=f"banned_unban_yes_{uid}_{page}")
+            InlineKeyboardButton("❌ Batal", callback_data=f"banned_manage_{uid}_{page}"),
+            InlineKeyboardButton("✅ Ya, Unban", callback_data=f"banned_unban_yes_{uid}_{page}")
         ]
     ])
     await query.edit_message_text(
-        "⚠️ Unban this user?\n\n"
+        "⚠️ Unban user ini?\n\n"
         f"👤 {info['full_name']}\n"
         f"🆔 {uid}",
         reply_markup=keyboard
