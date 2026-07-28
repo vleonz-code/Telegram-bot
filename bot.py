@@ -3103,7 +3103,7 @@ def build_blacklist_view(page: int = 1):
 
         keyboard_rows.append([
             InlineKeyboardButton(
-                f"🚫 Unban {info['full_name']}",
+                "🚫 Unban",
                 callback_data=f"banned_unban_ask_{uid}_{page}"
             )
         ])
