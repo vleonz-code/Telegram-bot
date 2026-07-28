@@ -3089,24 +3089,27 @@ def build_blacklist_view(page: int = 1):
     ]
 
     keyboard_rows = []
+    manage_buttons = []
 
     for i, (uid, info) in enumerate(page_items, start=start + 1):
-        uname = info["username"] if info["username"] and info["username"] != "-" else "-"
-        lines.append(
-            f"{i}\n"
-            f"👤 {info['full_name']}\n"
-            f"🔗 {uname}\n"
-            f"🆔 {uid}\n"
-            f"{BLACKLIST_DIVIDER}"
-        )
-        lines.append("")
+        if info["full_name"] and info["full_name"] != "-":
+            display_name = info["full_name"]
+        elif info["username"] and info["username"] != "-":
+            display_name = info["username"]
+        else:
+            display_name = str(uid)
 
-        keyboard_rows.append([
+        lines.append(f"{i}. 👤 {display_name}")
+
+        manage_buttons.append(
             InlineKeyboardButton(
-                f"⚙️ Kelola • {info['full_name']}",
+                f"⚙️ {display_name}",
                 callback_data=f"banned_manage_{uid}_{page}"
             )
-        ])
+        )
+
+    for j in range(0, len(manage_buttons), 2):
+        keyboard_rows.append(manage_buttons[j:j + 2])
 
     text = "\n".join(lines).rstrip()
 
