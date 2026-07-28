@@ -2033,7 +2033,7 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "Koleksi selengkapnya ada di grup VIP.\n\n"
+                    "Koleksi selengkapnya ada di grup VIP\n\n"
                     "Chat Admin: @BocilVIP89 👈"
                 ),
                 reply_markup=keyboard
