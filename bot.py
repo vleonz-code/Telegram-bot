@@ -3316,21 +3316,19 @@ def build_filemgr_list_view():
         if os.path.exists(path)
     ]
 
-    lines = ["🗂 File Manager", ""]
     keyboard_rows = []
 
     if not available:
-        lines.append("Tidak ada file yang ditemukan.")
+        text = "🗂 File Manager\n\nTidak ada file yang ditemukan."
     else:
+        text = "🗂 File Manager\n\nPilih file JSON untuk dikelola."
         for idx, icon, name in available:
-            lines.append(f"{icon} {name}")
             keyboard_rows.append([
                 InlineKeyboardButton(f"{icon} {name}", callback_data=f"filemgr_open_{idx}")
             ])
 
     keyboard_rows.append([InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")])
 
-    text = "\n".join(lines)
     keyboard = InlineKeyboardMarkup(keyboard_rows)
     return text, keyboard
 
@@ -3360,13 +3358,17 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}")],
-        [InlineKeyboardButton("📥 Backup", callback_data=f"filemgr_backup_{idx}")],
-        [InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}")],
-        [InlineKeyboardButton("📤 Restore", callback_data=f"filemgr_restore_ask_{idx}")],
+        [
+            InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}"),
+            InlineKeyboardButton("📥 Backup", callback_data=f"filemgr_backup_{idx}")
+        ],
+        [
+            InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}"),
+            InlineKeyboardButton("📤 Restore", callback_data=f"filemgr_restore_ask_{idx}")
+        ],
         [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
     ])
-    await query.edit_message_text(f"{icon} {name}", reply_markup=keyboard)
+    await query.edit_message_text(f"{icon} {name}\n\nPilih tindakan.", reply_markup=keyboard)
 
 async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
