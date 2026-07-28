@@ -3103,7 +3103,7 @@ def build_blacklist_view(page: int = 1):
 
         keyboard_rows.append([
             InlineKeyboardButton(
-                "⚙️ Manage",
+                f"⚙️ Manage • {info['full_name']}",
                 callback_data=f"banned_manage_{uid}_{page}"
             )
         ])
