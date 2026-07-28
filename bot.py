@@ -28,7 +28,7 @@ ORDER_HISTORY_EXCLUDED = {
     # Tambahkan User ID akun testing di bawah ini
     # Contoh:
     # 123456789
-    #7955763972 
+    #7955763972
 }
 COUNTER_FILE = os.path.join(DATA_DIR, "counter.json")
 BLACKLIST_FILE = os.path.join(DATA_DIR, "blacklist.json")
@@ -38,6 +38,7 @@ VIP_PACKAGES_FILE = os.path.join(DATA_DIR, "vip_packages.json")
 ORDER_HISTORY_FILE = os.path.join(DATA_DIR, "order_history.json")
 PENDING_ORDERS_FILE = os.path.join(DATA_DIR, "pending_orders.json")
 PAYMENT_LOCK_FILE = os.path.join(DATA_DIR, "payment_lock.json")
+FILE_MANAGER_BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 
 def migrate_to_volume(filename):
     src = os.path.join(APP_DIR, filename)
@@ -268,6 +269,8 @@ last_delivered_messages = {}
 preview_delete_tasks = {}
 admin_reply_waiting = {}
 blocked_notified = set()
+file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
+file_manager_restore_waiting = {}  # user_id -> FILE_MANAGER_FILES index
 
 FILE_IDS_A = [
     ("video", os.environ.get("FILE_ID_1", "")),
@@ -2876,6 +2879,16 @@ async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         return
 
+    if update.effective_user.id in file_manager_edit_waiting:
+
+        idx = file_manager_edit_waiting.pop(
+            update.effective_user.id
+        )
+
+        await file_manager_edit_receive(update, context, idx)
+
+        return
+
     await livechat_receive(update, context)
     
 async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3247,7 +3260,291 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
 
     text, keyboard = build_blacklist_view(page)
     await query.edit_message_text(text, reply_markup=keyboard)
-    
+
+async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    text, keyboard = build_blacklist_view(1)
+    await query.edit_message_text(text, reply_markup=keyboard)
+
+# ==================================================
+# FILE MANAGER
+# ==================================================
+# (icon, display filename, absolute path on the Railway Volume)
+FILE_MANAGER_FILES = [
+    ("📦", "vip_packages.json", VIP_PACKAGES_FILE),
+    ("⚙️", "settings.json", SETTINGS_FILE),
+    ("👥", "users.json", USERS_FILE),
+    ("✅", "approved.json", APPROVED_FILE),
+    ("🚫", "blacklist.json", BLACKLIST_FILE),
+    ("📊", "counter.json", COUNTER_FILE),
+    ("📜", "order_history.json", ORDER_HISTORY_FILE),
+    ("⏳", "pending_orders.json", PENDING_ORDERS_FILE),
+    ("🔒", "payment_lock.json", PAYMENT_LOCK_FILE),
+]
+
+def split_text_into_chunks(text: str, limit: int = 3500):
+    chunks = []
+    current = ""
+    for line in text.split("\n"):
+        candidate = f"{current}\n{line}" if current else line
+        if len(candidate) > limit:
+            if current:
+                chunks.append(current)
+            current = line
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    return chunks
+
+def create_file_manager_backup(name: str, path: str):
+    if not os.path.exists(path):
+        return None
+    os.makedirs(FILE_MANAGER_BACKUP_DIR, exist_ok=True)
+    timestamp = datetime.now(WIB).strftime("%Y%m%d_%H%M%S")
+    backup_path = os.path.join(FILE_MANAGER_BACKUP_DIR, f"{name}.{timestamp}.bak")
+    shutil.copy2(path, backup_path)
+    return backup_path
+
+def build_filemgr_list_view():
+    available = [
+        (idx, icon, name)
+        for idx, (icon, name, path) in enumerate(FILE_MANAGER_FILES)
+        if os.path.exists(path)
+    ]
+
+    lines = ["🗂 File Manager", ""]
+    keyboard_rows = []
+
+    if not available:
+        lines.append("Tidak ada file yang ditemukan.")
+    else:
+        for idx, icon, name in available:
+            lines.append(f"{icon} {name}")
+            keyboard_rows.append([
+                InlineKeyboardButton(f"{icon} {name}", callback_data=f"filemgr_open_{idx}")
+            ])
+
+    keyboard_rows.append([InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")])
+
+    text = "\n".join(lines)
+    keyboard = InlineKeyboardMarkup(keyboard_rows)
+    return text, keyboard
+
+async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    text, keyboard = build_filemgr_list_view()
+    await query.edit_message_text(text, reply_markup=keyboard)
+
+async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    idx = int(query.data.replace("filemgr_open_", ""))
+    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        text, keyboard = build_filemgr_list_view()
+        await query.edit_message_text(text, reply_markup=keyboard)
+        return
+
+    icon, name, path = FILE_MANAGER_FILES[idx]
+    if not os.path.exists(path):
+        text, keyboard = build_filemgr_list_view()
+        await query.edit_message_text(text, reply_markup=keyboard)
+        return
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}")],
+        [InlineKeyboardButton("📥 Backup", callback_data=f"filemgr_backup_{idx}")],
+        [InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}")],
+        [InlineKeyboardButton("📤 Restore", callback_data=f"filemgr_restore_ask_{idx}")],
+        [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
+    ])
+    await query.edit_message_text(f"{icon} {name}", reply_markup=keyboard)
+
+async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    idx = int(query.data.replace("filemgr_view_", ""))
+    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        return
+
+    icon, name, path = FILE_MANAGER_FILES[idx]
+    if not os.path.exists(path):
+        await query.message.reply_text(f"❌ {name} tidak ditemukan.")
+        return
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        pretty = json.dumps(data, indent=2, ensure_ascii=False)
+    except Exception:
+        await query.message.reply_text(f"❌ Gagal membaca {name}. File mungkin rusak.")
+        return
+
+    chunks = split_text_into_chunks(pretty)
+    total_chunks = len(chunks)
+    for i, chunk in enumerate(chunks, start=1):
+        prefix = f"👁 {name} ({i}/{total_chunks})\n\n" if total_chunks > 1 else f"👁 {name}\n\n"
+        await query.message.reply_text(f"{prefix}{chunk}")
+
+async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    idx = int(query.data.replace("filemgr_backup_", ""))
+    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        return
+
+    icon, name, path = FILE_MANAGER_FILES[idx]
+    if not os.path.exists(path):
+        await query.message.reply_text(f"❌ {name} tidak ditemukan.")
+        return
+
+    with open(path, "rb") as f:
+        await query.message.reply_document(document=f, filename=name, caption=f"📥 Backup {name}")
+
+async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    idx = int(query.data.replace("filemgr_edit_ask_", ""))
+    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        return
+
+    icon, name, path = FILE_MANAGER_FILES[idx]
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("❌ Batal", callback_data=f"filemgr_open_{idx}"),
+            InlineKeyboardButton("✅ Ya, Edit", callback_data=f"filemgr_edit_confirm_{idx}")
+        ]
+    ])
+    await query.edit_message_text(
+        f"⚠️ Edit {name}?\n\n"
+        "Setelah dikonfirmasi, kirim teks JSON baru untuk menggantikan isi file ini.",
+        reply_markup=keyboard
+    )
+
+async def filemgr_edit_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    idx = int(query.data.replace("filemgr_edit_confirm_", ""))
+    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        return
+
+    icon, name, path = FILE_MANAGER_FILES[idx]
+    file_manager_edit_waiting[query.from_user.id] = idx
+
+    await query.edit_message_text(
+        f"✏️ Edit {name}\n\n"
+        "Silakan kirim teks JSON baru untuk file ini."
+    )
+
+async def file_manager_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE, idx: int):
+    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        return
+
+    icon, name, path = FILE_MANAGER_FILES[idx]
+
+    try:
+        data = json.loads(update.message.text)
+    except Exception:
+        await update.message.reply_text(f"❌ JSON tidak valid. {name} tidak diubah.")
+        return
+
+    create_file_manager_backup(name, path)
+
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    await update.message.reply_text(
+        f"✅ {name} berhasil diperbarui.\n"
+        "📥 Backup otomatis telah dibuat sebelum perubahan."
+    )
+
+async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    idx = int(query.data.replace("filemgr_restore_ask_", ""))
+    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        return
+
+    icon, name, path = FILE_MANAGER_FILES[idx]
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("❌ Batal", callback_data=f"filemgr_open_{idx}"),
+            InlineKeyboardButton("✅ Ya, Restore", callback_data=f"filemgr_restore_confirm_{idx}")
+        ]
+    ])
+    await query.edit_message_text(
+        f"⚠️ Restore {name}?\n\n"
+        "Setelah dikonfirmasi, upload file .json baru untuk menggantikan file ini.",
+        reply_markup=keyboard
+    )
+
+async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    idx = int(query.data.replace("filemgr_restore_confirm_", ""))
+    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        return
+
+    icon, name, path = FILE_MANAGER_FILES[idx]
+    file_manager_restore_waiting[query.from_user.id] = idx
+
+    await query.edit_message_text(
+        f"📤 Restore {name}\n\n"
+        "Silakan upload file .json baru untuk menggantikan file ini."
+    )
+
+async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    idx = file_manager_restore_waiting.pop(user_id)
+    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        return
+
+    icon, name, path = FILE_MANAGER_FILES[idx]
+
+    document = update.message.document
+    if not document or not document.file_name.lower().endswith(".json"):
+        await update.message.reply_text(f"❌ File harus berformat .json. {name} tidak diubah.")
+        return
+
+    tg_file = await document.get_file()
+    raw_bytes = await tg_file.download_as_bytearray()
+
+    try:
+        data = json.loads(bytes(raw_bytes).decode("utf-8"))
+    except Exception:
+        await update.message.reply_text(f"❌ JSON tidak valid. {name} tidak diubah.")
+        return
+
+    create_file_manager_backup(name, path)
+
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    await update.message.reply_text(
+        f"✅ {name} berhasil di-restore.\n"
+        "📥 Backup otomatis telah dibuat sebelum perubahan."
+    )
+
 def build_adminvip_keyboard():
     keyboard = []
     
@@ -3277,6 +3574,17 @@ def build_adminvip_keyboard():
         InlineKeyboardButton(
             "⚙️ Pengaturan",
             callback_data="adminvip_settings"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🚫 Blacklist",
+            callback_data="adminvip_blacklist"
+        ),
+        InlineKeyboardButton(
+            "🗂 File Manager",
+            callback_data="filemgr_list"
         )
     ])
 
@@ -3472,6 +3780,12 @@ async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in admin_qris_waiting:
 
         await admin_qris_receive(update, context)
+
+        return
+
+    if user_id in file_manager_restore_waiting:
+
+        await file_manager_restore_receive(update, context)
 
         return
 
@@ -4025,6 +4339,60 @@ def main():
         CallbackQueryHandler(
             banned_manage_callback,
             pattern=r"^banned_manage_\d+_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            adminvip_blacklist_callback,
+            pattern=r"^adminvip_blacklist$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            filemgr_list_callback,
+            pattern=r"^filemgr_list$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            filemgr_open_callback,
+            pattern=r"^filemgr_open_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            filemgr_view_callback,
+            pattern=r"^filemgr_view_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            filemgr_backup_callback,
+            pattern=r"^filemgr_backup_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            filemgr_edit_confirm_callback,
+            pattern=r"^filemgr_edit_confirm_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            filemgr_edit_ask_callback,
+            pattern=r"^filemgr_edit_ask_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            filemgr_restore_confirm_callback,
+            pattern=r"^filemgr_restore_confirm_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            filemgr_restore_ask_callback,
+            pattern=r"^filemgr_restore_ask_\d+$"
         )
     )
     app.add_handler(
