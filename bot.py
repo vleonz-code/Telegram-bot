@@ -3593,19 +3593,19 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            "⚙️ Pengaturan",
-            callback_data="adminvip_settings"
+            "🗂 File Manager",
+            callback_data="filemgr_list"
+        ),
+        InlineKeyboardButton(
+            "🚫 Blacklist",
+            callback_data="adminvip_blacklist"
         )
     ])
 
     keyboard.append([
         InlineKeyboardButton(
-            "🚫 Blacklist",
-            callback_data="adminvip_blacklist"
-        ),
-        InlineKeyboardButton(
-            "🗂 File Manager",
-            callback_data="filemgr_list"
+            "⚙️ Pengaturan",
+            callback_data="adminvip_settings"
         )
     ])
 
