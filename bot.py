@@ -3103,8 +3103,8 @@ def build_blacklist_view(page: int = 1):
 
         keyboard_rows.append([
             InlineKeyboardButton(
-                "🚫 Unban",
-                callback_data=f"banned_unban_ask_{uid}_{page}"
+                "⚙️ Manage",
+                callback_data=f"banned_manage_{uid}_{page}"
             )
         ])
 
@@ -3168,6 +3168,38 @@ async def banned_reset_yes_callback(update: Update, context: ContextTypes.DEFAUL
     text, keyboard = build_blacklist_view(1)
     await query.edit_message_text(text, reply_markup=keyboard)
 
+async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    if query.from_user.id != ADMIN_ID:
+        return
+    data = query.data.replace("banned_manage_", "")
+    uid_str, page_str = data.rsplit("_", 1)
+    uid = int(uid_str)
+    page = int(page_str)
+
+    bl = read_blacklist()
+    info = bl.get(uid)
+    if not info:
+        text, keyboard = build_blacklist_view(page)
+        await query.edit_message_text(text, reply_markup=keyboard)
+        return
+
+    uname = info["username"] if info["username"] and info["username"] != "-" else "-"
+    text = (
+        f"{BLACKLIST_DIVIDER}\n\n"
+        f"👤 {info['full_name']}\n"
+        f"🔗 {uname}\n"
+        f"🆔 {uid}\n\n"
+        f"{BLACKLIST_DIVIDER}\n\n"
+        "Choose an action."
+    )
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🚫 Unban", callback_data=f"banned_unban_ask_{uid}_{page}")],
+        [InlineKeyboardButton("🔙 Back to Blacklist", callback_data=f"banned_page_{page}")]
+    ])
+    await query.edit_message_text(text, reply_markup=keyboard)
+
 async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3187,7 +3219,7 @@ async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAUL
 
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("❌ Cancel", callback_data=f"banned_page_{page}"),
+            InlineKeyboardButton("❌ Cancel", callback_data=f"banned_manage_{uid}_{page}"),
             InlineKeyboardButton("✅ Yes, Unban", callback_data=f"banned_unban_yes_{uid}_{page}")
         ]
     ])
@@ -3987,6 +4019,12 @@ def main():
         CallbackQueryHandler(
             banned_unban_ask_callback,
             pattern=r"^banned_unban_ask_\d+_\d+$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            banned_manage_callback,
+            pattern=r"^banned_manage_\d+_\d+$"
         )
     )
     app.add_handler(
