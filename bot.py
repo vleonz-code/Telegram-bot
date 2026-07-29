@@ -49,6 +49,8 @@ def migrate_to_volume(filename):
         shutil.copy2(src, dst)
         logger.info(f"{filename} berhasil disalin ke Volume.")
         
+# In-memory cache for vip_packages.json (deep-copied on read/write since
+# callers mutate individual package dicts in place before saving).
 _vip_packages_cache = None
 
 def read_vip_packages():
@@ -88,16 +90,6 @@ def read_pending_orders():
 
     with open(PENDING_ORDERS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
-
-def get_pending_order(user_id):
-    pending = read_pending_orders()
-    for order in pending["orders"]:
-        if order["user_id"] == user_id:
-            return order
-    return None
-
-def is_payment_locked(user_id):
-    return get_pending_order(user_id) is not None
 
 def save_pending_orders(data):
     with open(PENDING_ORDERS_FILE, "w", encoding="utf-8") as f:
@@ -157,6 +149,7 @@ def get_locked_package_id(user_id):
 
 SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 
+# In-memory cache for settings.json — read once, refreshed on every save.
 _settings_cache = None
 
 def read_settings():
@@ -423,6 +416,7 @@ async def deliver_album(bot, chat_id: int, file_ids):
 # Approved users 
 # ---------------------------------------------------------------------------
 
+# In-memory cache for approved.json — read once, refreshed on every save.
 _approved_cache = None
 
 def read_approved() -> set:
@@ -533,6 +527,7 @@ def get_package(package_id: int):
 # User registry
 # ---------------------------------------------------------------------------
 
+# In-memory cache for users.json — read once, refreshed on every save.
 _users_cache = None
 
 def read_user_registry() -> dict:
@@ -2313,76 +2308,6 @@ async def preview_set_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         context
     )
     
-async def preview_reopen_timer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "5 Detik",
-                callback_data="preview_reopen_set_5"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "10 Detik",
-                callback_data="preview_reopen_set_10"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "15 Detik",
-                callback_data="preview_reopen_set_15"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "30 Detik",
-                callback_data="preview_reopen_set_30"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "60 Detik",
-                callback_data="preview_reopen_set_60"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 Kembali",
-                callback_data="adminvip_settings"
-            )
-        ]
-    ])
-
-    await query.edit_message_text(
-        "⏱ Open Ulang",
-        reply_markup=keyboard
-    )
-    
-async def preview_reopen_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    seconds = int(
-        query.data.replace(
-            "preview_reopen_set_",
-            ""
-        )
-    )
-
-    settings = read_settings()
-
-    settings["preview_reopen_delay"] = seconds
-
-    save_settings(settings)
-
-    await adminvip_settings_callback(
-        update,
-        context
-    )
-    
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3511,6 +3436,8 @@ async def filemgr_edit_confirm_callback(update: Update, context: ContextTypes.DE
     )
 
 def invalidate_file_manager_cache(name: str):
+    # File Manager writes bypass read_*/save_* helpers, so drop the matching
+    # cache here; the next read_*() call will reload it fresh from disk.
     global _settings_cache, _vip_packages_cache, _users_cache, _approved_cache, _blacklist_cache
     if name == "settings.json":
         _settings_cache = None
@@ -4372,8 +4299,6 @@ def main():
     app.add_handler(CommandHandler("ban",        ban))
     app.add_handler(CommandHandler("unban",      unban))
     app.add_handler(CommandHandler("banned",     banned))
-    app.add_handler(CommandHandler("getid",      getid_start))
-    app.add_handler(CommandHandler("cancel",     getid_cancel))
     # High-frequency customer callbacks registered first so they are matched
     # with the fewest possible regex checks (order impacts routing latency).
     app.add_handler(
