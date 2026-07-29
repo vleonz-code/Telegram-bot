@@ -773,6 +773,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "🚫 Ban",
                         callback_data=f"ban|{user_id}"
                     ),
+                ],
+                [
+                    InlineKeyboardButton(
+                        "❌ Abaikan",
+                        callback_data=f"ignore|{user_id}"
+                    ),
                 ]
             ])
         )
@@ -2139,14 +2145,16 @@ async def delete_messages_after_delay(
 
         await asyncio.sleep(delay)
 
-        for message_id in message_ids:
-            try:
-                await bot.delete_message(
+        await asyncio.gather(
+            *[
+                bot.delete_message(
                     chat_id=chat_id,
                     message_id=message_id
                 )
-            except Exception:
-                pass
+                for message_id in message_ids
+            ],
+            return_exceptions=True
+        )
 
         try:
             await clear_last_repeat(
