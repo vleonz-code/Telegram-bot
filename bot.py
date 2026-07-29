@@ -288,6 +288,18 @@ blocked_notified = set()
 file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
 file_manager_restore_waiting = {}  # user_id -> FILE_MANAGER_FILES index
 
+# --- Anti Deeplink Spam ---
+# RAM-only, independent of admin_request_counts (which has no time window
+# and is only cleared manually by admin via Reset/Abaikan). Tracks recent
+# repeat-tap timestamps per user to detect rapid-fire deep link abuse from
+# already-approved users. Threshold: 6 taps within 10 seconds — a human
+# retapping a slow-loading deep link rarely exceeds a couple of taps in
+# that window, while sustained sub-2-second intervals across 6 taps is
+# well beyond normal impatient tapping and indicates scripted spam.
+DEEPLINK_SPAM_WINDOW_SECONDS = 10
+DEEPLINK_SPAM_THRESHOLD = 6
+deeplink_spam_tracker = {}  # user_id -> list of recent tap timestamps
+
 FILE_IDS_A = [
     ("video", os.environ.get("FILE_ID_1", "")),
     ("video", os.environ.get("FILE_ID_2", "")),
@@ -691,6 +703,45 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             admin_request_counts[user_id] = 1
         else:
             admin_request_counts[user_id] += 1
+
+        # --- Anti Deeplink Spam detection ---
+        now_ts = time.monotonic()
+        recent_taps = deeplink_spam_tracker.get(user_id, [])
+        recent_taps = [
+            t for t in recent_taps
+            if now_ts - t <= DEEPLINK_SPAM_WINDOW_SECONDS
+        ]
+        recent_taps.append(now_ts)
+
+        if len(recent_taps) >= DEEPLINK_SPAM_THRESHOLD:
+            deeplink_spam_tracker.pop(user_id, None)
+            admin_request_counts.pop(user_id, None)
+            admin_request_messages.pop(user_id, None)
+            pending_requests.pop(user_id, None)
+
+            bl = read_blacklist()
+            bl[user_id] = {"full_name": full_name, "username": username}
+            write_blacklist(bl)
+
+            approved = read_approved()
+            if user_id in approved:
+                approved.discard(user_id)
+                save_approved(approved)
+
+            await context.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=(
+                    "⚠️ Percobaan Deeplink Ulang\n\n"
+                    f"👤 {full_name}\n"
+                    f"🔄 <b>Percobaan: {DEEPLINK_SPAM_THRESHOLD}x</b>\n\n"
+                    "🚫 Status: Auto Banned (Spam)"
+                ),
+                parse_mode="HTML",
+            )
+
+            return
+
+        deeplink_spam_tracker[user_id] = recent_taps
 
         old_message_id = admin_request_messages.get(user_id)
 
