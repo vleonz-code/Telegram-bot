@@ -771,13 +771,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ),
                     InlineKeyboardButton(
                         "🚫 Ban",
-                        callback_data=f"banrepeat|{user_id}"
-                    ),
-                ],
-                [
-                    InlineKeyboardButton(
-                        "❌ Abaikan",
-                        callback_data=f"ignore|{user_id}"
+                        callback_data=f"ban|{user_id}"
                     ),
                 ]
             ])
@@ -1000,31 +994,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
         
-    elif action == "banrepeat":
-
-        registry = read_user_registry()
-
-        if user_id in registry:
-            full_name = registry[user_id]["full_name"]
-            username = registry[user_id]["username"]
-        else:
-            full_name = "-"
-            username = "-"
-
-        bl = read_blacklist()
-
-        bl[user_id] = {
-            "full_name": full_name,
-            "username": username
-        }
-
-        write_blacklist(bl)
-
-        approved = read_approved()
-
-        approved.discard(user_id)
-
-        save_approved(approved)
+    elif action == "ignore":
 
         admin_request_messages.pop(
             user_id,
@@ -1036,13 +1006,34 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             None
         )
 
-        blocked_notified.discard(user_id)
-
         await query.message.delete()
 
         return
-        
-    elif action == "ignore":
+
+    elif action == "ban":
+
+        registry = read_user_registry()
+        if user_id in registry:
+            full_name = registry[user_id]["full_name"]
+            username  = registry[user_id]["username"]
+        else:
+            full_name = "-"
+            username  = "-"
+            try:
+                chat = await context.bot.get_chat(user_id)
+                full_name = chat.full_name or "-"
+                username  = f"@{chat.username}" if chat.username else "-"
+            except Exception:
+                pass
+
+        bl = read_blacklist()
+        bl[user_id] = {"full_name": full_name, "username": username}
+        write_blacklist(bl)
+
+        approved = read_approved()
+        if user_id in approved:
+            approved.discard(user_id)
+            save_approved(approved)
 
         admin_request_messages.pop(
             user_id,
@@ -4441,9 +4432,9 @@ def main():
     )
     app.add_handler(
         CallbackQueryHandler(
-             approval_callback,
-             pattern=r"^(izin|tolak|reset|ignore|banrepeat)\|"
-         )
+            approval_callback,
+            pattern=r"^(izin|tolak|reset|ignore|ban)\|"
+        )
     )
     app.add_handler(
         CallbackQueryHandler(
