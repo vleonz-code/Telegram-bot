@@ -6,7 +6,7 @@ import asyncio
 import time
 import copy
 from datetime import datetime, timezone, timedelta
-from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 logging.basicConfig(
@@ -4325,6 +4325,15 @@ async def channel_auto_post_loop(app):
 
         await asyncio.sleep(30)
     
+async def set_admin_commands(app):
+    await app.bot.set_my_commands(
+        [
+            BotCommand("adminvip", "Buka Admin VIP Panel"),
+            BotCommand("banned", "Kelola Blacklist"),
+        ],
+        scope=BotCommandScopeChat(chat_id=ADMIN_ID),
+    )
+
 def main():
     token = os.environ.get("BOT_TOKEN")
     if not token:
@@ -4334,6 +4343,7 @@ def main():
     app = ApplicationBuilder().token(token).build()
 
     async def start_background(app):
+        await set_admin_commands(app)
         asyncio.create_task(channel_auto_post_loop(app))
 
     app.post_init = start_background
