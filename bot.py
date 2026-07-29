@@ -773,6 +773,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "🚫 Ban",
                         callback_data=f"ban|{user_id}"
                     ),
+                ],
+                [
+                    InlineKeyboardButton(
+                        "❌ Abaikan",
+                        callback_data=f"ignore|{user_id}"
+                    ),
                 ]
             ])
         )
