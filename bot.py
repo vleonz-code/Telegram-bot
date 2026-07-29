@@ -766,9 +766,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🔄 Reset Akses",
+                        "♻️ Izinkan Lagi",
                         callback_data=f"reset|{user_id}"
                     ),
+                    InlineKeyboardButton(
+                        "🚫 Ban",
+                        callback_data=f"banrepeat|{user_id}"
+                    ),
+                ],
+                [
                     InlineKeyboardButton(
                         "❌ Abaikan",
                         callback_data=f"ignore|{user_id}"
@@ -989,6 +995,48 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id,
             None
         )
+
+        await query.message.delete()
+
+        return
+        
+    elif action == "banrepeat":
+
+        registry = read_user_registry()
+
+        if user_id in registry:
+            full_name = registry[user_id]["full_name"]
+            username = registry[user_id]["username"]
+        else:
+            full_name = "-"
+            username = "-"
+
+        bl = read_blacklist()
+
+        bl[user_id] = {
+            "full_name": full_name,
+            "username": username
+        }
+
+        write_blacklist(bl)
+
+        approved = read_approved()
+
+        approved.discard(user_id)
+
+        save_approved(approved)
+
+        admin_request_messages.pop(
+            user_id,
+            None
+        )
+
+        admin_request_counts.pop(
+            user_id,
+            None
+        )
+
+        blocked_notified.discard(user_id)
 
         await query.message.delete()
 
@@ -4393,9 +4441,9 @@ def main():
     )
     app.add_handler(
         CallbackQueryHandler(
-            approval_callback,
-            pattern=r"^(izin|tolak|reset|ignore)\|"
-        )
+             approval_callback,
+             pattern=r"^(izin|tolak|reset|ignore|banrepeat)\|"
+         )
     )
     app.add_handler(
         CallbackQueryHandler(
