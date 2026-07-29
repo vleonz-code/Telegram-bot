@@ -260,6 +260,7 @@ WIB = timezone(timedelta(hours=7))
 # In-memory store for requests awaiting admin decision.
 # { user_id: {"chat_id": int, "waiting_msg_id": int, "full_name": str, "username": str} }
 pending_requests: dict = {}
+admin_request_order: list = []
 
 # In-memory set of admin user_ids waiting to send a media for /getid
 getid_waiting: set = set()
@@ -1178,7 +1179,7 @@ async def send_qris_message(chat_id, context, package, package_id):
             and data["package_id"] == package_id
         ):
             upload_waiting[order_id]["qris_msg_id"] = msg.message_id
-        break
+            break
         
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1281,8 +1282,6 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
     )
-
-    upload_waiting[order_id]["upload_msg_id"] = msg.message_id
     
 async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3750,8 +3749,8 @@ async def do_reset_stats(chat_id: int, bot):
             )
         except Exception:
             pass
-            
-        msg = await bot.send_message(
+
+    msg = await bot.send_message(
         chat_id=chat_id,
         text="✅ Statistik berhasil direset!"
     )
