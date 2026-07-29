@@ -4,6 +4,7 @@ import logging
 import shutil
 import asyncio
 import time
+import copy
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -48,13 +49,22 @@ def migrate_to_volume(filename):
         shutil.copy2(src, dst)
         logger.info(f"{filename} berhasil disalin ke Volume.")
         
+_vip_packages_cache = None
+
 def read_vip_packages():
+    global _vip_packages_cache
+    if _vip_packages_cache is not None:
+        return copy.deepcopy(_vip_packages_cache)
     with open(VIP_PACKAGES_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
-        
+        data = json.load(f)
+    _vip_packages_cache = copy.deepcopy(data)
+    return copy.deepcopy(_vip_packages_cache)
+
 def save_vip_packages(data):
+    global _vip_packages_cache
     with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    _vip_packages_cache = copy.deepcopy(data)
 
 def read_order_history():
     if not os.path.exists(ORDER_HISTORY_FILE):
@@ -147,7 +157,14 @@ def get_locked_package_id(user_id):
 
 SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 
+_settings_cache = None
+
 def read_settings():
+
+    global _settings_cache
+
+    if _settings_cache is not None:
+        return dict(_settings_cache)
 
     if not os.path.exists(SETTINGS_FILE):
 
@@ -221,9 +238,13 @@ def read_settings():
         data["channel_last_post"] = 0
         save_settings(data)
         
+    _settings_cache = dict(data)
+
     return data
 
 def save_settings(data):
+
+    global _settings_cache
 
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
 
@@ -238,6 +259,8 @@ def save_settings(data):
             indent=2
 
         )
+
+    _settings_cache = dict(data)
     
 WIB = timezone(timedelta(hours=7))
 
@@ -349,8 +372,6 @@ async def deliver_album(bot, chat_id: int, file_ids):
             parse_mode="HTML"
         )
 
-        settings = read_settings()
-
         delivered.append(
             success_msg.message_id
         )
@@ -402,16 +423,24 @@ async def deliver_album(bot, chat_id: int, file_ids):
 # Approved users 
 # ---------------------------------------------------------------------------
 
+_approved_cache = None
+
 def read_approved() -> set:
+    global _approved_cache
+    if _approved_cache is not None:
+        return set(_approved_cache)
     try:
         if not os.path.exists(APPROVED_FILE):
-            return set()
+            _approved_cache = set()
+            return set(_approved_cache)
         with open(APPROVED_FILE, "r") as f:
-            return set(json.load(f).get("approved", []))
+            _approved_cache = set(json.load(f).get("approved", []))
+        return set(_approved_cache)
     except Exception:
         return set()
 
 def save_approved(approved: set):
+    global _approved_cache
     try:
         with open(APPROVED_FILE, "w", encoding="utf-8") as f:
             json.dump(
@@ -420,6 +449,8 @@ def save_approved(approved: set):
                 ensure_ascii=False,
                 indent=2
             )
+
+        _approved_cache = set(approved)
 
     except Exception as e:
         logger.error(f"Approved write error: {e}")
@@ -489,9 +520,7 @@ def write_blacklist(bl: dict):
         
 def get_package(package_id: int):
 
-    with open(VIP_PACKAGES_FILE, "r", encoding="utf-8") as f:
-
-        data = json.load(f)
+    data = read_vip_packages()
 
     for pkg in data["packages"]:
 
@@ -504,18 +533,27 @@ def get_package(package_id: int):
 # User registry
 # ---------------------------------------------------------------------------
 
+_users_cache = None
+
 def read_user_registry() -> dict:
+    global _users_cache
+    if _users_cache is not None:
+        return dict(_users_cache)
     try:
         if not os.path.exists(USERS_FILE):
-            return {}
+            _users_cache = {}
+            return dict(_users_cache)
         with open(USERS_FILE, "r") as f:
             data = json.load(f)
-        return {int(k): v for k, v in data.items()}
+        _users_cache = {int(k): v for k, v in data.items()}
+        return dict(_users_cache)
     except Exception as e:
         logger.error(f"User registry read error: {e}")
         return {}
 
 def save_user_to_registry(user_id: int, full_name: str, username: str):
+
+    global _users_cache
 
     registry = read_user_registry()
 
@@ -542,6 +580,8 @@ def save_user_to_registry(user_id: int, full_name: str, username: str):
                 indent=2
 
             )
+
+        _users_cache = dict(registry)
 
     except Exception as e:
 
@@ -647,9 +687,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await notify_admin(context.bot, full_name, username, user_id)
         return
         
-    settings = read_settings()
-    
-    # Already approved
     settings = read_settings()
 
     # Already approved
@@ -3473,6 +3510,19 @@ async def filemgr_edit_confirm_callback(update: Update, context: ContextTypes.DE
         "Silakan kirim teks JSON baru untuk file ini."
     )
 
+def invalidate_file_manager_cache(name: str):
+    global _settings_cache, _vip_packages_cache, _users_cache, _approved_cache, _blacklist_cache
+    if name == "settings.json":
+        _settings_cache = None
+    elif name == "vip_packages.json":
+        _vip_packages_cache = None
+    elif name == "users.json":
+        _users_cache = None
+    elif name == "approved.json":
+        _approved_cache = None
+    elif name == "blacklist.json":
+        _blacklist_cache = None
+
 async def file_manager_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE, idx: int):
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
         return
@@ -3489,6 +3539,8 @@ async def file_manager_edit_receive(update: Update, context: ContextTypes.DEFAUL
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+
+    invalidate_file_manager_cache(name)
 
     await update.message.reply_text(
         f"✅ {name} berhasil diperbarui.\n"
@@ -3560,6 +3612,8 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+
+    invalidate_file_manager_cache(name)
 
     await update.message.reply_text(
         f"✅ {name} berhasil di-restore.\n"
