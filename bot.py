@@ -4390,10 +4390,19 @@ def main():
 
     async def start_background(app):
         await set_admin_commands(app)
-        asyncio.create_task(channel_auto_post_loop(app))
+        app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
+
+    async def stop_background(app):
+        task = app.bot_data.get("channel_task")
+        if task:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
     app.post_init = start_background
-
+    app.post_shutdown = stop_background
     
     app.add_handler(CommandHandler("getid", getid_start))
     app.add_handler(CommandHandler("cancel", getid_cancel))
