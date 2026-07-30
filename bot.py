@@ -3732,13 +3732,13 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
-        "─────────────────────\n"
+        
         f"👥 Users       : {len(read_user_registry())}\n"
         f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
-        f"📢 Auto Post  : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
+        f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
-        "─────────────────────"
+        
         "</pre>",
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
