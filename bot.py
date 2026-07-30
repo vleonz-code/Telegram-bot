@@ -4334,8 +4334,8 @@ def restore_pending_orders():
 # ---------------------------------------------------------------------------
 
 async def channel_auto_post_loop(app):
-    while True:
-        try:
+    try:
+        while True:
             settings = read_settings()
 
             if (
@@ -4366,10 +4366,13 @@ async def channel_auto_post_loop(app):
 
                     save_settings(settings)
 
-        except Exception as e:
-            logger.error(f"Channel Auto Post Error: {e}")
+            await asyncio.sleep(30)
 
-        await asyncio.sleep(30)
+    except asyncio.CancelledError:
+        raise
+
+    except Exception as e:
+        logger.error(f"Channel Auto Post Error: {e}")
     
 async def set_admin_commands(app):
     await app.bot.set_my_commands(
