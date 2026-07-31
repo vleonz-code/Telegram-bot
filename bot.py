@@ -4249,20 +4249,25 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     settings = read_settings()
 
-    await update.message.reply_text(
+    admin_panel_text = (
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
-        
+
         f"👥 Users       : {len(read_user_registry())}\n"
         f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
-        
-        "</pre>",
+
+        "</pre>"
+    )
+
+    await update.message.reply_photo(
+        photo=os.environ["ADMIN_BANNER_FILE_ID"],
+        caption=admin_panel_text,
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
-    ) 
+    )
 
 async def send_stats(chat_id: int, bot):
     count = read_counter()
