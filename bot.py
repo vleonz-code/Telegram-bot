@@ -4444,7 +4444,6 @@ def main():
         raise ValueError("BOT_TOKEN environment variable is not set.")
 
     restore_pending_orders()
-    migrate_preview_from_env()
     
     app = ApplicationBuilder().token(token).build()
 
