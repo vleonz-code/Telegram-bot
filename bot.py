@@ -337,10 +337,6 @@ deeplink_spam_tracker = {}  # user_id -> list of recent tap timestamps
 
 FILE_IDS_A = load_preview_media()
 
-FILE_IDS_B = [
-    ("video", os.environ.get("FILE_ID_7", "")),
-]
-
 # ---------------------------------------------------------------------------
 # Media helpers
 # ---------------------------------------------------------------------------
@@ -686,14 +682,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     payload = context.args[0]
 
-    if payload == DEEP_LINK_A:
-        selected_files = FILE_IDS_A
-
-    elif payload == DEEP_LINK_B:
-        selected_files = FILE_IDS_B
-
-    else:
+    if payload != DEEP_LINK_A:
         return
+
+    selected_files = FILE_IDS_A
 
     user = update.effective_user
     user_id = user.id
