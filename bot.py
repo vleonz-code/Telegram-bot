@@ -984,11 +984,8 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.delete_message(chat_id, pending["waiting_msg_id"])
             except Exception:
                 pass
-            # Tentukan album berdasarkan payload
-            if pending["payload"] == DEEP_LINK_A:
-                selected_files = FILE_IDS_A
-            else:
-                selected_files = FILE_IDS_B
+         
+            selected_files = FILE_IDS_A
 
             # Deliver album
             ok = await deliver_album(
