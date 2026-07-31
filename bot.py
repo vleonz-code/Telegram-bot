@@ -2504,14 +2504,14 @@ def build_preview_nav_keyboard(idx: int, total: int):
         ],
         [
             InlineKeyboardButton(
-                "➕ Tambah Preview",
+                "➕ Tambah",
                 callback_data="adminvip_prv_add"
             )
         ],
         [
             InlineKeyboardButton(
-                "⬅️ Kembali",
-                callback_data="adminvip_settings"
+                "🔙 Kembali",
+                callback_data="adminvip_prv_back"
             )
         ]
     ])
@@ -2521,14 +2521,14 @@ def build_preview_empty_keyboard():
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "➕ Tambah Preview",
+                "➕ Tambah",
                 callback_data="adminvip_prv_add"
             )
         ],
         [
             InlineKeyboardButton(
-                "⬅️ Kembali",
-                callback_data="adminvip_settings"
+                "🔙 Kembali",
+                callback_data="adminvip_prv_back"
             )
         ]
     ])
