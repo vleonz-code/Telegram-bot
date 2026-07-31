@@ -2074,10 +2074,16 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         ]
     ])
 
-    await query.edit_message_text(
-        "⚙️ Pengaturan",
+    await query.message.reply_photo(
+        photo=os.environ["SETTINGS_BANNER_FILE_ID"],
+        caption="⚙️ Pengaturan",
         reply_markup=keyboard
     )
+
+    try:
+        await query.delete_message()
+    except Exception:
+        pass
     
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
