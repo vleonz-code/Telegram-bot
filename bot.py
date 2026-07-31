@@ -2826,7 +2826,69 @@ async def adminvip_prv_delyes_callback(update: Update, context: ContextTypes.DEF
     )
 
 async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    pass
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+
+    if settings["preview_delete_delay"] < 60:
+        preview_time = (
+            f"{settings['preview_delete_delay']} Detik"
+        )
+    else:
+        preview_time = (
+            f"{settings['preview_delete_delay'] // 60} Menit"
+        )
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                f"{'🟢' if settings['join_vip_enabled'] else '🔴'} Order {'ON' if settings['join_vip_enabled'] else 'OFF'}",
+                callback_data="adminvip_toggle_join"
+            ),
+            InlineKeyboardButton(
+                f"{'🟢' if settings['preview_approval_enabled'] else '🔴'} Preview {'ON' if settings['preview_approval_enabled'] else 'OFF'}",
+                callback_data="adminvip_toggle_preview"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"{'🟢' if settings['live_chat_enabled'] else '🔴'} Chat {'ON' if settings['live_chat_enabled'] else 'OFF'}",
+                callback_data="adminvip_toggle_livechat"
+            ),
+            InlineKeyboardButton(
+                f"{'🟢' if settings['preview_auto_delete'] else '🔴'} Delete {'ON' if settings['preview_auto_delete'] else 'OFF'}",
+                callback_data="preview_toggle"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                f"⏱️ {preview_time}",
+                callback_data="preview_timer"
+            ),
+            InlineKeyboardButton(
+                "🖼 Kelola Preview",
+                callback_data="adminvip_prv_list"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_back"
+            )
+        ]
+    ])
+
+    sent = await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text="⚙️ Pengaturan",
+        reply_markup=keyboard
+    )
+
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
 
 async def preview_media_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global FILE_IDS_A
