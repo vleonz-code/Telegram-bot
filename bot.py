@@ -276,6 +276,19 @@ def save_preview(data):
     with open("/data/preview.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
     
+def load_preview_media():
+    data = load_preview()
+    media = []
+
+    for item in data.get("preview", []):
+        media_type = item.get("type", "").lower()
+        file_id = item.get("file_id", "").strip()
+
+        if media_type in ("photo", "video") and file_id:
+            media.append((media_type, file_id))
+
+    return media
+    
 WIB = timezone(timedelta(hours=7))
 
 # In-memory store for requests awaiting admin decision.
