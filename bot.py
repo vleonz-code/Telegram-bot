@@ -255,6 +255,27 @@ def save_settings(data):
 
     _settings_cache = dict(data)
     
+def load_preview():
+    try:
+        with open("/data/preview.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if not isinstance(data, dict):
+            return {"preview": []}
+
+        if "preview" not in data or not isinstance(data["preview"], list):
+            return {"preview": []}
+
+        return data
+
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"preview": []}
+
+
+def save_preview(data):
+    with open("/data/preview.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+    
 WIB = timezone(timedelta(hours=7))
 
 # In-memory store for requests awaiting admin decision.
