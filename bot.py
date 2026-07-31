@@ -2656,16 +2656,18 @@ async def adminvip_prv_list_callback(update: Update, context: ContextTypes.DEFAU
     preview_edit_waiting.pop(query.from_user.id, None)
     preview_add_waiting.pop(query.from_user.id, None)
 
-    # Pesan sebelumnya (menu Pengaturan) berupa teks, sedangkan katalog
-    # Preview butuh pesan media. Hapus pesan lama, kirim katalog sebagai
-    # pesan baru — navigasi selanjutnya memakai edit_message_media agar
-    # tidak menumpuk lagi.
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
-
-    await send_preview_page(context, query.message.chat.id, 0)
+    # Pesan menu Pengaturan berupa teks, jadi edit_message_media akan
+    # ditolak Telegram (tidak bisa mengubah pesan teks jadi media) —
+    # render_preview_page menangani ini: coba edit di tempat dulu, dan
+    # hanya jika gagal, hapus pesan lama lalu kirim satu pesan katalog
+    # baru. Hasil akhirnya selalu satu halaman aktif, menu Pengaturan
+    # tidak pernah tertinggal di chat.
+    await render_preview_page(
+        context,
+        query.message.chat.id,
+        query.message.message_id,
+        0
+    )
 
 
 async def adminvip_prv_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
