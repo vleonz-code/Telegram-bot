@@ -2825,6 +2825,8 @@ async def adminvip_prv_delyes_callback(update: Update, context: ContextTypes.DEF
         max(next_idx, 0)
     )
 
+async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    pass
 
 async def preview_media_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global FILE_IDS_A
@@ -5225,6 +5227,11 @@ def main():
     CallbackQueryHandler(
         adminvip_prv_delyes_callback,
         pattern=r"^adminvip_prv_delyes_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_prv_back_callback,
+        pattern=r"^adminvip_prv_back$"
     ))
     app.add_handler(
     CallbackQueryHandler(
