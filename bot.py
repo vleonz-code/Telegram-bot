@@ -2477,7 +2477,7 @@ def build_preview_nav_keyboard(idx: int, total: int):
     prev_idx = (idx - 1) % total
     next_idx = (idx + 1) % total
 
-    return InlineKeyboardMarkup([
+    keyboard = [
         [
             InlineKeyboardButton(
                 "◀️",
@@ -2501,20 +2501,25 @@ def build_preview_nav_keyboard(idx: int, total: int):
                 "🗑 Hapus",
                 callback_data=f"adminvip_prv_del_{idx}"
             )
-        ],
-        [
+        ]
+    ]
+
+    if idx == 0 or idx == total - 1:
+        keyboard.append([
             InlineKeyboardButton(
                 "➕ Tambah",
                 callback_data="adminvip_prv_add"
             )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 Kembali",
-                callback_data="adminvip_prv_back"
-            )
-        ]
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="adminvip_prv_back"
+        )
     ])
+
+    return InlineKeyboardMarkup(keyboard)
 
 
 def build_preview_empty_keyboard():
