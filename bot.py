@@ -289,6 +289,34 @@ def load_preview_media():
 
     return media
     
+def migrate_preview_from_env():
+    data = load_preview()
+
+    preview = data.get("preview", [])
+
+    # Sudah ada file_id? Jangan lakukan migrasi lagi.
+    if any(item.get("file_id", "").strip() for item in preview):
+        return
+
+    env_media = [
+        ("video", os.environ.get("FILE_ID_1", "")),
+        ("video", os.environ.get("FILE_ID_2", "")),
+        ("video", os.environ.get("FILE_ID_3", "")),
+        ("photo", os.environ.get("FILE_ID_4", "")),
+        ("photo", os.environ.get("FILE_ID_5", "")),
+        ("photo", os.environ.get("FILE_ID_6", "")),
+    ]
+
+    data["preview"] = [
+        {
+            "type": media_type,
+            "file_id": file_id.strip(),
+        }
+        for media_type, file_id in env_media
+    ]
+
+    save_preview(data)
+    
 WIB = timezone(timedelta(hours=7))
 
 # In-memory store for requests awaiting admin decision.
@@ -4416,6 +4444,8 @@ def main():
         raise ValueError("BOT_TOKEN environment variable is not set.")
 
     restore_pending_orders()
+    migrate_preview_from_env()
+    
     app = ApplicationBuilder().token(token).build()
 
     async def start_background(app):
