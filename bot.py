@@ -2244,18 +2244,21 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         context.bot
     )
     settings = read_settings()
-
-    await query.edit_message_text(
+    
+    admin_panel_text = (
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
-        
+
         f"👥 Users       : {len(read_user_registry())}\n"
         f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
-        
-        "</pre>",
+
+        "</pre>"
+    )
+    await query.edit_message_caption(
+        caption=admin_panel_text,
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
     )
