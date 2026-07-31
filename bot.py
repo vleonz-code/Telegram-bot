@@ -1,12 +1,13 @@
 import os
 import json
 import logging
+import subprocess
 import shutil
 import asyncio
 import time
 import copy
 from datetime import datetime, timezone, timedelta
-from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
+from telegram import Update, Bot, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 logging.basicConfig(
@@ -149,6 +150,9 @@ def get_locked_package_id(user_id):
 
 SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 
+# Lokasi telegram-bot.env — sesuai konfirmasi, path tetap (bukan relatif ke script)
+ENV_FILE = "/root/Telegram-bot/telegram-bot.env"
+
 # In-memory cache for settings.json — read once, refreshed on every save.
 _settings_cache = None
 
@@ -257,6 +261,75 @@ def save_settings(data):
     
 WIB = timezone(timedelta(hours=7))
 
+# ==========================
+# ENVIRONMENT FILE (.env) MANAGER
+# Parser generik baris-per-baris, split pada tanda "=" pertama.
+# Mempertahankan komentar, baris kosong, dan urutan yang sudah ada.
+# ==========================
+
+def read_env():
+    """Baca telegram-bot.env, kembalikan dict key -> value (baris komentar/kosong diabaikan)."""
+    env = {}
+    if not os.path.exists(ENV_FILE):
+        return env
+    with open(ENV_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if "=" not in stripped:
+                continue
+            key, value = stripped.split("=", 1)
+            env[key.strip()] = value.strip()
+    return env
+
+def write_env(key, value):
+    """Update satu key di telegram-bot.env, pertahankan baris/komentar/urutan lain apa adanya."""
+    lines = []
+    if os.path.exists(ENV_FILE):
+        with open(ENV_FILE, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+    found = False
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if "=" not in stripped:
+            continue
+        line_key = stripped.split("=", 1)[0].strip()
+        if line_key == key:
+            lines[i] = f"{key}={value}\n"
+            found = True
+            break
+
+    if not found:
+        if lines and not lines[-1].endswith("\n"):
+            lines[-1] += "\n"
+        lines.append(f"{key}={value}\n")
+
+    with open(ENV_FILE, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+def update_env(key, value):
+    write_env(key, value)
+
+def delete_env(key):
+    write_env(key, "")
+
+def restart_bot_service():
+    """Trigger restart systemd service secara detached (proses ini akan dimatikan)."""
+    try:
+        subprocess.Popen(
+            ["systemctl", "restart", "telegram-bot"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Failed to restart telegram-bot service: {e}")
+        return False
+
 # In-memory store for requests awaiting admin decision.
 # { user_id: {"chat_id": int, "waiting_msg_id": int, "full_name": str, "username": str} }
 pending_requests: dict = {}
@@ -288,6 +361,7 @@ admin_reply_waiting = {}
 blocked_notified = set()
 file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
 file_manager_restore_waiting = {}  # user_id -> FILE_MANAGER_FILES index
+preview_edit_waiting = {}  # user_id -> {"key": "FILE_ID_3", "task": asyncio.Task, "chat_id": int}
 
 # --- Anti Deeplink Spam ---
 # RAM-only, independent of admin_request_counts (which has no time window
@@ -313,6 +387,31 @@ FILE_IDS_A = [
 FILE_IDS_B = [
     ("video", os.environ.get("FILE_ID_7", "")),
 ]
+
+# Pemetaan key FILE_ID_N -> (list module-level, index) supaya bisa dibaca
+# DAN diupdate langsung di memori (tanpa restart) saat admin ganti preview.
+# List itu sendiri (FILE_IDS_A/FILE_IDS_B) tetap satu-satunya sumber
+# kebenaran yang dipakai build_media_group() — tidak diduplikasi ke tempat lain.
+ENV_FILE_SLOTS = {
+    "FILE_ID_1": (FILE_IDS_A, 0),
+    "FILE_ID_2": (FILE_IDS_A, 1),
+    "FILE_ID_3": (FILE_IDS_A, 2),
+    "FILE_ID_4": (FILE_IDS_A, 3),
+    "FILE_ID_5": (FILE_IDS_A, 4),
+    "FILE_ID_6": (FILE_IDS_A, 5),
+    "FILE_ID_7": (FILE_IDS_B, 0),
+}
+
+async def send_preview_media(bot, chat_id, kind, file_id):
+    """Kirim preview sesuai kind (hanya photo/video dipakai fitur Kelola Preview)."""
+    try:
+        if kind == "video":
+            await bot.send_video(chat_id=chat_id, video=file_id)
+        else:
+            await bot.send_photo(chat_id=chat_id, photo=file_id)
+        return True
+    except Exception:
+        return False
 
 # ---------------------------------------------------------------------------
 # Media helpers
@@ -1548,7 +1647,7 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
 
     await query.edit_message_text(
         "📢 Channel Post\n\n"
-        f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
+        f"Auto Post : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
         f"Interval : {settings['channel_interval']} menit\n\n"
         "<pre>"
         "Pesan\n"
@@ -2042,6 +2141,12 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
                 callback_data="preview_timer"
             ),
             InlineKeyboardButton(
+                "🖼 Kelola Preview",
+                callback_data="pvw_list"
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🔙 Kembali",
                 callback_data="adminvip_back"
             )
@@ -2052,7 +2157,170 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         "⚙️ Pengaturan",
         reply_markup=keyboard
     )
-    
+
+# ==========================
+# KELOLA PREVIEW (FILE_ID_1..FILE_ID_7 di telegram-bot.env)
+# ==========================
+
+async def pvw_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query.from_user.id != ADMIN_ID:
+        await query.answer()
+        return
+    await query.answer()
+
+    keyboard = []
+    for i in range(1, 8):
+        keyboard.append([
+            InlineKeyboardButton(
+                f"Preview {i}",
+                callback_data=f"pvw_view_{i}"
+            )
+        ])
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="adminvip_settings"
+        )
+    ])
+
+    await query.edit_message_text(
+        "🖼 Kelola Preview",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def pvw_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query.from_user.id != ADMIN_ID:
+        await query.answer()
+        return
+    await query.answer()
+
+    idx = query.data.split("pvw_view_", 1)[1]
+    key = f"FILE_ID_{idx}"
+    file_list, slot = ENV_FILE_SLOTS[key]
+    kind, file_id = file_list[slot]
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "✏️ Ganti Preview",
+                callback_data=f"pvw_edit_{idx}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="pvw_list"
+            )
+        ]
+    ])
+
+    if file_id:
+        sent = await send_preview_media(context.bot, query.message.chat_id, kind, file_id)
+        if not sent:
+            await query.message.reply_text(
+                f"⚠️ {key} tersimpan tapi gagal ditampilkan (file_id mungkin sudah tidak valid)."
+            )
+        await query.message.reply_text(
+            f"Preview {idx}",
+            reply_markup=keyboard
+        )
+    else:
+        await query.edit_message_text(
+            f"Preview {idx}\n\n❌ Belum ada",
+            reply_markup=keyboard
+        )
+
+async def preview_edit_timeout(user_id, key, chat_id, bot):
+    await asyncio.sleep(300)
+    data = preview_edit_waiting.get(user_id)
+    if data and data["key"] == key:
+        preview_edit_waiting.pop(user_id, None)
+        try:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="⏱ Waktu edit habis. Mode ganti preview dibatalkan."
+            )
+        except Exception:
+            pass
+
+async def pvw_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query.from_user.id != ADMIN_ID:
+        await query.answer()
+        return
+    await query.answer()
+
+    idx = query.data.split("pvw_edit_", 1)[1]
+    key = f"FILE_ID_{idx}"
+    user_id = query.from_user.id
+    chat_id = query.message.chat_id
+
+    old = preview_edit_waiting.get(user_id)
+    if old and old.get("task"):
+        old["task"].cancel()
+
+    task = asyncio.create_task(
+        preview_edit_timeout(user_id, key, chat_id, context.bot)
+    )
+    preview_edit_waiting[user_id] = {
+        "key": key,
+        "chat_id": chat_id,
+        "task": task
+    }
+
+    await query.message.reply_text(
+        "Silakan kirim foto atau video baru.\n\n"
+        f"Media berikutnya akan mengganti Preview {idx}.\n\n"
+        "Ketik /cancel untuk membatalkan."
+    )
+
+async def preview_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    data = preview_edit_waiting.get(user_id)
+    if not data:
+        return
+
+    key = data["key"]
+    chat_id = data["chat_id"]
+
+    if update.message.photo:
+        kind = "photo"
+        file_id = update.message.photo[-1].file_id
+    elif update.message.video:
+        kind = "video"
+        file_id = update.message.video.file_id
+    else:
+        await update.message.reply_text(
+            "❌ Hanya foto atau video yang diperbolehkan."
+        )
+        return
+
+    if data.get("task"):
+        data["task"].cancel()
+    preview_edit_waiting.pop(user_id, None)
+
+    update_env(key, file_id)
+    file_list, slot = ENV_FILE_SLOTS[key]
+    file_list[slot] = (kind, file_id)
+
+    await update.message.reply_text("✅ Preview berhasil diperbarui.")
+    await send_preview_media(context.bot, chat_id, kind, file_id)
+
+async def pvw_cancel_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Tangani /cancel selama mode edit Kelola Preview aktif."""
+    user_id = update.effective_user.id
+    if user_id not in preview_edit_waiting:
+        return False
+    if update.message.text and update.message.text.strip() == "/cancel":
+        data = preview_edit_waiting.pop(user_id)
+        if data.get("task"):
+            data["task"].cancel()
+        await update.message.reply_text("❌ Dibatalkan.")
+        return True
+    return False
+
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2145,16 +2413,14 @@ async def delete_messages_after_delay(
 
         await asyncio.sleep(delay)
 
-        await asyncio.gather(
-            *[
-                bot.delete_message(
+        for message_id in message_ids:
+            try:
+                await bot.delete_message(
                     chat_id=chat_id,
                     message_id=message_id
                 )
-                for message_id in message_ids
-            ],
-            return_exceptions=True
-        )
+            except Exception:
+                pass
 
         try:
             await clear_last_repeat(
@@ -2216,13 +2482,13 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.edit_message_text(
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
-        
+        "─────────────────────\n"
         f"👥 Users       : {len(read_user_registry())}\n"
         f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
-        f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
+        f"📢 Auto Post  : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
-        
+        "─────────────────────"
         "</pre>",
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
@@ -2889,6 +3155,11 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
+
+    if user_id in preview_edit_waiting:
+        handled = await pvw_cancel_check(update, context)
+        if handled:
+            return
 
     if user_id in admin_edit_waiting:
         await admin_edit_receive(update, context)
@@ -3732,13 +4003,13 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
-        
+        "─────────────────────\n"
         f"👥 Users       : {len(read_user_registry())}\n"
         f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
-        f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
+        f"📢 Auto Post  : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
-        
+        "─────────────────────"
         "</pre>",
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
@@ -3885,6 +4156,12 @@ async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id in file_manager_restore_waiting:
 
         await file_manager_restore_receive(update, context)
+
+        return
+
+    if user_id in preview_edit_waiting:
+
+        await preview_edit_receive(update, context)
 
         return
 
@@ -4334,8 +4611,8 @@ def restore_pending_orders():
 # ---------------------------------------------------------------------------
 
 async def channel_auto_post_loop(app):
-    try:
-        while True:
+    while True:
+        try:
             settings = read_settings()
 
             if (
@@ -4366,13 +4643,10 @@ async def channel_auto_post_loop(app):
 
                     save_settings(settings)
 
-            await asyncio.sleep(30)
+        except Exception as e:
+            logger.error(f"Channel Auto Post Error: {e}")
 
-    except asyncio.CancelledError:
-        raise
-
-    except Exception as e:
-        logger.error(f"Channel Auto Post Error: {e}")
+        await asyncio.sleep(30)
     
 async def set_admin_commands(app):
     await app.bot.set_my_commands(
@@ -4393,19 +4667,10 @@ def main():
 
     async def start_background(app):
         await set_admin_commands(app)
-        app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
-
-    async def stop_background(app):
-        task = app.bot_data.get("channel_task")
-        if task:
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+        asyncio.create_task(channel_auto_post_loop(app))
 
     app.post_init = start_background
-    app.post_shutdown = stop_background
+
     
     app.add_handler(CommandHandler("getid", getid_start))
     app.add_handler(CommandHandler("cancel", getid_cancel))
@@ -4760,6 +5025,21 @@ def main():
     CallbackQueryHandler(
         preview_set_callback,
         pattern=r"^preview_set_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        pvw_list_callback,
+        pattern=r"^pvw_list$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        pvw_view_callback,
+        pattern=r"^pvw_view_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        pvw_edit_callback,
+        pattern=r"^pvw_edit_\d+$"
     ))
     app.add_handler(
     MessageHandler(
