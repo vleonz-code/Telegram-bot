@@ -335,14 +335,7 @@ DEEPLINK_SPAM_WINDOW_SECONDS = 10
 DEEPLINK_SPAM_THRESHOLD = 6
 deeplink_spam_tracker = {}  # user_id -> list of recent tap timestamps
 
-FILE_IDS_A = [
-    ("video", os.environ.get("FILE_ID_1", "")),
-    ("video", os.environ.get("FILE_ID_2", "")),
-    ("video", os.environ.get("FILE_ID_3", "")),
-    ("photo", os.environ.get("FILE_ID_4", "")),
-    ("photo", os.environ.get("FILE_ID_5", "")),
-    ("photo", os.environ.get("FILE_ID_6", "")),
-]
+FILE_IDS_A = load_preview_media()
 
 FILE_IDS_B = [
     ("video", os.environ.get("FILE_ID_7", "")),
