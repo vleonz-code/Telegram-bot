@@ -2465,49 +2465,40 @@ async def adminvip_preview_settings_callback(update: Update, context: ContextTyp
         reply_markup=keyboard
     )
     
-def build_preview_list_keyboard():
-    data = load_preview()
-    items = data.get("preview", [])
+def build_preview_caption(idx: int, total: int, media_type: str) -> str:
+    jenis = "Video" if media_type == "video" else "Foto"
 
-    keyboard = []
-
-    for idx, item in enumerate(items):
-        media_type = item.get("type", "").lower()
-        icon = "🎥" if media_type == "video" else "🖼"
-
-        keyboard.append([
-            InlineKeyboardButton(
-                f"{icon} Preview #{idx + 1}",
-                callback_data=f"adminvip_prv_item_{idx}"
-            )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "➕ Tambah Preview",
-            callback_data="adminvip_prv_add"
-        )
-    ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "⬅️ Kembali",
-            callback_data="adminvip_settings"
-        )
-    ])
-
-    return InlineKeyboardMarkup(keyboard)
+    return (
+        "🖼 Kelola Preview\n\n"
+        f"Preview {idx + 1} / {total}\n"
+        f"Jenis: {jenis}"
+    )
 
 
-def build_preview_item_keyboard(idx: int):
+def build_preview_nav_keyboard(idx: int, total: int):
+    prev_idx = (idx - 1) % total
+    next_idx = (idx + 1) % total
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "✏️ Edit Media",
-                callback_data=f"adminvip_prv_edit_{idx}"
+                "◀️",
+                callback_data=f"adminvip_prv_nav_{prev_idx}"
+            ),
+            InlineKeyboardButton(
+                f"{idx + 1}/{total}",
+                callback_data="adminvip_prv_noop"
+            ),
+            InlineKeyboardButton(
+                "▶️",
+                callback_data=f"adminvip_prv_nav_{next_idx}"
             )
         ],
         [
+            InlineKeyboardButton(
+                "✏️ Edit",
+                callback_data=f"adminvip_prv_edit_{idx}"
+            ),
             InlineKeyboardButton(
                 "🗑 Hapus",
                 callback_data=f"adminvip_prv_del_{idx}"
@@ -2515,11 +2506,145 @@ def build_preview_item_keyboard(idx: int):
         ],
         [
             InlineKeyboardButton(
+                "➕ Tambah Preview",
+                callback_data="adminvip_prv_add"
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "⬅️ Kembali",
-                callback_data="adminvip_prv_list"
+                callback_data="adminvip_settings"
             )
         ]
     ])
+
+
+def build_preview_empty_keyboard():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "➕ Tambah Preview",
+                callback_data="adminvip_prv_add"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "⬅️ Kembali",
+                callback_data="adminvip_settings"
+            )
+        ]
+    ])
+
+
+async def send_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, idx: int):
+    """Kirim halaman katalog Preview sebagai pesan baru (dipakai saat belum
+    ada pesan media yang bisa di-edit, mis. saat pertama kali membuka menu
+    atau saat daftar Preview baru saja kosong)."""
+
+    data = load_preview()
+    items = data.get("preview", [])
+
+    if not items:
+        return await context.bot.send_message(
+            chat_id=chat_id,
+            text=(
+                "🖼 Kelola Preview\n\n"
+                "Belum ada Preview.\n\n"
+                "Silakan tambah Preview baru."
+            ),
+            reply_markup=build_preview_empty_keyboard()
+        )
+
+    total = len(items)
+    idx = idx % total
+    item = items[idx]
+    media_type = item.get("type", "").lower()
+    file_id = item.get("file_id", "").strip()
+
+    caption = build_preview_caption(idx, total, media_type)
+    keyboard = build_preview_nav_keyboard(idx, total)
+
+    if media_type == "video":
+        return await context.bot.send_video(
+            chat_id=chat_id,
+            video=file_id,
+            caption=caption,
+            reply_markup=keyboard
+        )
+
+    return await context.bot.send_photo(
+        chat_id=chat_id,
+        photo=file_id,
+        caption=caption,
+        reply_markup=keyboard
+    )
+
+
+async def render_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, message_id: int, idx: int):
+    """Perbarui pesan katalog Preview di tempat (edit_message_media) supaya
+    chat tidak menumpuk. Jika pesan yang sedang ditampilkan bukan media
+    (mis. daftar baru saja kosong lalu diisi lagi), fallback: hapus pesan
+    lama lalu kirim pesan media baru."""
+
+    data = load_preview()
+    items = data.get("preview", [])
+
+    if not items:
+        try:
+            await context.bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=(
+                    "🖼 Kelola Preview\n\n"
+                    "Belum ada Preview.\n\n"
+                    "Silakan tambah Preview baru."
+                ),
+                reply_markup=build_preview_empty_keyboard()
+            )
+            return
+        except Exception:
+            pass
+
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+        except Exception:
+            pass
+
+        await send_preview_page(context, chat_id, 0)
+        return
+
+    total = len(items)
+    idx = idx % total
+    item = items[idx]
+    media_type = item.get("type", "").lower()
+    file_id = item.get("file_id", "").strip()
+
+    caption = build_preview_caption(idx, total, media_type)
+    keyboard = build_preview_nav_keyboard(idx, total)
+
+    media = (
+        InputMediaVideo(file_id, caption=caption)
+        if media_type == "video"
+        else InputMediaPhoto(file_id, caption=caption)
+    )
+
+    try:
+        await context.bot.edit_message_media(
+            chat_id=chat_id,
+            message_id=message_id,
+            media=media,
+            reply_markup=keyboard
+        )
+        return
+    except Exception:
+        pass
+
+    try:
+        await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
+    except Exception:
+        pass
+
+    await send_preview_page(context, chat_id, idx)
 
 
 async def adminvip_prv_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2531,64 +2656,33 @@ async def adminvip_prv_list_callback(update: Update, context: ContextTypes.DEFAU
     preview_edit_waiting.pop(query.from_user.id, None)
     preview_add_waiting.pop(query.from_user.id, None)
 
-    data = load_preview()
-    items = data.get("preview", [])
+    # Pesan sebelumnya (menu Pengaturan) berupa teks, sedangkan katalog
+    # Preview butuh pesan media. Hapus pesan lama, kirim katalog sebagai
+    # pesan baru — navigasi selanjutnya memakai edit_message_media agar
+    # tidak menumpuk lagi.
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
 
-    if items:
-        text = (
-            "🖼 Kelola Preview\n\n"
-            f"Total Preview: {len(items)}\n\n"
-            "Pilih preview yang ingin dikelola:"
-        )
-    else:
-        text = (
-            "🖼 Kelola Preview\n\n"
-            "Belum ada Preview.\n\n"
-            "Silakan tambah Preview baru."
-        )
-
-    await query.edit_message_text(
-        text,
-        reply_markup=build_preview_list_keyboard()
-    )
+    await send_preview_page(context, query.message.chat.id, 0)
 
 
-async def adminvip_prv_item_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def adminvip_prv_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+
+
+async def adminvip_prv_nav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     idx = int(query.data.split("_")[3])
 
-    data = load_preview()
-    items = data.get("preview", [])
-
-    if idx < 0 or idx >= len(items):
-        await adminvip_prv_list_callback(update, context)
-        return
-
-    item = items[idx]
-    media_type = item.get("type", "").lower()
-    file_id = item.get("file_id", "").strip()
-
-    if file_id:
-        try:
-            if media_type == "video":
-                await context.bot.send_video(
-                    chat_id=query.message.chat.id,
-                    video=file_id
-                )
-            elif media_type == "photo":
-                await context.bot.send_photo(
-                    chat_id=query.message.chat.id,
-                    photo=file_id
-                )
-        except Exception:
-            pass
-
-    await query.edit_message_text(
-        f"{'🎥' if media_type == 'video' else '🖼'} Preview #{idx + 1}\n\n"
-        f"Tipe: {media_type or 'tidak diketahui'}",
-        reply_markup=build_preview_item_keyboard(idx)
+    await render_preview_page(
+        context,
+        query.message.chat.id,
+        query.message.message_id,
+        idx
     )
 
 
@@ -2610,11 +2704,23 @@ async def adminvip_prv_add_callback(update: Update, context: ContextTypes.DEFAUL
         ]
     ])
 
-    await query.edit_message_text(
+    text = (
         "➕ Tambah Preview\n\n"
-        "Silakan kirim foto atau video untuk dijadikan Preview baru.",
-        reply_markup=keyboard
+        "Silakan kirim foto atau video untuk dijadikan Preview baru."
     )
+
+    # Pesan bisa berupa teks (saat daftar Preview kosong) atau media (saat
+    # menambah dari halaman katalog yang sudah berisi Preview).
+    try:
+        await query.edit_message_caption(
+            caption=text,
+            reply_markup=keyboard
+        )
+    except Exception:
+        await query.edit_message_text(
+            text,
+            reply_markup=keyboard
+        )
 
 
 async def adminvip_prv_add_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2623,7 +2729,16 @@ async def adminvip_prv_add_cancel_callback(update: Update, context: ContextTypes
 
     preview_add_waiting.pop(query.from_user.id, None)
 
-    await adminvip_prv_list_callback(update, context)
+    data = load_preview()
+    items = data.get("preview", [])
+    idx = max(len(items) - 1, 0)
+
+    await render_preview_page(
+        context,
+        query.message.chat.id,
+        query.message.message_id,
+        idx
+    )
 
 
 async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2642,14 +2757,16 @@ async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAU
         [
             InlineKeyboardButton(
                 "❌ Batal",
-                callback_data=f"adminvip_prv_item_{idx}"
+                callback_data=f"adminvip_prv_nav_{idx}"
             )
         ]
     ])
 
-    await query.edit_message_text(
-        f"✏️ Edit Preview #{idx + 1}\n\n"
-        "Silakan kirim foto atau video baru untuk mengganti Preview ini.",
+    await query.edit_message_caption(
+        caption=(
+            "✏️ Edit Preview\n\n"
+            "Silakan kirim foto atau video baru untuk mengganti Preview ini."
+        ),
         reply_markup=keyboard
     )
 
@@ -2668,13 +2785,13 @@ async def adminvip_prv_del_callback(update: Update, context: ContextTypes.DEFAUL
             ),
             InlineKeyboardButton(
                 "❌ Batal",
-                callback_data=f"adminvip_prv_item_{idx}"
+                callback_data=f"adminvip_prv_nav_{idx}"
             )
         ]
     ])
 
-    await query.edit_message_text(
-        f"⚠️ Yakin ingin menghapus Preview #{idx + 1}?",
+    await query.edit_message_caption(
+        caption="Hapus Preview ini?",
         reply_markup=keyboard
     )
 
@@ -2696,7 +2813,17 @@ async def adminvip_prv_delyes_callback(update: Update, context: ContextTypes.DEF
         save_preview(data)
         FILE_IDS_A = load_preview_media()
 
-    await adminvip_prv_list_callback(update, context)
+    # Tampilkan Preview berikutnya jika masih ada di index yang sama;
+    # jika item terakhir yang dihapus, mundur ke Preview sebelumnya.
+    # render_preview_page otomatis menampilkan halaman kosong jika habis.
+    next_idx = idx if idx < len(items) else idx - 1
+
+    await render_preview_page(
+        context,
+        query.message.chat.id,
+        query.message.message_id,
+        max(next_idx, 0)
+    )
 
 
 async def preview_media_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2731,16 +2858,7 @@ async def preview_media_receive(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception:
             pass
 
-        await context.bot.edit_message_text(
-            chat_id=state["chat_id"],
-            message_id=state["message_id"],
-            text=(
-                f"{'🎥' if media_type == 'video' else '🖼'} Preview #{idx + 1}\n\n"
-                f"Tipe: {media_type}\n\n"
-                "✅ Media berhasil diperbarui."
-            ),
-            reply_markup=build_preview_item_keyboard(idx)
-        )
+        await render_preview_page(context, state["chat_id"], state["message_id"], idx)
         return
 
     if user_id in preview_add_waiting:
@@ -2756,16 +2874,9 @@ async def preview_media_receive(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception:
             pass
 
-        await context.bot.edit_message_text(
-            chat_id=state["chat_id"],
-            message_id=state["message_id"],
-            text=(
-                "🖼 Kelola Preview\n\n"
-                f"Total Preview: {len(items)}\n\n"
-                "✅ Preview baru berhasil ditambahkan."
-            ),
-            reply_markup=build_preview_list_keyboard()
-        )
+        new_idx = len(items) - 1
+
+        await render_preview_page(context, state["chat_id"], state["message_id"], new_idx)
         return
 
 
@@ -5082,8 +5193,13 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
-        adminvip_prv_item_callback,
-        pattern=r"^adminvip_prv_item_\d+$"
+        adminvip_prv_nav_callback,
+        pattern=r"^adminvip_prv_nav_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_prv_noop_callback,
+        pattern=r"^adminvip_prv_noop$"
     ))
     app.add_handler(
     CallbackQueryHandler(
