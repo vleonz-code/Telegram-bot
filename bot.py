@@ -2060,9 +2060,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
             InlineKeyboardButton(
                 f"⏱️ {preview_time}",
                 callback_data="preview_timer"
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 "🖼 Kelola Preview",
                 callback_data="adminvip_prv_list"
