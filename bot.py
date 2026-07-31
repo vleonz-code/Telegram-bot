@@ -2890,16 +2890,15 @@ async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAU
         ]
     ])
 
-    sent = await context.bot.send_message(
-        chat_id=query.message.chat.id,
-        text="⚙️ Pengaturan",
+    from telegram import InputMediaPhoto
+
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["SETTINGS_BANNER_FILE_ID"],
+            caption="⚙️ Pengaturan"
+        ),
         reply_markup=keyboard
     )
-
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
 
 async def preview_media_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global FILE_IDS_A
