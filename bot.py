@@ -4061,7 +4061,6 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception:
             pass
 
-
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
