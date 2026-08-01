@@ -1691,9 +1691,11 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
     if not history["orders"]:
 
-        await query.edit_message_text(
-            "📋 Order History\n\n"
-            "Belum ada transaksi.",
+        await query.edit_message_caption(
+            caption=(
+                "📋 <b>ORDER HISTORY</b>\n\n"
+                "Belum ada transaksi."
+            ),
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
@@ -1701,7 +1703,8 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
                         callback_data="adminvip_payment"
                     )
                 ]
-            ])
+            ]),
+            parse_mode="HTML",
         )
         return
 
@@ -1771,17 +1774,19 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         )
     ])
 
-    await query.edit_message_text(
-        "📋 Order History\n\n"
+    await query.edit_message_caption(
+        caption=(
+            "📋 <b>ORDER HISTORY</b>\n\n"
 
-        f"💰 Total Pendapatan\n"
-        f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+            f"💰 Total Pendapatan\n"
+            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
 
-        f"📦 Total Order {total_order}\n\n"
+            f"📦 Total Order : {total_order}\n\n"
 
-        "📅 Pilih tanggal transaksi di bawah ini.",
-
-        reply_markup=InlineKeyboardMarkup(keyboard)
+            "📅 Pilih tanggal transaksi di bawah ini."
+        ),
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode="HTML",
     )
 
 async def payment_history_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
