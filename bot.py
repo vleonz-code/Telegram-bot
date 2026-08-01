@@ -4300,8 +4300,9 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "</pre>"
     )
 
-    await update.message.reply_text(
-        admin_panel_text,
+    await update.message.reply_photo(
+        photo=os.environ["ADMIN_BANNER_FILE_ID"],
+        caption=admin_panel_text,
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
     )
