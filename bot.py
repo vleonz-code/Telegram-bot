@@ -4450,11 +4450,6 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
 
     file_manager_restore_waiting.pop(user_id, None)
 
-    try:
-        await update.message.delete()
-    except Exception:
-        pass
-
     msg = await update.message.reply_text(
         f"✅ <b>{name}</b> berhasil dipulihkan.",
         parse_mode="HTML"
