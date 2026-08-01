@@ -3279,97 +3279,63 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def show_add_preview(message, data):
 
     preview = (
-
-        "📦 Preview Paket\n\n"
-
-        f"💎 Nama\n{data['nama']}\n\n"
-
-        f"💰 Harga\n{data['harga']}\n\n"
-
-        f"📄 Deskripsi\n{data['deskripsi']}\n\n"
-
-        f"🔗 Link\n{data['vip_link']}"
-
+        "📝 <b>PREVIEW PAKET</b>\n\n"
+        "<pre>"
+        f"Nama       : {data['nama']}\n"
+        f"Harga      : {data['harga']}\n"
+        f"Deskripsi  : {data['deskripsi']}\n"
+        f"Link       : {data['vip_link']}"
+        "</pre>\n\n"
+        "Silakan periksa data sebelum disimpan."
     )
 
     keyboard = InlineKeyboardMarkup([
 
         [
-
             InlineKeyboardButton(
-
                 "📝 Edit Nama",
-
                 callback_data="adminaddedit_nama"
-
             )
-
         ],
 
         [
-
             InlineKeyboardButton(
-
                 "💰 Edit Harga",
-
                 callback_data="adminaddedit_harga"
-
             )
-
         ],
 
         [
-
             InlineKeyboardButton(
-
                 "📄 Edit Deskripsi",
-
                 callback_data="adminaddedit_deskripsi"
-
             )
-
         ],
 
         [
-
             InlineKeyboardButton(
-
                 "🔗 Edit Link",
-
                 callback_data="adminaddedit_vip_link"
-
             )
-
         ],
 
         [
-
             InlineKeyboardButton(
-
                 "✅ Simpan",
-
                 callback_data="adminadd_save"
-
             ),
-
             InlineKeyboardButton(
-
                 "🔙 Kembali",
-
                 callback_data="adminvip_back"
-
             )
-
         ]
 
     ])
 
     await message.reply_text(
-
         preview,
-
-        reply_markup=keyboard
-
+        reply_markup=keyboard,
+        parse_mode="HTML",
     )
     
 async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
