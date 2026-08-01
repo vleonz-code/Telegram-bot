@@ -4374,8 +4374,13 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
 
 async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+
     idx = file_manager_restore_waiting.get(user_id)
+    if idx is None:
+        return
+
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        file_manager_restore_waiting.pop(user_id, None)
         return
 
     icon, name, path = FILE_MANAGER_FILES[idx]
@@ -4383,7 +4388,8 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
     document = update.message.document
     if not document or not document.file_name.lower().endswith(".json"):
         await update.message.reply_text(
-            f"❌ File harus berformat .json. {name} tidak diubah."
+            f"❌ File harus berformat .json.\n\n"
+            f"Silakan upload file {name} yang benar."
         )
         return
 
@@ -4395,14 +4401,17 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
             "Silakan upload file JSON yang benar."
         )
         return
-        
+
     tg_file = await document.get_file()
     raw_bytes = await tg_file.download_as_bytearray()
 
     try:
         data = json.loads(bytes(raw_bytes).decode("utf-8"))
     except Exception:
-        await update.message.reply_text(f"❌ JSON tidak valid. {name} tidak diubah.")
+        await update.message.reply_text(
+            "❌ Format JSON tidak valid.\n\n"
+            f"Silakan upload file {name} yang benar."
+        )
         return
 
     create_file_manager_backup(name, path)
@@ -4411,6 +4420,8 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
         json.dump(data, f, indent=2, ensure_ascii=False)
 
     invalidate_file_manager_cache(name)
+
+    file_manager_restore_waiting.pop(user_id, None)
 
     await update.message.reply_text(
         f"✅ {name} berhasil dipulihkan.\n"
