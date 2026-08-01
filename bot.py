@@ -4434,6 +4434,10 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
 
     document = update.message.document
     if not document or not document.file_name.lower().endswith(".json"):
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
         msg = await update.message.reply_text(
             f"❌ File harus berformat .json.\n\n"
             f"Silakan upload file {name} yang benar."
@@ -4442,6 +4446,10 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
         return
 
     if document.file_name.lower() != name.lower():
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
         msg = await update.message.reply_text(
             "❌ File tidak sesuai.\n\n"
             f"File yang dipilih : {document.file_name}\n"
@@ -4457,6 +4465,10 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
     try:
         data = json.loads(bytes(raw_bytes).decode("utf-8"))
     except Exception:
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
         msg = await update.message.reply_text(
             "❌ Format JSON tidak valid.\n\n"
             f"Silakan upload file {name} yang benar."
