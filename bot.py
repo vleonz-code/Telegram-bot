@@ -2255,8 +2255,9 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         query.message.chat_id,
         context.bot
     )
+
     settings = read_settings()
-    
+
     admin_panel_text = (
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
@@ -2271,37 +2272,6 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     )
 
     keyboard = build_adminvip_keyboard()
-
-    from telegram import InputMediaPhoto
-
-    # Kembali ke Menu Admin = berpindah halaman (Pengaturan -> Menu Admin),
-    # jadi banner harus ikut berganti ke ADMIN_BANNER_FILE_ID lewat
-    # edit_message_media, bukan cuma caption-nya.
-    try:
-        await query.edit_message_media(
-            media=InputMediaPhoto(
-                media=os.environ["ADMIN_BANNER_FILE_ID"],
-                caption=admin_panel_text,
-                parse_mode="HTML"
-            ),
-            reply_markup=keyboard
-        )
-        return
-    except Exception:
-        pass
-
-    # Fallback untuk pemanggil "adminvip_back" lain yang pesannya belum
-    # berupa media (submenu lama yang masih memakai edit_message_text),
-    # supaya perilakunya tetap seperti sebelumnya dan tidak rusak.
-    try:
-        await query.edit_message_caption(
-            caption=admin_panel_text,
-            reply_markup=keyboard,
-            parse_mode="HTML",
-        )
-        return
-    except Exception:
-        pass
 
     await query.edit_message_text(
         admin_panel_text,
@@ -4330,9 +4300,8 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "</pre>"
     )
 
-    await update.message.reply_photo(
-        photo=os.environ["ADMIN_BANNER_FILE_ID"],
-        caption=admin_panel_text,
+    await update.message.reply_text(
+        admin_panel_text,
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
     )
