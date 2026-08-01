@@ -2359,20 +2359,23 @@ async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_T
     ])
 
     if settings["qris_file_id"]:
-        await context.bot.send_photo(
-            chat_id=query.message.chat_id,
-            photo=settings["qris_file_id"],
-            caption="🖼 QRIS Saat Ini",
-            reply_markup=keyboard
+        await query.edit_message_media(
+            media=InputMediaPhoto(
+                media=settings["qris_file_id"],
+                caption=(
+                    "🖼 <b>QRIS PEMBAYARAN</b>\n\n"
+                    "QRIS yang sedang digunakan.\n\n"
+                    "Pilih aksi di bawah."
+                ),
+                parse_mode="HTML",
+            ),
+            reply_markup=keyboard,
         )
-        try:
-            await query.message.delete()
-        except Exception:
-            pass
     else:
-        await query.edit_message_text(
-            "⚠️ QRIS belum diatur.",
-            reply_markup=keyboard
+        await query.edit_message_caption(
+            caption="⚠️ QRIS belum diatur.",
+            reply_markup=keyboard,
+            parse_mode="HTML",
         )
     
 async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
