@@ -2276,10 +2276,13 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = build_adminvip_keyboard()
 
-    await query.edit_message_text(
-        admin_panel_text,
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["ADMIN_BANNER_FILE_ID"],
+            caption=admin_panel_text,
+            parse_mode="HTML",
+        ),
         reply_markup=keyboard,
-        parse_mode="HTML",
     )
     
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
