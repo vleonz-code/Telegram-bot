@@ -2384,9 +2384,23 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
 
     admin_qris_waiting.add(query.from_user.id)
 
-    await query.message.reply_text(
-        "📷 Silakan kirim foto QRIS baru.\n\n"
-        "Ketik /cancel untuk membatalkan."
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data="adminvip_qris"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "📷 <b>EDIT QRIS</b>\n\n"
+            "Silakan kirim foto QRIS baru.\n\n"
+            "Ketik /cancel untuk membatalkan."
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML",
     )
     
 async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
