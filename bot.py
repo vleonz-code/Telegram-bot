@@ -3549,29 +3549,12 @@ async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     save_vip_packages(packages)
 
-    keyboard = []
+    try:
+        await query.delete_message()
+    except Exception:
+        pass
 
-    for package in packages["packages"]:
-        keyboard.append([
-            InlineKeyboardButton(
-                package["nama"],
-                callback_data=f"adminvip_{package['id']}"
-            )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "➕ Tambah Paket",
-            callback_data="adminvip_add"
-        )
-    ])
-
-    await query.edit_message_text(
-        "✅ Paket berhasil ditambahkan.\n\n"
-        "⚙️ Admin VIP\n\n"
-        "Pilih paket yang ingin dikelola:",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
+    await adminvip_packages_callback(update, context)
     
 async def adminadd_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
