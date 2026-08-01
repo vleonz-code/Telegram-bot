@@ -4046,14 +4046,21 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
             pass
 
     text, keyboard = build_filemgr_list_view()
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["FILE_MANAGER_BANNER_FILE_ID"],
-            caption=text,
-            parse_mode="HTML",
-        ),
-        reply_markup=keyboard
-    )
+    try:
+        await query.edit_message_media(
+            media=InputMediaPhoto(
+                media=os.environ["FILE_MANAGER_BANNER_FILE_ID"],
+                caption=text,
+                parse_mode="HTML",
+            ),
+            reply_markup=keyboard
+        )
+    except Exception:
+        try:
+            await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
+        except Exception:
+            pass
+
 
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
