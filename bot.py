@@ -3998,10 +3998,15 @@ def build_filemgr_list_view():
         text = "🗂 File Manager\n\nTidak ada file yang ditemukan."
     else:
         text = "🗂 File Manager\n\nPilih file JSON untuk dikelola."
-        for idx, icon, name in available:
-            keyboard_rows.append([
-                InlineKeyboardButton(f"{icon} {name}", callback_data=f"filemgr_open_{idx}")
-            ])
+        buttons = [
+            InlineKeyboardButton(
+                f"{icon} {name.replace('.json', '').replace('_', ' ').title()}",
+                callback_data=f"filemgr_open_{idx}"
+            )
+            for idx, icon, name in available
+        ]
+        for i in range(0, len(buttons), 2):
+            keyboard_rows.append(buttons[i:i + 2])
 
     keyboard_rows.append([InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")])
 
