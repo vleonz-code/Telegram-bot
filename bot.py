@@ -1831,7 +1831,7 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         f"👤 {order['full_name']}\n"
         f"🆔 {order['user_id']}\n"
         f"🔗 {order['username']}\n\n"
-        f"📦 {package['nama']}\n"
+        f"📦 {package['nama'] if package else '-'}\n"
         f"💰 {harga}\n\n"
         f"🕒 {jam}\n\n"
     )
@@ -1938,9 +1938,9 @@ async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAU
         ]
     ])
 
-    await query.edit_message_text(
-        "✅ Order History berhasil dibersihkan.",
-        reply_markup=keyboard
+    await query.edit_message_caption(
+        caption="✅ Order History berhasil dibersihkan.",
+        reply_markup=keyboard,
     )
     
 async def payment_history_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
