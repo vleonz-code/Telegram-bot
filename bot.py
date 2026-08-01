@@ -26,7 +26,7 @@ CHANNEL_ID = -1004363191859
 ORDER_HISTORY_EXCLUDED = {
     ADMIN_ID,
     # Tambahkan User ID akun testing di bawah ini
-    # Contoh: 
+    # Contoh:
     # 123456789
     #7955763972
 }
