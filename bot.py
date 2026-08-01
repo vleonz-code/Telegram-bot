@@ -1576,17 +1576,22 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
     ]
     ])
 
-    await query.edit_message_text(
-        "📢 Channel Post\n\n"
-        f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
-        f"Interval : {settings['channel_interval']} menit\n\n"
-        "<pre>"
-        "Pesan\n"
-        "────────────────────\n"
-        f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
-        "</pre>",
-        reply_markup=keyboard,
-        parse_mode="HTML"
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["CHANNEL_POST_BANNER_FILE_ID"],
+            caption=(
+                "📢 Channel Post\n\n"
+                f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
+                f"Interval : {settings['channel_interval']} menit\n\n"
+                "<pre>"
+                "Pesan\n"
+                "────────────────────\n"
+                f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
+                "</pre>"
+            ),
+            parse_mode="HTML",
+        ),
+        reply_markup=keyboard
     )
     
 async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1595,9 +1600,11 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     admin_channel_waiting.add(query.from_user.id)
 
-    await query.edit_message_text(
-        "📝 Edit Channel Post\n\n"
-        "Silakan kirim teks Channel Post baru.",
+    await query.edit_message_caption(
+        caption=(
+            "📝 Edit Channel Post\n\n"
+            "Silakan kirim teks Channel Post baru."
+        ),
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_channel")]
         ])
@@ -1631,8 +1638,8 @@ async def channel_interval_callback(update: Update, context: ContextTypes.DEFAUL
         [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_channel")]
     ])
 
-    await query.edit_message_text(
-        "⏱ Interval Channel Post",
+    await query.edit_message_caption(
+        caption="⏱ Interval Channel Post",
         reply_markup=keyboard
     )
     
@@ -2133,8 +2140,12 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await query.edit_message_text(
-        "📊 Statistik",
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["STATISTIC_BANNER_FILE_ID"],
+            caption="📊 Statistik",
+            parse_mode="HTML",
+        ),
         reply_markup=keyboard
     )
     
@@ -2145,9 +2156,24 @@ async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     if query.from_user.id != ADMIN_ID:
         return
 
-    await send_stats(
-        query.message.chat_id,
-        context.bot
+    count = read_counter()
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_stats"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            f"📊 <b>Stats Bot</b>\n\n"
+            f"Total penggunaan <code>UC3A6P</code>: <b>{count}x</b>"
+        ),
+        parse_mode="HTML",
+        reply_markup=keyboard
     )
     
 async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2157,9 +2183,25 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     if query.from_user.id != ADMIN_ID:
         return
 
-    await do_reset_stats(
-        query.message.chat_id,
-        context.bot
+    try:
+        with open(COUNTER_FILE, "w") as f:
+            json.dump({"count": 0}, f)
+    except Exception as e:
+        logger.error(f"Failed to reset counter: {e}")
+        return
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_stats"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption="✅ Statistik berhasil direset!",
+        reply_markup=keyboard
     )
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
@@ -3730,7 +3772,10 @@ async def banned_page_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     page = int(query.data.replace("banned_page_", ""))
     text, keyboard = build_blacklist_view(page)
-    await query.edit_message_text(text, reply_markup=keyboard)
+    try:
+        await query.edit_message_caption(caption=text, reply_markup=keyboard)
+    except Exception:
+        await query.edit_message_text(text, reply_markup=keyboard)
 
 async def banned_reset_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3741,15 +3786,18 @@ async def banned_reset_ask_callback(update: Update, context: ContextTypes.DEFAUL
     bl = read_blacklist()
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("❌ Batal", callback_data=f"banned_page_{page}"),
-            InlineKeyboardButton("✅ Ya, Reset", callback_data="banned_reset_yes")
+            InlineKeyboardButton("✅ Ya, Reset", callback_data="banned_reset_yes"),
+            InlineKeyboardButton("❌ Batal", callback_data=f"banned_page_{page}")
         ]
     ])
-    await query.edit_message_text(
+    reset_ask_text = (
         "⚠️ Reset seluruh blacklist?\n\n"
-        f"Total {len(bl)} user yang di-blacklist akan dipulihkan.",
-        reply_markup=keyboard
+        f"Total {len(bl)} user yang di-blacklist akan dipulihkan."
     )
+    try:
+        await query.edit_message_caption(caption=reset_ask_text, reply_markup=keyboard)
+    except Exception:
+        await query.edit_message_text(reset_ask_text, reply_markup=keyboard)
 
 async def banned_reset_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3758,7 +3806,10 @@ async def banned_reset_yes_callback(update: Update, context: ContextTypes.DEFAUL
         return
     write_blacklist({})
     text, keyboard = build_blacklist_view(1)
-    await query.edit_message_text(text, reply_markup=keyboard)
+    try:
+        await query.edit_message_caption(caption=text, reply_markup=keyboard)
+    except Exception:
+        await query.edit_message_text(text, reply_markup=keyboard)
 
 async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3774,7 +3825,10 @@ async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_T
     info = bl.get(uid)
     if not info:
         text, keyboard = build_blacklist_view(page)
-        await query.edit_message_text(text, reply_markup=keyboard)
+        try:
+            await query.edit_message_caption(caption=text, reply_markup=keyboard)
+        except Exception:
+            await query.edit_message_text(text, reply_markup=keyboard)
         return
 
     uname = info["username"] if info["username"] and info["username"] != "-" else "-"
@@ -3790,7 +3844,10 @@ async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_T
         [InlineKeyboardButton("🚫 Unban", callback_data=f"banned_unban_ask_{uid}_{page}")],
         [InlineKeyboardButton("🔙 Kembali ke Blacklist", callback_data=f"banned_page_{page}")]
     ])
-    await query.edit_message_text(text, reply_markup=keyboard)
+    try:
+        await query.edit_message_caption(caption=text, reply_markup=keyboard)
+    except Exception:
+        await query.edit_message_text(text, reply_markup=keyboard)
 
 async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3806,21 +3863,27 @@ async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAUL
     info = bl.get(uid)
     if not info:
         text, keyboard = build_blacklist_view(page)
-        await query.edit_message_text(text, reply_markup=keyboard)
+        try:
+            await query.edit_message_caption(caption=text, reply_markup=keyboard)
+        except Exception:
+            await query.edit_message_text(text, reply_markup=keyboard)
         return
 
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("❌ Batal", callback_data=f"banned_manage_{uid}_{page}"),
-            InlineKeyboardButton("✅ Ya, Unban", callback_data=f"banned_unban_yes_{uid}_{page}")
+            InlineKeyboardButton("✅ Ya, Unban", callback_data=f"banned_unban_yes_{uid}_{page}"),
+            InlineKeyboardButton("❌ Batal", callback_data=f"banned_manage_{uid}_{page}")
         ]
     ])
-    await query.edit_message_text(
+    unban_ask_text = (
         "⚠️ Unban user ini?\n\n"
         f"👤 {info['full_name']}\n"
-        f"🆔 {uid}",
-        reply_markup=keyboard
+        f"🆔 {uid}"
     )
+    try:
+        await query.edit_message_caption(caption=unban_ask_text, reply_markup=keyboard)
+    except Exception:
+        await query.edit_message_text(unban_ask_text, reply_markup=keyboard)
 
 async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3838,7 +3901,10 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
     blocked_notified.discard(uid)
 
     text, keyboard = build_blacklist_view(page)
-    await query.edit_message_text(text, reply_markup=keyboard)
+    try:
+        await query.edit_message_caption(caption=text, reply_markup=keyboard)
+    except Exception:
+        await query.edit_message_text(text, reply_markup=keyboard)
 
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3846,7 +3912,14 @@ async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFA
     if query.from_user.id != ADMIN_ID:
         return
     text, keyboard = build_blacklist_view(1)
-    await query.edit_message_text(text, reply_markup=keyboard)
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["BLACKLIST_BANNER_FILE_ID"],
+            caption=text,
+            parse_mode="HTML",
+        ),
+        reply_markup=keyboard
+    )
 
 # ==================================================
 # FILE MANAGER
@@ -3917,7 +3990,14 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
     if query.from_user.id != ADMIN_ID:
         return
     text, keyboard = build_filemgr_list_view()
-    await query.edit_message_text(text, reply_markup=keyboard)
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["FILE_MANAGER_BANNER_FILE_ID"],
+            caption=text,
+            parse_mode="HTML",
+        ),
+        reply_markup=keyboard
+    )
 
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3927,13 +4007,13 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
     idx = int(query.data.replace("filemgr_open_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
         text, keyboard = build_filemgr_list_view()
-        await query.edit_message_text(text, reply_markup=keyboard)
+        await query.edit_message_caption(caption=text, reply_markup=keyboard)
         return
 
     icon, name, path = FILE_MANAGER_FILES[idx]
     if not os.path.exists(path):
         text, keyboard = build_filemgr_list_view()
-        await query.edit_message_text(text, reply_markup=keyboard)
+        await query.edit_message_caption(caption=text, reply_markup=keyboard)
         return
 
     keyboard = InlineKeyboardMarkup([
@@ -3947,7 +4027,7 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
         ],
         [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
     ])
-    await query.edit_message_text(f"{icon} {name}\n\nPilih tindakan.", reply_markup=keyboard)
+    await query.edit_message_caption(caption=f"{icon} {name}\n\nPilih tindakan.", reply_markup=keyboard)
 
 async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -4006,13 +4086,15 @@ async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAUL
     icon, name, path = FILE_MANAGER_FILES[idx]
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("❌ Batal", callback_data=f"filemgr_open_{idx}"),
-            InlineKeyboardButton("✅ Ya, Edit", callback_data=f"filemgr_edit_confirm_{idx}")
+            InlineKeyboardButton("✅ Ya, Edit", callback_data=f"filemgr_edit_confirm_{idx}"),
+            InlineKeyboardButton("❌ Batal", callback_data=f"filemgr_open_{idx}")
         ]
     ])
-    await query.edit_message_text(
-        f"⚠️ Edit {name}?\n\n"
-        "Setelah dikonfirmasi, kirim teks JSON baru untuk menggantikan isi file ini.",
+    await query.edit_message_caption(
+        caption=(
+            f"⚠️ Edit {name}?\n\n"
+            "Setelah dikonfirmasi, kirim teks JSON baru untuk menggantikan isi file ini."
+        ),
         reply_markup=keyboard
     )
 
@@ -4028,9 +4110,11 @@ async def filemgr_edit_confirm_callback(update: Update, context: ContextTypes.DE
     icon, name, path = FILE_MANAGER_FILES[idx]
     file_manager_edit_waiting[query.from_user.id] = idx
 
-    await query.edit_message_text(
-        f"✏️ Edit {name}\n\n"
-        "Silakan kirim teks JSON baru untuk file ini."
+    await query.edit_message_caption(
+        caption=(
+            f"✏️ Edit {name}\n\n"
+            "Silakan kirim teks JSON baru untuk file ini."
+        )
     )
 
 def invalidate_file_manager_cache(name: str):
@@ -4084,13 +4168,15 @@ async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEF
     icon, name, path = FILE_MANAGER_FILES[idx]
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("❌ Batal", callback_data=f"filemgr_open_{idx}"),
-            InlineKeyboardButton("✅ Ya, Restore", callback_data=f"filemgr_restore_confirm_{idx}")
+            InlineKeyboardButton("✅ Ya, Restore", callback_data=f"filemgr_restore_confirm_{idx}"),
+            InlineKeyboardButton("❌ Batal", callback_data=f"filemgr_open_{idx}")
         ]
     ])
-    await query.edit_message_text(
-        f"⚠️ Restore {name}?\n\n"
-        "Setelah dikonfirmasi, upload file .json baru untuk menggantikan file ini.",
+    await query.edit_message_caption(
+        caption=(
+            f"⚠️ Restore {name}?\n\n"
+            "Setelah dikonfirmasi, upload file .json baru untuk menggantikan file ini."
+        ),
         reply_markup=keyboard
     )
 
@@ -4106,9 +4192,11 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
     icon, name, path = FILE_MANAGER_FILES[idx]
     file_manager_restore_waiting[query.from_user.id] = idx
 
-    await query.edit_message_text(
-        f"📤 Restore {name}\n\n"
-        "Silakan upload file .json baru untuk menggantikan file ini."
+    await query.edit_message_caption(
+        caption=(
+            f"📤 Restore {name}\n\n"
+            "Silakan upload file .json baru untuk menggantikan file ini."
+        )
     )
 
 async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
