@@ -4136,9 +4136,12 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
         elif not list_values and data and all(isinstance(v, dict) for v in data.values()):
             records = len(data)
 
-    preview_limit = 1800
-    truncated = len(pretty) > preview_limit
-    preview_text = pretty[:preview_limit]
+    preview_lines = 15
+    lines = pretty.splitlines()
+    truncated = len(lines) > preview_lines
+    preview_text = "\n".join(lines[:preview_lines])
+    if truncated:
+        preview_text += "\n..."
 
     caption = (
         "👁 FILE PREVIEW\n\n"
@@ -4164,7 +4167,14 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
             "Gunakan Edit jika ingin mengubah isi file."
         )
 
-    await query.edit_message_caption(caption=caption, reply_markup=action_keyboard)
+    try:
+        await query.edit_message_caption(
+            caption=caption,
+            reply_markup=action_keyboard
+        )
+    except Exception as e:
+        logger.exception("filemgr_view_callback failed: %s", e)
+        raise
 
 async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
