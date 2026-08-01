@@ -3017,12 +3017,15 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         ]
     ])
-    await query.edit_message_text(
-        f"📝 Edit Nama\n\n"
-        f"Nama saat ini:\n"
-        f"{package['nama']}\n\n"
-        "Silakan update nama baru.",
-        reply_markup=keyboard
+    await query.edit_message_caption(
+        caption=(
+            f"📝 <b>Edit Nama</b>\n\n"
+            f"Nama saat ini:\n"
+            f"{package['nama']}\n\n"
+            "Silakan kirim nama baru."
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML",
     )
     
 async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
