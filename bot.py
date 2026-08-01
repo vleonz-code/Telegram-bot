@@ -4404,13 +4404,13 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
         return
 
     if document.file_name.lower() != name.lower():
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             "❌ File tidak sesuai.\n\n"
             f"File yang dipilih : {document.file_name}\n"
             f"File yang diharapkan : {name}\n\n"
             "Silakan upload file JSON yang benar."
         )
-        
+        context.user_data["restore_status_message_id"] = msg.message_id
         return
 
     tg_file = await document.get_file()
@@ -4419,10 +4419,11 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
     try:
         data = json.loads(bytes(raw_bytes).decode("utf-8"))
     except Exception:
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             "❌ Format JSON tidak valid.\n\n"
             f"Silakan upload file {name} yang benar."
         )
+        context.user_data["restore_status_message_id"] = msg.message_id
         return
 
     create_file_manager_backup(name, path)
@@ -4434,11 +4435,13 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
 
     file_manager_restore_waiting.pop(user_id, None)
 
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         f"✅ {name} berhasil dipulihkan.\n"
         "🛡 Backup internal dibuat sebelum perubahan.\n\n"
         "📁 Kembali ke File Manager untuk melanjutkan."
     )
+
+    context.user_data["restore_status_message_id"] = msg.message_id
 
 def build_adminvip_keyboard():
     keyboard = []
