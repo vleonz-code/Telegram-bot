@@ -4174,7 +4174,7 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
         f"📏 {size_str} • 📋 {records} Records\n\n"
         f"<pre>{html.escape(preview_text)}</pre>\n\n"
         "⚠️ Sample data pertama.\n"
-        "Gunakan Edit untuk melihat isi lengkap."
+        "Tekan Edit untuk mengubah isi file."
     )
 
     try:
