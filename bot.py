@@ -5,9 +5,11 @@ import shutil
 import asyncio
 import time
 import copy
+import html
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.constants import ParseMode
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -4112,7 +4114,22 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        pretty = json.dumps(data, indent=2, ensure_ascii=False)
+        sample = data
+
+        if isinstance(data, list) and data:
+            sample = data[0]
+
+        elif isinstance(data, dict):
+            for value in data.values():
+                if isinstance(value, list) and value:
+                    sample = value[0]
+                    break
+
+        pretty = json.dumps(
+            sample,
+            indent=2,
+            ensure_ascii=False
+        )
     except Exception:
         await query.edit_message_caption(
             caption=f"❌ Gagal membaca {name}. File mungkin rusak.",
@@ -4136,41 +4153,35 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
         elif not list_values and data and all(isinstance(v, dict) for v in data.values()):
             records = len(data)
 
-    preview_lines = 15
-    lines = pretty.splitlines()
-    truncated = len(lines) > preview_lines
-    preview_text = "\n".join(lines[:preview_lines])
-    if truncated:
-        preview_text += "\n..."
+    preview_limit = 350
+    preview_text = pretty[:preview_limit]
 
-    caption = (
-        "👁 FILE PREVIEW\n\n"
-        f"📄 File\n{name}\n\n"
-        f"📦 Type\nJSON\n\n"
-        f"📏 Size\n{size_str}\n\n"
-        f"📋 Records\n{records}\n\n"
-        "━━━━━━━━━━━━━━\n\n"
-        "📄 Preview\n\n"
-        f"{preview_text}"
+    if len(pretty) > preview_limit:
+        preview_text = preview_text.rstrip() + "\n..."
+        truncated = True
+    else:
+        truncated = False
+
+    display_name = (
+        os.path.splitext(name)[0]
+        .replace("_", " ")
+        .title()
     )
 
-    if truncated:
-        caption += (
-            "\n...\n\n"
-            "━━━━━━━━━━━━━━\n\n"
-            "⚠️ Hanya sebagian isi file yang ditampilkan.\n\n"
-            "Gunakan Edit jika ingin mengubah isi file."
-        )
-    else:
-        caption += (
-            "\n\n━━━━━━━━━━━━━━\n\n"
-            "Gunakan Edit jika ingin mengubah isi file."
-        )
+    caption = (
+        "👁 <b>FILE PREVIEW</b>\n\n"
+        f"📄 <b>{display_name}</b> • JSON\n"
+        f"📏 {size_str} • 📋 {records} Records\n\n"
+        f"<pre>{html.escape(preview_text)}</pre>\n\n"
+        "⚠️ Sample data pertama.\n"
+        "Gunakan Edit untuk melihat isi lengkap."
+    )
 
     try:
         await query.edit_message_caption(
             caption=caption,
-            reply_markup=action_keyboard
+            reply_markup=action_keyboard,
+            parse_mode=ParseMode.HTML
         )
     except Exception as e:
         logger.exception("filemgr_view_callback failed: %s", e)
