@@ -4356,12 +4356,19 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
         return
 
     icon, name, path = FILE_MANAGER_FILES[idx]
+    display_name = (
+        os.path.splitext(name)[0]
+        .replace("_", " ")
+        .title()
+    )
     file_manager_restore_waiting[query.from_user.id] = idx
 
     await query.edit_message_caption(
         caption=(
-            f"📤 Restore {name}\n\n"
-            "Silakan upload file .json baru untuk menggantikan file ini."
+            f"📤 Restore {display_name}\n\n"
+            "Silakan upload file JSON.\n\n"
+            "File lama akan diganti setelah\n"
+            "format JSON berhasil divalidasi."
         )
     )
 
