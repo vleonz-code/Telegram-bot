@@ -1982,12 +1982,12 @@ async def payment_history_delete_callback(update: Update, context: ContextTypes.
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "❌ Batal",
-                callback_data=f"history_{tanggal}"
-            ),
-            InlineKeyboardButton(
                 "✅ Ya, Hapus",
                 callback_data=f"history_delete_yes_{tanggal}"
+            ),
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data=f"history_{tanggal}"
             )
         ]
     ])
