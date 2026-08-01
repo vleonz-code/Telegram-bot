@@ -1807,8 +1807,8 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
 
     if not orders:
 
-        await query.edit_message_text(
-            "❌ Tidak ada transaksi."
+        await query.edit_message_caption(
+            caption="❌ Tidak ada transaksi."
         )
         return
 
@@ -1851,9 +1851,9 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         ]
     ])
 
-    await query.edit_message_text(
-        text,
-        reply_markup=keyboard
+    await query.edit_message_caption(
+        caption=text,
+        reply_markup=keyboard,
     )
 
 async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1905,18 +1905,20 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
     ])
 
-    await query.edit_message_text(
-        "⚠️ Clear Order\n\n"
-        "Seluruh Order History akan dihapus.\n\n"
+    await query.edit_message_caption(
+        caption=(
+            "⚠️ Clear Order\n\n"
+            "Seluruh Order History akan dihapus.\n\n"
 
-        f"📦 Total Order\n"
-        f"{total_order}\n\n"
+            f"📦 Total Order\n"
+            f"{total_order}\n\n"
 
-        f"💰 Total Pendapatan\n"
-        f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+            f"💰 Total Pendapatan\n"
+            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
 
-        "Data tidak dapat dikembalikan.",
-        reply_markup=keyboard
+            "Data tidak dapat dikembalikan."
+        ),
+        reply_markup=keyboard,
     )
     
 async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1990,19 +1992,21 @@ async def payment_history_delete_callback(update: Update, context: ContextTypes.
         ]
     ])
 
-    await query.edit_message_text(
-        "⚠️ Hapus Tanggal Ini\n\n"
+    await query.edit_message_caption(
+        caption=(
+            "⚠️ Hapus Tanggal Ini\n\n"
 
-        f"📅 {tanggal}\n\n"
+            f"📅 {tanggal}\n\n"
 
-        f"📦 Total Order\n"
-        f"{total_order}\n\n"
+            f"📦 Total Order\n"
+            f"{total_order}\n\n"
 
-        f"💰 Total Pendapatan\n"
-        f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+            f"💰 Total Pendapatan\n"
+            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
 
-        "Data tidak dapat dikembalikan.",
-        reply_markup=keyboard
+            "Data tidak dapat dikembalikan."
+        ),
+        reply_markup=keyboard,
     )
 
 async def payment_history_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2030,9 +2034,9 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
         ]
     ])
 
-    await query.edit_message_text(
-        "✅ Transaksi tanggal berhasil dihapus.",
-        reply_markup=keyboard
+    await query.edit_message_caption(
+        caption="✅ Transaksi tanggal berhasil dihapus.",
+        reply_markup=keyboard,
     )
     
 def build_settings_keyboard(settings):
