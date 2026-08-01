@@ -1413,10 +1413,13 @@ async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TY
             )
         ]
     ])
-    await query.edit_message_text(
-        "➕ Tambah Paket\n\n"
-        "Silakan masukkan nama paket baru.",
-        reply_markup=keyboard
+    await query.edit_message_caption(
+        caption=(
+            "➕ <b>Tambah Paket</b>\n\n"
+            "Silakan masukkan nama paket baru."
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML",
     )
     
 async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
