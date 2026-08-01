@@ -2592,9 +2592,12 @@ def build_preview_caption(idx: int, total: int, media_type: str) -> str:
     jenis = "Video" if media_type == "video" else "Foto"
 
     return (
-        "🖼 Kelola Preview\n\n"
-        f"Preview {idx + 1} / {total}\n"
-        f"Jenis: {jenis}"
+        "🖼 <b>Kelola Preview</b>\n\n"
+        "━━━━━━━━━━━━━━\n"
+        f"📄 Preview   {idx + 1}/{total}\n"
+        f"📷 Jenis        {jenis}\n"
+        "━━━━━━━━━━━━━━\n\n"
+        "Gunakan tombol di bawah untuk mengelola preview."
     )
 
 
@@ -2605,7 +2608,7 @@ def build_preview_nav_keyboard(idx: int, total: int):
     keyboard = [
         [
             InlineKeyboardButton(
-                "◀️",
+                "⬅️",
                 callback_data=f"adminvip_prv_nav_{prev_idx}"
             ),
             InlineKeyboardButton(
@@ -2613,7 +2616,7 @@ def build_preview_nav_keyboard(idx: int, total: int):
                 callback_data="adminvip_prv_noop"
             ),
             InlineKeyboardButton(
-                "▶️",
+                "➡️",
                 callback_data=f"adminvip_prv_nav_{next_idx}"
             )
         ],
@@ -2623,7 +2626,7 @@ def build_preview_nav_keyboard(idx: int, total: int):
                 callback_data=f"adminvip_prv_edit_{idx}"
             ),
             InlineKeyboardButton(
-                "🗑 Hapus",
+                "🗑️ Hapus",
                 callback_data=f"adminvip_prv_del_{idx}"
             )
         ]
@@ -2676,11 +2679,12 @@ async def send_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, id
         return await context.bot.send_message(
             chat_id=chat_id,
             text=(
-                "🖼 Kelola Preview\n\n"
-                "Belum ada Preview.\n\n"
-                "Silakan tambah Preview baru."
+                "🖼 <b>Kelola Preview</b>\n\n"
+                "Belum ada Preview yang tersimpan.\n\n"
+                "Gunakan tombol di bawah untuk menambah Preview baru."
             ),
-            reply_markup=build_preview_empty_keyboard()
+            reply_markup=build_preview_empty_keyboard(),
+            parse_mode="HTML"
         )
 
     total = len(items)
@@ -2697,14 +2701,16 @@ async def send_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, id
             chat_id=chat_id,
             video=file_id,
             caption=caption,
-            reply_markup=keyboard
+            reply_markup=keyboard,
+            parse_mode="HTML"
         )
 
     return await context.bot.send_photo(
         chat_id=chat_id,
         photo=file_id,
         caption=caption,
-        reply_markup=keyboard
+        reply_markup=keyboard,
+        parse_mode="HTML"
     )
 
 
@@ -2723,11 +2729,12 @@ async def render_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, 
                 chat_id=chat_id,
                 message_id=message_id,
                 text=(
-                    "🖼 Kelola Preview\n\n"
-                    "Belum ada Preview.\n\n"
-                    "Silakan tambah Preview baru."
+                    "🖼 <b>Kelola Preview</b>\n\n"
+                    "Belum ada Preview yang tersimpan.\n\n"
+                    "Gunakan tombol di bawah untuk menambah Preview baru."
                 ),
-                reply_markup=build_preview_empty_keyboard()
+                reply_markup=build_preview_empty_keyboard(),
+                parse_mode="HTML"
             )
             return
         except Exception:
@@ -2751,9 +2758,9 @@ async def render_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, 
     keyboard = build_preview_nav_keyboard(idx, total)
 
     media = (
-        InputMediaVideo(file_id, caption=caption)
+        InputMediaVideo(file_id, caption=caption, parse_mode="HTML")
         if media_type == "video"
-        else InputMediaPhoto(file_id, caption=caption)
+        else InputMediaPhoto(file_id, caption=caption, parse_mode="HTML")
     )
 
     try:
@@ -2835,8 +2842,8 @@ async def adminvip_prv_add_callback(update: Update, context: ContextTypes.DEFAUL
     ])
 
     text = (
-        "➕ Tambah Preview\n\n"
-        "Silakan kirim foto atau video untuk dijadikan Preview baru."
+        "➕ <b>Tambah Preview</b>\n\n"
+        "Kirim foto atau video untuk dijadikan Preview baru."
     )
 
     # Pesan bisa berupa teks (saat daftar Preview kosong) atau media (saat
@@ -2844,12 +2851,14 @@ async def adminvip_prv_add_callback(update: Update, context: ContextTypes.DEFAUL
     try:
         await query.edit_message_caption(
             caption=text,
-            reply_markup=keyboard
+            reply_markup=keyboard,
+            parse_mode="HTML"
         )
     except Exception:
         await query.edit_message_text(
             text,
-            reply_markup=keyboard
+            reply_markup=keyboard,
+            parse_mode="HTML"
         )
 
 
@@ -2894,10 +2903,11 @@ async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAU
 
     await query.edit_message_caption(
         caption=(
-            "✏️ Edit Preview\n\n"
-            "Silakan kirim foto atau video baru untuk mengganti Preview ini."
+            "✏️ <b>Edit Preview</b>\n\n"
+            "Kirim foto atau video baru untuk mengganti Preview ini."
         ),
-        reply_markup=keyboard
+        reply_markup=keyboard,
+        parse_mode="HTML"
     )
 
 
@@ -2921,8 +2931,12 @@ async def adminvip_prv_del_callback(update: Update, context: ContextTypes.DEFAUL
     ])
 
     await query.edit_message_caption(
-        caption="Hapus Preview ini?",
-        reply_markup=keyboard
+        caption=(
+            "🗑️ <b>Hapus Preview</b>\n\n"
+            "Preview ini akan dihapus. Lanjutkan?"
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML"
     )
 
 
