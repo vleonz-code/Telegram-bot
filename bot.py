@@ -4402,8 +4402,9 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
     invalidate_file_manager_cache(name)
 
     await update.message.reply_text(
-        f"✅ {name} berhasil di-restore.\n"
-        "🛡 Backup otomatis telah dibuat sebelum perubahan."
+        f"✅ {name} berhasil dipulihkan.\n"
+        "🛡 Backup internal dibuat sebelum perubahan.\n\n"
+        "📁 Kembali ke File Manager untuk melanjutkan."
     )
 
 def build_adminvip_keyboard():
