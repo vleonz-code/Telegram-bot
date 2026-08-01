@@ -4223,7 +4223,7 @@ async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_
         return
 
     with open(path, "rb") as f:
-        doc_msg = await query.message.reply_document(document=f, filename=name, caption=f"📥 Backup {name}")
+        doc_msg = await query.message.reply_document(document=f, filename=name, caption=f"📥 Download {name}")
     context.user_data["filemgr_download_message_id"] = doc_msg.message_id
 
 async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
