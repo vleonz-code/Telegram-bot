@@ -4018,6 +4018,14 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
+
+    dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
+    if dl_msg_id:
+        try:
+            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
+        except Exception:
+            pass
+
     text, keyboard = build_filemgr_list_view()
     await query.edit_message_media(
         media=InputMediaPhoto(
@@ -4033,6 +4041,14 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
+
+    dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
+    if dl_msg_id:
+        try:
+            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
+        except Exception:
+            pass
+
     idx = int(query.data.replace("filemgr_open_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
         text, keyboard = build_filemgr_list_view()
@@ -4068,8 +4084,29 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     icon, name, path = FILE_MANAGER_FILES[idx]
+
+    dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
+    if dl_msg_id:
+        try:
+            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
+        except Exception:
+            pass
+
+    action_keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}"),
+            InlineKeyboardButton("📥 Backup", callback_data=f"filemgr_backup_{idx}")
+        ],
+        [
+            InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}"),
+            InlineKeyboardButton("📤 Restore", callback_data=f"filemgr_restore_ask_{idx}")
+        ],
+        [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
+    ])
+
     if not os.path.exists(path):
-        await query.message.reply_text(f"❌ {name} tidak ditemukan.")
+        text, keyboard = build_filemgr_list_view()
+        await query.edit_message_caption(caption=text, reply_markup=keyboard)
         return
 
     try:
@@ -4077,7 +4114,10 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
             data = json.load(f)
         pretty = json.dumps(data, indent=2, ensure_ascii=False)
     except Exception:
-        await query.message.reply_text(f"❌ Gagal membaca {name}. File mungkin rusak.")
+        await query.edit_message_caption(
+            caption=f"❌ Gagal membaca {name}. File mungkin rusak.",
+            reply_markup=action_keyboard
+        )
         return
 
     size_bytes = os.path.getsize(path)
@@ -4124,7 +4164,7 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
             "Gunakan Edit jika ingin mengubah isi file."
         )
 
-    await query.message.reply_text(caption)
+    await query.edit_message_caption(caption=caption, reply_markup=action_keyboard)
 
 async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -4136,12 +4176,42 @@ async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_
         return
 
     icon, name, path = FILE_MANAGER_FILES[idx]
+
+    dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
+    if dl_msg_id:
+        try:
+            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
+        except Exception:
+            pass
+
+    action_keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}"),
+            InlineKeyboardButton("📥 Backup", callback_data=f"filemgr_backup_{idx}")
+        ],
+        [
+            InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}"),
+            InlineKeyboardButton("📤 Restore", callback_data=f"filemgr_restore_ask_{idx}")
+        ],
+        [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
+    ])
+
     if not os.path.exists(path):
-        await query.message.reply_text(f"❌ {name} tidak ditemukan.")
+        text, keyboard = build_filemgr_list_view()
+        await query.edit_message_caption(caption=text, reply_markup=keyboard)
         return
 
+    await query.edit_message_caption(
+        caption=(
+            f"📥 Backup {name}\n\n"
+            "Dokumen dikirim di pesan terpisah karena keterbatasan Telegram."
+        ),
+        reply_markup=action_keyboard
+    )
+
     with open(path, "rb") as f:
-        await query.message.reply_document(document=f, filename=name, caption=f"📥 Backup {name}")
+        doc_msg = await query.message.reply_document(document=f, filename=name, caption=f"📥 Backup {name}")
+    context.user_data["filemgr_download_message_id"] = doc_msg.message_id
 
 async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -4151,6 +4221,13 @@ async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAUL
     idx = int(query.data.replace("filemgr_edit_ask_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
         return
+
+    dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
+    if dl_msg_id:
+        try:
+            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
+        except Exception:
+            pass
 
     icon, name, path = FILE_MANAGER_FILES[idx]
     keyboard = InlineKeyboardMarkup([
@@ -4233,6 +4310,13 @@ async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEF
     idx = int(query.data.replace("filemgr_restore_ask_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
         return
+
+    dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
+    if dl_msg_id:
+        try:
+            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
+        except Exception:
+            pass
 
     icon, name, path = FILE_MANAGER_FILES[idx]
     keyboard = InlineKeyboardMarkup([
