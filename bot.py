@@ -4375,7 +4375,7 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
 async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    old_msg_id = context.user_data.pop("restore_status_message_id", None)
+    old_msg_id = context.user_data.get("restore_status_message_id")
     if old_msg_id:
         try:
             await context.bot.delete_message(
@@ -4384,6 +4384,8 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
             )
         except Exception:
             pass
+        finally:
+            context.user_data.pop("restore_status_message_id", None)
     idx = file_manager_restore_waiting.get(user_id)
     if idx is None:
         return
