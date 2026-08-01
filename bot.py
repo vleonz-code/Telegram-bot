@@ -4367,13 +4367,20 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
     )
     file_manager_restore_waiting[query.from_user.id] = idx
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("❌ Batalkan", callback_data=f"filemgr_open_{idx}")
+        ]
+    ])
+
     await query.edit_message_caption(
         caption=(
             f"📤 Restore {display_name}\n\n"
             "Silakan upload file JSON.\n\n"
             "File lama akan diganti setelah\n"
             "format JSON berhasil divalidasi."
-        )
+        ),
+        reply_markup=keyboard
     )
 
 async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
