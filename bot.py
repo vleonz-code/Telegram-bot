@@ -1500,11 +1500,12 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
         )
     ])
 
-    await query.edit_message_text(
-        "📦 Kelola Paket\n\n"
-        "Pilih paket yang ingin dikelola:",
+    await query.edit_message_caption(
+        caption=(
+            "📦 Kelola Paket\n\n"
+            "Pilih paket yang ingin dikelola:"
+        ),
         reply_markup=InlineKeyboardMarkup(keyboard)
-
     )
 
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
