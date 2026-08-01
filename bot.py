@@ -4222,14 +4222,6 @@ async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_
         await query.edit_message_caption(caption=text, reply_markup=keyboard)
         return
 
-    await query.edit_message_caption(
-        caption=(
-            f"📥 Backup {name}\n\n"
-            "Dokumen dikirim di pesan terpisah karena keterbatasan Telegram."
-        ),
-        reply_markup=action_keyboard
-    )
-
     with open(path, "rb") as f:
         doc_msg = await query.message.reply_document(document=f, filename=name, caption=f"📥 Backup {name}")
     context.user_data["filemgr_download_message_id"] = doc_msg.message_id
