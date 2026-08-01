@@ -3051,12 +3051,15 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await query.edit_message_text(
-        f"💰 Edit Harga\n\n"
-        f"Harga saat ini:\n"
-        f"{package['harga']}\n\n"
-        "Silakan update harga baru.",
-        reply_markup=keyboard
+    await query.edit_message_caption(
+        caption=(
+            f"💰 <b>Edit Harga</b>\n\n"
+            f"Harga saat ini:\n"
+            f"{package['harga']}\n\n"
+            "Silakan update harga baru."
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML",
     )
     
 async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3082,12 +3085,15 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
     ])
 
-    await query.edit_message_text(
-        f"📄 Edit Deskripsi\n\n"
-        f"Deskripsi saat ini:\n"
-        f"{package['deskripsi']}\n\n"
-        "Silakan update deskripsi baru.",
-        reply_markup=keyboard
+    await query.edit_message_caption(
+        caption=(
+            f"📄 <b>Edit Deskripsi</b>\n\n"
+            f"Deskripsi saat ini:\n"
+            f"{package['deskripsi']}\n\n"
+            "Silakan update deskripsi baru."
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML",
     )
     
 async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3114,14 +3120,16 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
     ])
 
-    await query.edit_message_text(
-        f"🔗 Edit Link VIP\n\n"
-        f"Link saat ini:\n"
-        f"{package['vip_link']}\n\n"
-        "Silakan kirim link VIP baru.\n\n"
-        "Contoh:\nhttps://t.me/...",
-        reply_markup=keyboard
-
+    await query.edit_message_caption(
+        caption=(
+            f"🔗 <b>Edit Link VIP</b>\n\n"
+            f"Link saat ini:\n"
+            f"{package['vip_link']}\n\n"
+            "Silakan kirim link VIP baru.\n\n"
+            "Contoh:\nhttps://t.me/..."
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML",
     )
     
 async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3144,11 +3152,14 @@ async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT
         ]
     ])
 
-    await query.edit_message_text(
-        f"⚠️ Yakin ingin menghapus paket ini?\n\n"
-        f"{package['nama']}\n"
-        f"💰 {package['harga']}",
-        reply_markup=keyboard
+    await query.edit_message_caption(
+        caption=(
+            f"⚠️ <b>Yakin ingin menghapus paket ini?</b>\n\n"
+            f"{package['nama']}\n"
+            f"💰 {package['harga']}"
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML",
     )
     
 async def adminvip_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3283,11 +3294,14 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ]
     ])
 
-    await context.bot.edit_message_text(
+    await context.bot.edit_message_caption(
         chat_id=data["chat_id"],
         message_id=data["message_id"],
-        text=f"{package['nama']}\n\n💰 {package['harga']}",
-        reply_markup=keyboard
+        caption=(
+            f"{package['nama']}\n\n"
+            f"💰 {package['harga']}"
+        ),
+        reply_markup=keyboard,
     )
 
 async def show_add_preview(message, data):
