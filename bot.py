@@ -4066,7 +4066,7 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}"),
-            InlineKeyboardButton("📥 Backup", callback_data=f"filemgr_backup_{idx}")
+            InlineKeyboardButton("📥 Download", callback_data=f"filemgr_backup_{idx}")
         ],
         [
             InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}"),
@@ -4097,7 +4097,7 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
     action_keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}"),
-            InlineKeyboardButton("📥 Backup", callback_data=f"filemgr_backup_{idx}")
+            InlineKeyboardButton("📥 Download", callback_data=f"filemgr_backup_{idx}")
         ],
         [
             InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}"),
@@ -4208,7 +4208,7 @@ async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_
     action_keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}"),
-            InlineKeyboardButton("📥 Backup", callback_data=f"filemgr_backup_{idx}")
+            InlineKeyboardButton("📥 Download", callback_data=f"filemgr_backup_{idx}")
         ],
         [
             InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}"),
