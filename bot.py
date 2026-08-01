@@ -4374,7 +4374,7 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
 
 async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    idx = file_manager_restore_waiting.pop(user_id)
+    idx = file_manager_restore_waiting.get(user_id)
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
         return
 
@@ -4382,7 +4382,9 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
 
     document = update.message.document
     if not document or not document.file_name.lower().endswith(".json"):
-        await update.message.reply_text(f"❌ File harus berformat .json. {name} tidak diubah.")
+        await update.message.reply_text(
+            f"❌ File harus berformat .json. {name} tidak diubah."
+        )
         return
 
     if document.file_name.lower() != name.lower():
