@@ -1519,24 +1519,26 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     await query.answer()
 
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
-
-    await context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text="💳 Pembayaran",
-        reply_markup=build_payment_keyboard()
-    ) 
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["PAYMENT_BANNER_FILE_ID"],
+            caption="💳 <b>PEMBAYARAN</b>",
+            parse_mode="HTML",
+        ),
+        reply_markup=build_payment_keyboard(),
+    )
    
 async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    await query.edit_message_text(
-        "💳 Pembayaran",
-        reply_markup=build_payment_keyboard()
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["PAYMENT_BANNER_FILE_ID"],
+            caption="💳 <b>PEMBAYARAN</b>",
+            parse_mode="HTML",
+        ),
+        reply_markup=build_payment_keyboard(),
     )
     
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
