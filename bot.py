@@ -4080,11 +4080,51 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
         await query.message.reply_text(f"❌ Gagal membaca {name}. File mungkin rusak.")
         return
 
-    chunks = split_text_into_chunks(pretty)
-    total_chunks = len(chunks)
-    for i, chunk in enumerate(chunks, start=1):
-        prefix = f"👁 {name} ({i}/{total_chunks})\n\n" if total_chunks > 1 else f"👁 {name}\n\n"
-        await query.message.reply_text(f"{prefix}{chunk}")
+    size_bytes = os.path.getsize(path)
+    if size_bytes < 1024 * 1024:
+        size_str = f"{size_bytes / 1024:.0f} KB"
+    else:
+        size_str = f"{size_bytes / (1024 * 1024):.1f} MB"
+
+    records = "-"
+    if isinstance(data, list):
+        records = len(data)
+    elif isinstance(data, dict):
+        list_values = [v for v in data.values() if isinstance(v, list)]
+        if len(list_values) == 1:
+            records = len(list_values[0])
+        elif not list_values and data and all(isinstance(v, dict) for v in data.values()):
+            records = len(data)
+
+    preview_limit = 1800
+    truncated = len(pretty) > preview_limit
+    preview_text = pretty[:preview_limit]
+
+    caption = (
+        "👁 FILE PREVIEW\n\n"
+        f"📄 File\n{name}\n\n"
+        f"📦 Type\nJSON\n\n"
+        f"📏 Size\n{size_str}\n\n"
+        f"📋 Records\n{records}\n\n"
+        "━━━━━━━━━━━━━━\n\n"
+        "📄 Preview\n\n"
+        f"{preview_text}"
+    )
+
+    if truncated:
+        caption += (
+            "\n...\n\n"
+            "━━━━━━━━━━━━━━\n\n"
+            "⚠️ Hanya sebagian isi file yang ditampilkan.\n\n"
+            "Gunakan Edit jika ingin mengubah isi file."
+        )
+    else:
+        caption += (
+            "\n\n━━━━━━━━━━━━━━\n\n"
+            "Gunakan Edit jika ingin mengubah isi file."
+        )
+
+    await query.message.reply_text(caption)
 
 async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
