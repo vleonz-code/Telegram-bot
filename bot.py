@@ -4375,6 +4375,15 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
 async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
+    old_msg_id = context.user_data.pop("restore_status_message_id", None)
+    if old_msg_id:
+        try:
+            await context.bot.delete_message(
+                chat_id=update.effective_chat.id,
+                message_id=old_msg_id
+            )
+        except Exception:
+            pass
     idx = file_manager_restore_waiting.get(user_id)
     if idx is None:
         return
@@ -4387,10 +4396,11 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
 
     document = update.message.document
     if not document or not document.file_name.lower().endswith(".json"):
-        await update.message.reply_text(
+        msg = await update.message.reply_text(
             f"❌ File harus berformat .json.\n\n"
             f"Silakan upload file {name} yang benar."
         )
+        context.user_data["restore_status_message_id"] = msg.message_id
         return
 
     if document.file_name.lower() != name.lower():
@@ -4400,6 +4410,7 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
             f"File yang diharapkan : {name}\n\n"
             "Silakan upload file JSON yang benar."
         )
+        
         return
 
     tg_file = await document.get_file()
