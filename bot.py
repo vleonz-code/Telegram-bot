@@ -4396,7 +4396,7 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
 
     await update.message.reply_text(
         f"✅ {name} berhasil di-restore.\n"
-        "📥 Backup otomatis telah dibuat sebelum perubahan."
+        "🛡 Backup otomatis telah dibuat sebelum perubahan."
     )
 
 def build_adminvip_keyboard():
