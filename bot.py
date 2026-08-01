@@ -1508,7 +1508,6 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
         media=InputMediaPhoto(
             media=os.environ["PACKAGE_BANNER_FILE_ID"],
             caption=(
-                "📦 <b>KELOLA PAKET</b>\n\n"
                 "Pilih paket yang ingin dikelola:"
             ),
             parse_mode="HTML",
