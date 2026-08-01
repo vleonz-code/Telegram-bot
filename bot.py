@@ -1783,7 +1783,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
             f"📦 Total Order : {total_order}\n\n"
 
-            "📅 Pilih tanggal transaksi di bawah ini."
+            "Pilih tanggal transaksi di bawah ini."
         ),
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
