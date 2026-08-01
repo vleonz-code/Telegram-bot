@@ -4044,6 +4044,8 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
     if query.from_user.id != ADMIN_ID:
         return
 
+    file_manager_restore_waiting.pop(query.from_user.id, None)
+
     dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
     if dl_msg_id:
         try:
@@ -4369,7 +4371,7 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
 
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("❌ Batalkan", callback_data=f"filemgr_restore_cancel_{idx}")
+            InlineKeyboardButton("❌ Batalkan", callback_data=f"filemgr_open_{idx}")
         ]
     ])
 
@@ -4383,20 +4385,6 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
         reply_markup=keyboard
     )
 
-async def filemgr_restore_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    if query.from_user.id != ADMIN_ID:
-        return
-
-    file_manager_restore_waiting.pop(query.from_user.id, None)
-
-    idx = int(query.data.replace("filemgr_restore_cancel_", ""))
-    query.data = f"filemgr_open_{idx}"
-
-    await filemgr_open_callback(update, context)
-    
 async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -5399,12 +5387,6 @@ def main():
         CallbackQueryHandler(
             filemgr_restore_confirm_callback,
             pattern=r"^filemgr_restore_confirm_\d+$"
-        )
-    )
-    app.add_handler(
-        CallbackQueryHandler(
-            filemgr_restore_cancel_callback,
-            pattern=r"^filemgr_restore_cancel_\d+$"
         )
     )
     app.add_handler(
