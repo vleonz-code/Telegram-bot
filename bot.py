@@ -3188,41 +3188,7 @@ async def adminvip_delete_yes_callback(update: Update, context: ContextTypes.DEF
 
     save_vip_packages(packages)
 
-    keyboard = []
-
-    for package in packages["packages"]:
-
-        keyboard.append([
-
-            InlineKeyboardButton(
-
-                package["nama"],
-
-                callback_data=f"adminvip_{package['id']}"
-
-            )
-
-        ])
-
-    keyboard.append([
-
-        InlineKeyboardButton(
-
-            "➕ Tambah Paket",
-
-            callback_data="adminvip_add"
-
-        )
-
-    ])
-
-    await query.edit_message_text(
-
-        "⚙️ Admin VIP\n\nPilih paket yang ingin dikelola:",
-
-        reply_markup=InlineKeyboardMarkup(keyboard)
-
-    )
+    await adminvip_packages_callback(update, context)
     
 async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
