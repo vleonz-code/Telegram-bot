@@ -1434,9 +1434,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         InlineKeyboardButton(
             "📝 Edit Nama",
             callback_data=f"adminvip_name_{package_id}"
-        )
-    ],
-    [
+        ),
         InlineKeyboardButton(
             "💰 Edit Harga",
             callback_data=f"adminvip_price_{package_id}"
@@ -1446,9 +1444,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         InlineKeyboardButton(
             "📄 Edit Deskripsi",
             callback_data=f"adminvip_desc_{package_id}"
-        )
-    ],
-    [
+        ),
         InlineKeyboardButton(
             "🔗 Edit Link",
             callback_data=f"adminvip_link_{package_id}"
@@ -1456,7 +1452,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
     ],
     [
         InlineKeyboardButton(
-            "🗑 Hapus Paket",
+            "🗑️ Hapus Paket",
             callback_data=f"adminvip_delete_{package_id}"
         )
     ],
@@ -3318,9 +3314,7 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
             InlineKeyboardButton(
                 "📝 Edit Nama",
                 callback_data=f"adminvip_name_{package['id']}"
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 "💰 Edit Harga",
                 callback_data=f"adminvip_price_{package['id']}"
@@ -3330,9 +3324,7 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
             InlineKeyboardButton(
                 "📄 Edit Deskripsi",
                 callback_data=f"adminvip_desc_{package['id']}"
-            )
-        ],
-        [
+            ),
             InlineKeyboardButton(
                 "🔗 Edit Link",
                 callback_data=f"adminvip_link_{package['id']}"
@@ -3340,7 +3332,7 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ],
         [
             InlineKeyboardButton(
-                "🗑 Hapus Paket",
+                "🗑️ Hapus Paket",
                 callback_data=f"adminvip_delete_{package['id']}"
             )
         ],
