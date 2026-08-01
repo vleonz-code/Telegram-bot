@@ -1501,12 +1501,16 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
         )
     ])
 
-    await query.edit_message_caption(
-        caption=(
-            "📦 Kelola Paket\n\n"
-            "Pilih paket yang ingin dikelola:"
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["PACKAGE_BANNER_FILE_ID"],
+            caption=(
+                "📦 <b>KELOLA PAKET</b>\n\n"
+                "Pilih paket yang ingin dikelola:"
+            ),
+            parse_mode="HTML",
         ),
-        reply_markup=InlineKeyboardMarkup(keyboard)
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
