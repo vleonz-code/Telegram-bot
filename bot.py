@@ -4015,6 +4015,23 @@ def build_filemgr_list_view():
     keyboard = InlineKeyboardMarkup(keyboard_rows)
     return text, keyboard
 
+def build_filemgr_detail_view(idx, icon, name, note=None):
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}"),
+            InlineKeyboardButton("📥 Download", callback_data=f"filemgr_backup_{idx}")
+        ],
+        [
+            InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}"),
+            InlineKeyboardButton("📤 Restore", callback_data=f"filemgr_restore_ask_{idx}")
+        ],
+        [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
+    ])
+    caption = f"{icon} {name}\n\nPilih tindakan."
+    if note:
+        caption = f"{note}\n\n{caption}"
+    return caption, keyboard
+
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4450,12 +4467,28 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
 
     file_manager_restore_waiting.pop(user_id, None)
 
-    msg = await update.message.reply_text(
-        f"✅ <b>{name}</b> berhasil dipulihkan.",
-        parse_mode="HTML"
-    )
+    try:
+        await update.message.delete()
+    except Exception:
+        pass
 
-    context.user_data["restore_status_message_id"] = msg.message_id
+    chat_id = context.user_data.pop("filemgr_restore_chat_id", None)
+    message_id = context.user_data.pop("filemgr_restore_message_id", None)
+
+    if chat_id and message_id:
+        caption, keyboard = build_filemgr_detail_view(
+            idx, icon, name, note=f"✅ <b>{name}</b> berhasil dipulihkan."
+        )
+        try:
+            await context.bot.edit_message_caption(
+                chat_id=chat_id,
+                message_id=message_id,
+                caption=caption,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        except Exception:
+            pass
     
 def build_adminvip_keyboard():
     keyboard = []
