@@ -3549,11 +3549,6 @@ async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     save_vip_packages(packages)
 
-    try:
-        await query.delete_message()
-    except Exception:
-        pass
-
     await adminvip_packages_callback(update, context)
     
 async def adminadd_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
