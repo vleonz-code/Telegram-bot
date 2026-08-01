@@ -3731,7 +3731,7 @@ def build_blacklist_view(page: int = 1):
     page_items = items[start:end]
 
     lines = [
-        "🚫 Blacklist",
+        "",
         "",
         f"📊 {total} user • Halaman {page}/{total_pages}",
         BLACKLIST_DIVIDER
