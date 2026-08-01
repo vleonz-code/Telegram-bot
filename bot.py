@@ -4444,7 +4444,6 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
     msg = await update.message.reply_text(
         f"✅ {name} berhasil dipulihkan.\n"
         "🛡 Backup internal dibuat sebelum perubahan.\n\n"
-        "📁 Kembali ke File Manager untuk melanjutkan."
     )
 
     context.user_data["restore_status_message_id"] = msg.message_id
