@@ -324,6 +324,7 @@ admin_reply_waiting = {}
 blocked_notified = set()
 file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
 file_manager_restore_waiting = {}  # user_id -> FILE_MANAGER_FILES index
+file_manager_restore_processing = set()  # user_id sedang diproses -> upload lain di jendela ini diabaikan
 
 # Kelola Preview (preview.json) state
 preview_edit_waiting = {}  # user_id -> {"index": int, "chat_id": int, "message_id": int}
@@ -4411,102 +4412,109 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
 async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
-    old_msg_id = context.user_data.get("restore_status_message_id")
-    if old_msg_id:
-        try:
-            await context.bot.delete_message(
-                chat_id=update.effective_chat.id,
-                message_id=old_msg_id
-            )
-        except Exception:
-            pass
-        finally:
-            context.user_data.pop("restore_status_message_id", None)
-    idx = file_manager_restore_waiting.get(user_id)
-    if idx is None:
+    if user_id in file_manager_restore_processing:
         return
+    file_manager_restore_processing.add(user_id)
 
-    if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+    try:
+        old_msg_id = context.user_data.get("restore_status_message_id")
+        if old_msg_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=old_msg_id
+                )
+            except Exception:
+                pass
+            finally:
+                context.user_data.pop("restore_status_message_id", None)
+        idx = file_manager_restore_waiting.get(user_id)
+        if idx is None:
+            return
+
+        if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+            file_manager_restore_waiting.pop(user_id, None)
+            return
+
+        icon, name, path = FILE_MANAGER_FILES[idx]
+
+        document = update.message.document
+        if not document or not document.file_name.lower().endswith(".json"):
+            try:
+                await update.message.delete()
+            except Exception:
+                pass
+            msg = await update.message.reply_text(
+                f"❌ File harus berformat .json.\n\n"
+                f"Silakan upload file {name} yang benar."
+            )
+            context.user_data["restore_status_message_id"] = msg.message_id
+            return
+
+        if document.file_name.lower() != name.lower():
+            try:
+                await update.message.delete()
+            except Exception:
+                pass
+            msg = await update.message.reply_text(
+                "❌ File tidak sesuai.\n\n"
+                f"File yang dipilih : {document.file_name}\n"
+                f"File yang diharapkan : {name}\n\n"
+                "Silakan upload file JSON yang benar."
+            )
+            context.user_data["restore_status_message_id"] = msg.message_id
+            return
+
+        tg_file = await document.get_file()
+        raw_bytes = await tg_file.download_as_bytearray()
+
+        try:
+            data = json.loads(bytes(raw_bytes).decode("utf-8"))
+        except Exception:
+            try:
+                await update.message.delete()
+            except Exception:
+                pass
+            msg = await update.message.reply_text(
+                "❌ Format JSON tidak valid.\n\n"
+                f"Silakan upload file {name} yang benar."
+            )
+            context.user_data["restore_status_message_id"] = msg.message_id
+            return
+
+        create_file_manager_backup(name, path)
+
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+        invalidate_file_manager_cache(name)
+
         file_manager_restore_waiting.pop(user_id, None)
-        return
 
-    icon, name, path = FILE_MANAGER_FILES[idx]
-
-    document = update.message.document
-    if not document or not document.file_name.lower().endswith(".json"):
         try:
             await update.message.delete()
         except Exception:
             pass
-        msg = await update.message.reply_text(
-            f"❌ File harus berformat .json.\n\n"
-            f"Silakan upload file {name} yang benar."
-        )
-        context.user_data["restore_status_message_id"] = msg.message_id
-        return
 
-    if document.file_name.lower() != name.lower():
-        try:
-            await update.message.delete()
-        except Exception:
-            pass
-        msg = await update.message.reply_text(
-            "❌ File tidak sesuai.\n\n"
-            f"File yang dipilih : {document.file_name}\n"
-            f"File yang diharapkan : {name}\n\n"
-            "Silakan upload file JSON yang benar."
-        )
-        context.user_data["restore_status_message_id"] = msg.message_id
-        return
+        chat_id = context.user_data.pop("filemgr_restore_chat_id", None)
+        message_id = context.user_data.pop("filemgr_restore_message_id", None)
 
-    tg_file = await document.get_file()
-    raw_bytes = await tg_file.download_as_bytearray()
-
-    try:
-        data = json.loads(bytes(raw_bytes).decode("utf-8"))
-    except Exception:
-        try:
-            await update.message.delete()
-        except Exception:
-            pass
-        msg = await update.message.reply_text(
-            "❌ Format JSON tidak valid.\n\n"
-            f"Silakan upload file {name} yang benar."
-        )
-        context.user_data["restore_status_message_id"] = msg.message_id
-        return
-
-    create_file_manager_backup(name, path)
-
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-    invalidate_file_manager_cache(name)
-
-    file_manager_restore_waiting.pop(user_id, None)
-
-    try:
-        await update.message.delete()
-    except Exception:
-        pass
-
-    chat_id = context.user_data.pop("filemgr_restore_chat_id", None)
-    message_id = context.user_data.pop("filemgr_restore_message_id", None)
-
-    if chat_id and message_id:
-        caption, keyboard = build_filemgr_detail_view(
-            idx, icon, name, note=f"✅ <b>{name}</b> berhasil dipulihkan."
-        )
-        try:
-            await context.bot.edit_message_caption(
-                chat_id=chat_id,
-                message_id=message_id,
-                caption=caption,
-                parse_mode="HTML",
-                reply_markup=keyboard
+        if chat_id and message_id:
+            caption, keyboard = build_filemgr_detail_view(
+                idx, icon, name, note=f"✅ <b>{name}</b> berhasil dipulihkan."
             )
-        except Exception:
-            pass
+            try:
+                await context.bot.edit_message_caption(
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    caption=caption,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+            except Exception:
+                pass
+    finally:
+        file_manager_restore_processing.discard(user_id)
     
 def build_adminvip_keyboard():
     keyboard = []
