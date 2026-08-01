@@ -4385,6 +4385,15 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
         await update.message.reply_text(f"❌ File harus berformat .json. {name} tidak diubah.")
         return
 
+    if document.file_name.lower() != name.lower():
+        await update.message.reply_text(
+            "❌ File tidak sesuai.\n\n"
+            f"File yang dipilih : {document.file_name}\n"
+            f"File yang diharapkan : {name}\n\n"
+            "Silakan upload file JSON yang benar."
+        )
+        return
+        
     tg_file = await document.get_file()
     raw_bytes = await tg_file.download_as_bytearray()
 
