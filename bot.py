@@ -1811,15 +1811,15 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
             else "-"
         )
 
-        text += (
-            f"📋 Order #{i}\n\n"
-            f"👤 {order['full_name']}\n"
-            f"🆔 {order['user_id']}\n"
-            f"🔗 {order['username']}\n\n"
-            f"📦 {package['nama']}\n"
-            f"💰 {harga}\n\n"
-            f"🕒 {jam}\n\n"
-        )
+    text += (
+        f"📋 Order #{i}\n\n"
+        f"👤 {order['full_name']}\n"
+        f"🆔 {order['user_id']}\n"
+        f"🔗 {order['username']}\n\n"
+        f"📦 {package['nama']}\n"
+        f"💰 {harga}\n\n"
+        f"🕒 {jam}\n\n"
+    )
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -1840,7 +1840,7 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         text,
         reply_markup=keyboard
     )
-    
+
 async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2020,11 +2020,10 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
         reply_markup=keyboard
     )
     
-async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    settings = read_settings()
+def build_settings_keyboard(settings):
+    """Bangun keyboard halaman Pengaturan dari state settings saat ini.
+    Dipakai bersama oleh render penuh (edit_message_media) maupun update
+    ringan (edit_message_caption) supaya keduanya selalu konsisten."""
 
     if settings["preview_delete_delay"] < 60:
         preview_time = (
@@ -2035,7 +2034,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
             f"{settings['preview_delete_delay'] // 60} Menit"
         )
 
-    keyboard = InlineKeyboardMarkup([
+    return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
                 f"{'🟢' if settings['join_vip_enabled'] else '🔴'} Order {'ON' if settings['join_vip_enabled'] else 'OFF'}",
@@ -2073,6 +2072,14 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
             )
         ]
     ])
+
+
+async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    settings = read_settings()
+    keyboard = build_settings_keyboard(settings)
 
     from telegram import InputMediaPhoto
 
@@ -2256,9 +2263,43 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
         "</pre>"
     )
-    await query.edit_message_caption(
-        caption=admin_panel_text,
-        reply_markup=build_adminvip_keyboard(),
+
+    keyboard = build_adminvip_keyboard()
+
+    from telegram import InputMediaPhoto
+
+    # Kembali ke Menu Admin = berpindah halaman (Pengaturan -> Menu Admin),
+    # jadi banner harus ikut berganti ke ADMIN_BANNER_FILE_ID lewat
+    # edit_message_media, bukan cuma caption-nya.
+    try:
+        await query.edit_message_media(
+            media=InputMediaPhoto(
+                media=os.environ["ADMIN_BANNER_FILE_ID"],
+                caption=admin_panel_text,
+                parse_mode="HTML"
+            ),
+            reply_markup=keyboard
+        )
+        return
+    except Exception:
+        pass
+
+    # Fallback untuk pemanggil "adminvip_back" lain yang pesannya belum
+    # berupa media (submenu lama yang masih memakai edit_message_text),
+    # supaya perilakunya tetap seperti sebelumnya dan tidak rusak.
+    try:
+        await query.edit_message_caption(
+            caption=admin_panel_text,
+            reply_markup=keyboard,
+            parse_mode="HTML",
+        )
+        return
+    except Exception:
+        pass
+
+    await query.edit_message_text(
+        admin_panel_text,
+        reply_markup=keyboard,
         parse_mode="HTML",
     )
     
@@ -2321,7 +2362,11 @@ async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DE
 
     save_settings(settings)
 
-    await adminvip_settings_callback(update, context)
+    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
+    await query.edit_message_caption(
+        caption="⚙️ Pengaturan",
+        reply_markup=build_settings_keyboard(settings)
+    )
     
 async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2331,7 +2376,11 @@ async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes
     settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
     save_settings(settings)
 
-    await adminvip_settings_callback(update, context)
+    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
+    await query.edit_message_caption(
+        caption="⚙️ Pengaturan",
+        reply_markup=build_settings_keyboard(settings)
+    )
 
 async def adminvip_toggle_livechat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2343,7 +2392,11 @@ async def adminvip_toggle_livechat_callback(update: Update, context: ContextType
 
     save_settings(settings)
 
-    await adminvip_settings_callback(update, context)
+    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
+    await query.edit_message_caption(
+        caption="⚙️ Pengaturan",
+        reply_markup=build_settings_keyboard(settings)
+    )
    
 async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2355,7 +2408,11 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
     save_settings(settings)
 
-    await adminvip_settings_callback(update, context)
+    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
+    await query.edit_message_caption(
+        caption="⚙️ Pengaturan",
+        reply_markup=build_settings_keyboard(settings)
+    )
     
 async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2412,8 +2469,11 @@ async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
     ])
 
-    await query.edit_message_text(
-        "⏱ Preview Timer",
+    # Masih di banner Pengaturan yang sama, hanya caption & keyboard yang
+    # berubah -> edit_message_caption (edit_message_text akan gagal karena
+    # pesan ini sudah berupa media).
+    await query.edit_message_caption(
+        caption="⏱ Preview Timer",
         reply_markup=keyboard
     )
     
@@ -2434,11 +2494,14 @@ async def preview_set_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     save_settings(settings)
 
-    await adminvip_settings_callback(
-        update,
-        context
+    # Kembali ke tampilan Pengaturan: banner tidak berubah, cukup
+    # caption & keyboard.
+    await query.edit_message_caption(
+        caption="⚙️ Pengaturan",
+        reply_markup=build_settings_keyboard(settings)
     )
-    
+
+
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
