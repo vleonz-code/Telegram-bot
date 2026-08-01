@@ -4320,6 +4320,10 @@ async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEF
     await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
+
+    context.user_data["filemgr_restore_chat_id"] = query.message.chat_id
+    context.user_data["filemgr_restore_message_id"] = query.message.message_id
+
     idx = int(query.data.replace("filemgr_restore_ask_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
         return
