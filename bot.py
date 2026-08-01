@@ -2341,6 +2341,9 @@ async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
 
+    context.user_data["qris_chat_id"] = query.message.chat_id
+    context.user_data["qris_message_id"] = query.message.message_id
+
     settings = read_settings()
 
     keyboard = InlineKeyboardMarkup([
@@ -4671,12 +4674,36 @@ async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     admin_qris_waiting.discard(user_id)
 
-    await update.message.reply_photo(
+    chat_id = context.user_data.get("qris_chat_id")
+    message_id = context.user_data.get("qris_message_id")
 
-        photo=file_id,
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "📷 Ganti QRIS",
+                callback_data="adminvip_qris_change"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="payment_back"
+            )
+        ]
+    ])
 
-        caption="✅ QRIS berhasil diperbarui."
-
+    await context.bot.edit_message_media(
+        chat_id=chat_id,
+        message_id=message_id,
+        media=InputMediaPhoto(
+            media=file_id,
+            caption=(
+                "✅ QRIS berhasil diperbarui.\n\n"
+                "QRIS aktif telah diperbarui."
+            ),
+            parse_mode="HTML",
+        ),
+        reply_markup=keyboard,
     )
 async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
