@@ -7,6 +7,7 @@ import time
 import copy
 import html
 import psutil
+psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan pertama
 import sys
 import telegram
 from datetime import datetime, timezone, timedelta
@@ -2228,7 +2229,12 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
     days, remainder = divmod(uptime_seconds, 86400)
     hours, remainder = divmod(remainder, 3600)
     minutes, _ = divmod(remainder, 60)
-    uptime_str = f"{days}h {hours}j {minutes}m"
+    if days > 0:
+        uptime_str = f"{days} hari {hours} jam"
+    elif hours > 0:
+        uptime_str = f"{hours} jam {minutes} menit"
+    else:
+        uptime_str = f"{minutes} menit"
 
     try:
         with open("/etc/os-release") as f:
@@ -2240,7 +2246,13 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
     except Exception:
         os_name = "Unknown"
 
-    now_str = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+    bulan_id = [
+        "", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ]
+    now = datetime.now()
+    tanggal_str = f"{now.day:02d} {bulan_id[now.month]} {now.year}"
+    jam_str = now.strftime("%H:%M:%S")
     py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
     caption = (
@@ -2249,13 +2261,15 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         f"🟢 Status Bot : Online\n"
         f"⏱ Uptime     : {uptime_str}\n"
         f"🧠 CPU        : {usage_dot(cpu_percent)} {cpu_percent:.1f}%\n"
-        f"💾 RAM        : {usage_dot(mem.percent)} {mem.used / (1024 ** 3):.1f}/{mem.total / (1024 ** 3):.1f} GB ({mem.percent:.1f}%)\n"
-        f"💽 Disk       : {usage_dot(disk.percent)} {disk.used / (1024 ** 3):.1f}/{disk.total / (1024 ** 3):.1f} GB ({disk.percent:.1f}%)\n"
+        f"💾 RAM        : {usage_dot(mem.percent)} {mem.used / (1024 ** 3):.1f} / {mem.total / (1024 ** 3):.1f} GB ({mem.percent:.0f}%)\n"
+        f"💽 Disk       : {usage_dot(disk.percent)} {disk.used / (1024 ** 3):.1f} / {disk.total / (1024 ** 3):.1f} GB ({disk.percent:.0f}%)\n"
         f"🐧 OS         : {os_name}\n"
         f"🐍 Python     : {py_version}\n"
         f"📦 PTB        : {telegram.__version__}\n"
         f"🗂 File JSON  : {len(FILE_MANAGER_FILES)}\n"
-        f"🕒 Waktu      : {now_str}\n"
+        f"🕒 Waktu\n"
+        f"{tanggal_str}\n"
+        f"{jam_str} WIB\n"
         "</pre>"
     )
 
