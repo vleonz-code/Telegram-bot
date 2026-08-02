@@ -2339,7 +2339,9 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
+    
+    admin_qris_waiting.discard(query.from_user.id)
+    
     context.user_data["qris_chat_id"] = query.message.chat_id
     context.user_data["qris_message_id"] = query.message.message_id
 
