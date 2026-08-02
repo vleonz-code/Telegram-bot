@@ -3778,7 +3778,7 @@ def build_blacklist_view(page: int = 1):
     if page > 1:
         nav_row.append(InlineKeyboardButton("◀ Sebelumnya", callback_data=f"banned_page_{page - 1}"))
     if page < total_pages:
-        nav_row.append(InlineKeyboardButton("Selanjutnya ▶", callback_data=f"banned_page_{page + 1}"))
+        nav_row.append(InlineKeyboardButton("Berikutnya ▶", callback_data=f"banned_page_{page + 1}"))
 
     if nav_row:
         keyboard_rows.append(nav_row)
