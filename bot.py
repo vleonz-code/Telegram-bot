@@ -6,6 +6,7 @@ import asyncio
 import time
 import copy
 import html
+import psutil
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -2202,6 +2203,62 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         caption="✅ Statistik berhasil direset!",
         reply_markup=keyboard
     )
+
+async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        return
+
+    cpu_percent = await asyncio.to_thread(psutil.cpu_percent, 0.4)
+    mem = psutil.virtual_memory()
+    disk = psutil.disk_usage("/")
+
+    uptime_seconds = int(time.time() - psutil.boot_time())
+    days, remainder = divmod(uptime_seconds, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, _ = divmod(remainder, 60)
+    uptime_str = f"{days}h {hours}j {minutes}m"
+
+    try:
+        with open("/etc/os-release") as f:
+            os_release = dict(
+                line.strip().split("=", 1)
+                for line in f if "=" in line
+            )
+        os_name = os_release.get("PRETTY_NAME", "Unknown").strip('"')
+    except Exception:
+        os_name = "Unknown"
+
+    now_str = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+
+    caption = (
+        "<b>🖥 STATUS SERVER</b>\n"
+        "<pre>"
+        f"🟢 Status Bot : Online\n"
+        f"⏱ Uptime     : {uptime_str}\n"
+        f"🧠 CPU        : {cpu_percent:.1f}%\n"
+        f"💾 RAM        : {mem.used / (1024 ** 3):.1f}/{mem.total / (1024 ** 3):.1f} GB ({mem.percent:.1f}%)\n"
+        f"💽 Disk       : {disk.used / (1024 ** 3):.1f}/{disk.total / (1024 ** 3):.1f} GB ({disk.percent:.1f}%)\n"
+        f"🐧 OS         : {os_name}\n"
+        f"🕒 Waktu      : {now_str}\n"
+        "</pre>"
+    )
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🔄 Refresh", callback_data="adminvip_server_status"),
+            InlineKeyboardButton("⬅️ Kembali", callback_data="adminvip_back")
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=caption,
+        parse_mode="HTML",
+        reply_markup=keyboard
+    )
+
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
    
@@ -2339,7 +2396,9 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
+    
+    admin_qris_waiting.discard(query.from_user.id)
+    
     context.user_data["qris_chat_id"] = query.message.chat_id
     context.user_data["qris_message_id"] = query.message.message_id
 
@@ -3717,7 +3776,7 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ User unbanned.")
 
 BLACKLIST_PAGE_SIZE = 10
-BLACKLIST_DIVIDER = "━━━━━━━━━━━━━━"
+BLACKLIST_DIVIDER = "\n📋 <b>Daftar User</b>\n"
 
 def build_blacklist_view(page: int = 1):
     bl = read_blacklist()
@@ -3776,7 +3835,7 @@ def build_blacklist_view(page: int = 1):
     if page > 1:
         nav_row.append(InlineKeyboardButton("◀ Sebelumnya", callback_data=f"banned_page_{page - 1}"))
     if page < total_pages:
-        nav_row.append(InlineKeyboardButton("Selanjutnya ▶", callback_data=f"banned_page_{page + 1}"))
+        nav_row.append(InlineKeyboardButton("Berikutnya ▶", callback_data=f"banned_page_{page + 1}"))
 
     if nav_row:
         keyboard_rows.append(nav_row)
@@ -4556,6 +4615,10 @@ def build_adminvip_keyboard():
         InlineKeyboardButton(
             "⚙️ Pengaturan",
             callback_data="adminvip_settings"
+        ),
+        InlineKeyboardButton(
+            "🖥 Status Server",
+            callback_data="adminvip_server_status"
         )
     ])
 
@@ -5558,6 +5621,11 @@ def main():
     CallbackQueryHandler(
         stats_reset_callback,
         pattern=r"^stats_reset$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_server_status_callback,
+        pattern=r"^adminvip_server_status$"
     ))
     app.add_handler(
     CallbackQueryHandler(
