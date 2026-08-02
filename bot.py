@@ -7,6 +7,8 @@ import time
 import copy
 import html
 import psutil
+import sys
+import telegram
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -2215,6 +2217,13 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
     mem = psutil.virtual_memory()
     disk = psutil.disk_usage("/")
 
+    def usage_dot(pct):
+        if pct >= 90:
+            return "🔴"
+        if pct >= 70:
+            return "🟡"
+        return "🟢"
+
     uptime_seconds = int(time.time() - psutil.boot_time())
     days, remainder = divmod(uptime_seconds, 86400)
     hours, remainder = divmod(remainder, 3600)
@@ -2232,16 +2241,20 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         os_name = "Unknown"
 
     now_str = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+    py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
     caption = (
         "<b>🖥 STATUS SERVER</b>\n"
         "<pre>"
         f"🟢 Status Bot : Online\n"
         f"⏱ Uptime     : {uptime_str}\n"
-        f"🧠 CPU        : {cpu_percent:.1f}%\n"
-        f"💾 RAM        : {mem.used / (1024 ** 3):.1f}/{mem.total / (1024 ** 3):.1f} GB ({mem.percent:.1f}%)\n"
-        f"💽 Disk       : {disk.used / (1024 ** 3):.1f}/{disk.total / (1024 ** 3):.1f} GB ({disk.percent:.1f}%)\n"
+        f"🧠 CPU        : {usage_dot(cpu_percent)} {cpu_percent:.1f}%\n"
+        f"💾 RAM        : {usage_dot(mem.percent)} {mem.used / (1024 ** 3):.1f}/{mem.total / (1024 ** 3):.1f} GB ({mem.percent:.1f}%)\n"
+        f"💽 Disk       : {usage_dot(disk.percent)} {disk.used / (1024 ** 3):.1f}/{disk.total / (1024 ** 3):.1f} GB ({disk.percent:.1f}%)\n"
         f"🐧 OS         : {os_name}\n"
+        f"🐍 Python     : {py_version}\n"
+        f"📦 PTB        : {telegram.__version__}\n"
+        f"🗂 File JSON  : {len(FILE_MANAGER_FILES)}\n"
         f"🕒 Waktu      : {now_str}\n"
         "</pre>"
     )
