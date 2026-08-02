@@ -2261,19 +2261,20 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         f"🟢 Status Bot : Online\n"
         f"⏱ Uptime     : {uptime_str}\n"
         f"🧠 CPU        : {usage_dot(cpu_percent)} {cpu_percent:.1f}%\n"
-        f"💾 RAM        : {usage_dot(mem.percent)} {mem.used / (1024 ** 3):.1f}/{mem.total / (1024 ** 3):.1f}GB ({mem.percent:.0f}%)\n"
-        f"💽 Disk       : {usage_dot(disk.percent)} {disk.used / (1024 ** 3):.1f}/{disk.total / (1024 ** 3):.1f}GB ({disk.percent:.0f}%)\n"
+        f"💾 RAM        : {usage_dot(mem.percent)} {mem.used/(1024**3):.1f}/{mem.total/(1024**3):.1f}GB ({mem.percent:.0f}%)\n"
+        f"💽 Disk       : {usage_dot(disk.percent)} {disk.used/(1024**3):.1f}/{disk.total/(1024**3):.1f}GB ({disk.percent:.0f}%)\n"
         f"🐧 OS         : {os_name}\n"
         f"🐍 Python     : {py_version}\n"
         f"📦 PTB        : {telegram.__version__}\n"
-        f"🕒 Waktu.     : {tanggal_str} {jam_str} WIB\n"
+        f"🕒 Waktu      : {tanggal_str}\n"
+        f"              {jam_str} WIB\n"
         "</pre>"
     )
 
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("🔄 Refresh", callback_data="adminvip_server_status"),
-            InlineKeyboardButton("⬅️ Kembali", callback_data="adminvip_back")
+            InlineKeyboardButton("➿ Refresh", callback_data="adminvip_server_status"),
+            InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")
         ]
     ])
 
