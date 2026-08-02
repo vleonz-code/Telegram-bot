@@ -10,6 +10,7 @@ import psutil
 psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan pertama
 import sys
 import telegram
+import subprocess
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -2261,7 +2262,7 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         f"🟢 Status Bot : Online\n"
         f"⏱ Uptime     : {uptime_str}\n"
         f"🧠 CPU        : {usage_dot(cpu_percent)} {cpu_percent:.1f}%\n"
-        f"💾 RAM        : {usage_dot(mem.percent)} {mem.used / (1024 ** 3):.1f}/{mem.total / (1024 ** 3):.1f}GB({mem.percent:.0f}%)\n"
+        f"💾 RAM        : {usage_dot(mem.percent)} {mem.used/(1024**3):.1f}/{mem.total/(1024**3):.1f}GB({mem.percent:.0f}%)\n"
         f"💽 Disk       : {usage_dot(disk.percent)} {disk.used / (1024 ** 3):.1f}/{disk.total / (1024 ** 3):.0f}GB ({disk.percent:.0f}%)\n"
         f"🐧 OS         : {os_name}\n"
         f"🐍 Python     : {py_version}\n"
@@ -2275,6 +2276,9 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         [
             InlineKeyboardButton("➿ Refresh", callback_data="adminvip_server_status"),
             InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")
+        ],
+        [
+            InlineKeyboardButton("🔁 Restart", callback_data="adminvip_restart_ask")
         ]
     ])
 
@@ -2285,6 +2289,47 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
             parse_mode="HTML",
         ),
         reply_markup=keyboard
+    )
+
+async def adminvip_restart_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        return
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Ya", callback_data="adminvip_restart_confirm"),
+            InlineKeyboardButton("❌ Batal", callback_data="adminvip_server_status")
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "⚠️ Restart Bot\n\n"
+            "Bot akan offline sebentar selama proses restart.\n\n"
+            "Lanjutkan?"
+        ),
+        reply_markup=keyboard
+    )
+
+async def adminvip_restart_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        return
+
+    await query.edit_message_caption(
+        caption="🔁 Me-restart bot… Mohon tunggu beberapa detik."
+    )
+
+    await asyncio.sleep(1)
+
+    subprocess.Popen(
+        ["systemctl", "restart", "telegram-bot.service"],
+        start_new_session=True
     )
 
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5654,6 +5699,16 @@ def main():
     CallbackQueryHandler(
         adminvip_server_status_callback,
         pattern=r"^adminvip_server_status$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_restart_ask_callback,
+        pattern=r"^adminvip_restart_ask$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_restart_confirm_callback,
+        pattern=r"^adminvip_restart_confirm$"
     ))
     app.add_handler(
     CallbackQueryHandler(
