@@ -3719,7 +3719,7 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ User unbanned.")
 
 BLACKLIST_PAGE_SIZE = 10
-BLACKLIST_DIVIDER = "📋 <b>Daftar User</b>"
+BLACKLIST_DIVIDER = "\n📋 <b>Daftar User</b>\n"
 
 def build_blacklist_view(page: int = 1):
     bl = read_blacklist()
