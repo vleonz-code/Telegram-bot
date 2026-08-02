@@ -3772,7 +3772,7 @@ def build_blacklist_view(page: int = 1):
     for j in range(0, len(manage_buttons), 2):
         keyboard_rows.append(manage_buttons[j:j + 2])
 
-    text = "\n".join(lines).rstrip() + "\n"
+    text = "\n".join(lines).rstrip()
 
     nav_row = []
     if page > 1:
