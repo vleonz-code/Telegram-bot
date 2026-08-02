@@ -3942,11 +3942,11 @@ async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     uname = info["username"] if info["username"] and info["username"] != "-" else "-"
     text = (
-        f"{BLACKLIST_DIVIDER}\n\n"
-        f"👤 {info['full_name']}\n"
-        f"🔗 {uname}\n"
-        f"🆔 {uid}\n\n"
-        f"{BLACKLIST_DIVIDER}\n\n"
+        "━━━━━━━━━━━━━━\n"
+        f"👤 {html.escape(info['full_name'])}\n"
+        f"🔗 {html.escape(uname)}\n"
+        f"🆔 {uid}\n"
+        "━━━━━━━━━━━━━━\n\n"
         "Pilih tindakan."
     )
     keyboard = InlineKeyboardMarkup([
@@ -3954,9 +3954,9 @@ async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_T
         [InlineKeyboardButton("🔙 Kembali ke Blacklist", callback_data=f"banned_page_{page}")]
     ])
     try:
-        await query.edit_message_caption(caption=text, reply_markup=keyboard)
+        await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
     except Exception:
-        await query.edit_message_text(text, reply_markup=keyboard)
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
 
 async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
