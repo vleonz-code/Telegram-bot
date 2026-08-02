@@ -2278,9 +2278,12 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         ]
     ])
 
-    await query.edit_message_caption(
-        caption=caption,
-        parse_mode="HTML",
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["STATUS_SERVER_BANNER_FILE_ID"],
+            caption=caption,
+            parse_mode="HTML",
+        ),
         reply_markup=keyboard
     )
 
