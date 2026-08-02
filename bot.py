@@ -76,9 +76,12 @@ def save_vip_packages(data):
 def read_order_history():
     if not os.path.exists(ORDER_HISTORY_FILE):
         return {"orders": []}
-
-    with open(ORDER_HISTORY_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(ORDER_HISTORY_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Order history read error: {e}")
+        return {"orders": []}
 
 def save_order_history(data):
     with open(ORDER_HISTORY_FILE, "w", encoding="utf-8") as f:
@@ -92,9 +95,12 @@ def save_order_history(data):
 def read_pending_orders():
     if not os.path.exists(PENDING_ORDERS_FILE):
         return {"orders": []}
-
-    with open(PENDING_ORDERS_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(PENDING_ORDERS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Pending orders read error: {e}")
+        return {"orders": []}
 
 def save_pending_orders(data):
     with open(PENDING_ORDERS_FILE, "w", encoding="utf-8") as f:
@@ -108,9 +114,13 @@ def save_pending_orders(data):
 def read_payment_lock():
     if not os.path.exists(PAYMENT_LOCK_FILE):
         return {}
-    with open(PAYMENT_LOCK_FILE, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return {int(uid): value for uid, value in data.items()}
+    try:
+        with open(PAYMENT_LOCK_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return {int(uid): value for uid, value in data.items()}
+    except Exception as e:
+        logger.error(f"Payment lock read error: {e}")
+        return {}
 
 def save_payment_lock(data):
     with open(PAYMENT_LOCK_FILE, "w", encoding="utf-8") as f:
@@ -396,21 +406,22 @@ async def deliver_album(bot, chat_id: int, file_ids):
             media=media
         )
 
-        await progress.delete()
-        
+        _, success_msg = await asyncio.gather(
+            progress.delete(),
+            bot.send_message(
+                chat_id,
+                (
+                    "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
+                    f"✅ Semua {len(media)} media terkirim!"
+                ),
+                parse_mode="HTML"
+            )
+        )
+
         delivered = [
             msg.message_id
             for msg in media_messages
         ]
-        
-        success_msg = await bot.send_message(
-            chat_id,
-            (
-                "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
-                f"✅ Semua {len(media)} media terkirim!"
-            ),
-            parse_mode="HTML"
-        )
 
         delivered.append(
             success_msg.message_id
@@ -632,29 +643,34 @@ def save_user_to_registry(user_id: int, full_name: str, username: str):
 # Counter
 # ---------------------------------------------------------------------------
 
+# In-memory cache for counter.json — avoids reading from disk on every
+# deep-link access. Refreshed automatically after every increment.
+_counter_cache = None
+
 def read_counter() -> int:
+    global _counter_cache
+    if _counter_cache is not None:
+        return _counter_cache
     try:
         if os.path.exists(COUNTER_FILE):
             with open(COUNTER_FILE, "r") as f:
-                return json.load(f).get("count", 0)
-        return 0
+                _counter_cache = json.load(f).get("count", 0)
+        else:
+            _counter_cache = 0
+        return _counter_cache
     except Exception:
         return 0
 
 def increment_counter() -> int:
+    global _counter_cache
     try:
-        data = {"count": 0}
-
-        if os.path.exists(COUNTER_FILE):
-            with open(COUNTER_FILE, "r") as f:
-                data = json.load(f)
-
-        data["count"] += 1
+        new_count = read_counter() + 1
 
         with open(COUNTER_FILE, "w") as f:
-            json.dump(data, f)
+            json.dump({"count": new_count}, f)
 
-        return data["count"]
+        _counter_cache = new_count
+        return new_count
 
     except Exception as e:
         logger.error(f"Counter error: {e}")
@@ -5327,8 +5343,8 @@ def restore_pending_orders():
 # ---------------------------------------------------------------------------
 
 async def channel_auto_post_loop(app):
-    try:
-        while True:
+    while True:
+        try:
             settings = read_settings()
 
             if (
@@ -5359,13 +5375,13 @@ async def channel_auto_post_loop(app):
 
                     save_settings(settings)
 
-            await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            raise
 
-    except asyncio.CancelledError:
-        raise
+        except Exception as e:
+            logger.error(f"Channel Auto Post Error: {e}")
 
-    except Exception as e:
-        logger.error(f"Channel Auto Post Error: {e}")
+        await asyncio.sleep(30)
     
 async def set_admin_commands(app):
     await app.bot.set_my_commands(
