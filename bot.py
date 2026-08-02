@@ -2339,9 +2339,7 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
-    admin_qris_waiting.discard(query.from_user.id)
-    
+
     context.user_data["qris_chat_id"] = query.message.chat_id
     context.user_data["qris_message_id"] = query.message.message_id
 
@@ -3719,7 +3717,7 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ User unbanned.")
 
 BLACKLIST_PAGE_SIZE = 10
-BLACKLIST_DIVIDER = "\n📋 <b>Daftar User</b>\n"
+BLACKLIST_DIVIDER = "━━━━━━━━━━━━━━"
 
 def build_blacklist_view(page: int = 1):
     bl = read_blacklist()
@@ -3778,7 +3776,7 @@ def build_blacklist_view(page: int = 1):
     if page > 1:
         nav_row.append(InlineKeyboardButton("◀ Sebelumnya", callback_data=f"banned_page_{page - 1}"))
     if page < total_pages:
-        nav_row.append(InlineKeyboardButton("Berikutnya ▶", callback_data=f"banned_page_{page + 1}"))
+        nav_row.append(InlineKeyboardButton("Selanjutnya ▶", callback_data=f"banned_page_{page + 1}"))
 
     if nav_row:
         keyboard_rows.append(nav_row)
