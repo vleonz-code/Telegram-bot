@@ -2261,7 +2261,7 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         f"🟢 Status Bot : Online\n"
         f"⏱ Uptime     : {uptime_str}\n"
         f"🧠 CPU        : {usage_dot(cpu_percent)} {cpu_percent:.1f}%\n"
-        f"💾 RAM        : {usage_dot(mem.percent)} {mem.used/(1024**3):.1f}/{mem.total/(1024**3):.1f}GB({mem.percent:.0f}%)\n"
+        f"💾 RAM        : {usage_dot(mem.percent)} {mem.used / (1024 ** 3):.1f}/{mem.total / (1024 ** 3):.1f}GB ({mem.percent:.0f}%)\n"
         f"💽 Disk       : {usage_dot(disk.percent)} {disk.used / (1024 ** 3):.1f}/{disk.total / (1024 ** 3):.0f}GB ({disk.percent:.0f}%)\n"
         f"🐧 OS         : {os_name}\n"
         f"🐍 Python     : {py_version}\n"
