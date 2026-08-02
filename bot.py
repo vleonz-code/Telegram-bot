@@ -2266,7 +2266,6 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         f"🐧 OS         : {os_name}\n"
         f"🐍 Python     : {py_version}\n"
         f"📦 PTB        : {telegram.__version__}\n"
-        f"🗂 File JSON  : {len(FILE_MANAGER_FILES)}\n"
         f"🕒 Waktu\n"
         f"{tanggal_str}\n"
         f"{jam_str} WIB\n"
