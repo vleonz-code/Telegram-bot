@@ -1391,7 +1391,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     # Jika user sudah punya order, jangan buat order baru
     for order_id, data in upload_waiting.items():
 
-        if data["user_id"] == user.id:
+        if str(data.get("user_id")) == str(user.id):
 
             if data.get("upload_msg_id"):
                 try:
@@ -5193,6 +5193,25 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     else:
 
+        reupload_prompt_msg_id = upload_waiting[order_id].get(
+            "reupload_prompt_msg_id"
+        )
+
+        if reupload_prompt_msg_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.message.chat_id,
+                    message_id=reupload_prompt_msg_id
+                )
+            except Exception:
+                pass
+
+        status_msg = await update.message.reply_text(
+            "✅ Pembayaran kamu sedang diproses.\n"
+            "⏳ Estimasi waktu: 1–3 menit...\n\n"
+        )
+
+        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
         upload_waiting[order_id]["reupload"] = False
 
     try:
@@ -5355,12 +5374,28 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         unlock_payment(user_id)
 
     elif action == "pay_no":
-        await context.bot.send_message(
+        previous_prompt_msg_id = upload_waiting[order_id].get(
+            "reupload_prompt_msg_id"
+        )
+
+        if previous_prompt_msg_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=user_id,
+                    message_id=previous_prompt_msg_id
+                )
+            except Exception:
+                pass
+
+        reupload_prompt = await context.bot.send_message(
             chat_id=user_id,
             text=(
                 "📷 Bukti transfer belum valid.\n"
                 "Silakan upload ulang bukti transfer."
             )
+        )
+        upload_waiting[order_id]["reupload_prompt_msg_id"] = (
+            reupload_prompt.message_id
         )
         upload_waiting[order_id]["photo_uploaded"] = False
         upload_waiting[order_id]["reupload"] = True
