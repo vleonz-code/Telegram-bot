@@ -1410,6 +1410,11 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
                 upload_waiting[order_id]["warning_msg_id"] = None
 
+            try:
+                await query.message.delete()
+            except Exception:
+                pass
+
             msg = await query.message.reply_text(
                 "Silakan upload screenshot bukti transfer disini.\n\n"
             )
@@ -5172,7 +5177,20 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         reply_markup=keyboard
     )
+    
+    upload_msg_id = upload_waiting[order_id].get("upload_msg_id")
 
+    if upload_msg_id:
+        try:
+            await context.bot.delete_message(
+                chat_id=update.effective_chat.id,
+                message_id=upload_msg_id
+            )
+        except Exception:
+            pass
+
+        upload_waiting[order_id]["upload_msg_id"] = None
+        
     if not upload_waiting[order_id].get("reupload"):
 
         status_msg = await update.message.reply_text(
