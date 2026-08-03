@@ -5026,7 +5026,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not upload_waiting[order_id].get("can_upload", False):
 
         await update.message.reply_text(
-            "⚠️ Silakan tekan tombol '📤 Sudah Transfer' terlebih dahulu sebelum mengirim bukti transfer."
+            "⚠️ Silakan tekan tombol\n '📤 Sudah Transfer' terlebih dahulu sebelum mengirim bukti transfer."
         )
 
         return
