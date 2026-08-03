@@ -988,7 +988,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         admin_msg.message_id
     )
     admin_request_order.append(
-        
+        user_id
+    )
+
 # ---------------------------------------------------------------------------
 # Callback query — admin presses ✅ Izinkan or ❌ Tolak
 # ---------------------------------------------------------------------------
@@ -3055,7 +3057,6 @@ async def adminvip_prv_add_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_prv_add_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-
     await query.answer()
 
     preview_add_waiting.pop(query.from_user.id, None)
