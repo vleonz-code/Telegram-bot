@@ -1608,6 +1608,8 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
     query = update.callback_query
     await query.answer()
 
+    admin_channel_waiting.discard(query.from_user.id)
+
     settings = read_settings()
 
     keyboard = InlineKeyboardMarkup([
@@ -5375,6 +5377,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         write_blacklist(blacklist)
 
         upload_waiting.pop(order_id, None)
+        unlock_payment(user_id)
 
         pending = read_pending_orders()
 
