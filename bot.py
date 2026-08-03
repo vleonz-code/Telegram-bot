@@ -5161,10 +5161,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Foto bukti transfer berhasil dihapus (chat_id={update.message.chat_id}, "
             f"message_id={update.message.message_id}, order_id={order_id})"
         )
-    except Exception as e:
-        logger.warning(
+    except Exception:
+        logger.exception(
             f"Gagal hapus foto bukti transfer (chat_id={update.message.chat_id}, "
-            f"message_id={update.message.message_id}, order_id={order_id}): {e}"
+            f"message_id={update.message.message_id}, order_id={order_id})"
         )
 
 
