@@ -1408,8 +1408,14 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
             upload_waiting[order_id]["upload_msg_id"] = msg.message_id
 
-            pending = read_pending_orders()
+            logger.info(
+                f"[UPLOAD_CALLBACK] order_id={order_id} "
+                f"user_id={user.id} "
+                f"upload_msg_id={msg.message_id}"
+            )
 
+            pending = read_pending_orders()
+            
             for i, order in enumerate(pending["orders"]):
                 if order["order_id"] == order_id:
                     pending["orders"][i] = upload_waiting[order_id].copy()
