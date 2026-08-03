@@ -1348,6 +1348,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "photo_uploaded": False,
         "processing": False,
         "processing_msg_id": None,
+        "warning_msg_id": None,
         "reupload": False,
         "package_id": package["id"],
         "paket": package["nama"],
@@ -1395,6 +1396,19 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
                     )
                 except Exception:
                     pass
+
+            old_warning = upload_waiting[order_id].get("warning_msg_id")
+
+            if old_warning:
+                try:
+                    await context.bot.delete_message(
+                        chat_id=query.message.chat_id,
+                        message_id=old_warning
+                    )
+                except Exception:
+                    pass
+
+                upload_waiting[order_id]["warning_msg_id"] = None
 
             msg = await query.message.reply_text(
                 "Silakan upload screenshot bukti transfer disini.\n\n"
@@ -5032,6 +5046,23 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not upload_waiting[order_id].get("upload_msg_id"):
+
+        old_warning = upload_waiting[order_id].get("warning_msg_id")
+
+        if old_warning:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=old_warning
+                )
+            except Exception:
+                pass
+
+        warning_msg = await update.message.reply_text(
+            '⚠️ Tekan "📤 Sudah Transfer" terlebih dahulu.'
+        )
+
+        upload_waiting[order_id]["warning_msg_id"] = warning_msg.message_id
 
         return
 
