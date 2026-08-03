@@ -5022,7 +5022,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if order_id is None:
 
         return
-        
+
     if not upload_waiting[order_id].get("can_upload", False):
 
         await update.message.reply_text(
