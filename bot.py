@@ -5167,7 +5167,6 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"message_id={update.message.message_id}, order_id={order_id})"
         )
 
-
 async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
