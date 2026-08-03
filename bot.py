@@ -1346,6 +1346,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "order_id": order_id,
         "user_id": query.from_user.id,
         "photo_uploaded": False,
+        "can_upload": False,
         "processing": False,
         "processing_msg_id": None,
         "reupload": False,
@@ -1385,6 +1386,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     # Jika user sudah punya order, jangan buat order baru
     for order_id, data in upload_waiting.items():
 
+        upload_waiting[order_id]["can_upload"] = True
         if data["user_id"] == user.id:
 
             if data.get("upload_msg_id"):
@@ -5018,6 +5020,14 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             order_id = oid
 
     if order_id is None:
+
+        return
+        
+    if not upload_waiting[order_id].get("can_upload", False):
+
+        await update.message.reply_text(
+            "⚠️ Silakan tekan tombol '📤 Sudah Transfer' terlebih dahulu sebelum mengirim bukti transfer."
+        )
 
         return
 
