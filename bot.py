@@ -5062,9 +5062,9 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             except Exception:
                 pass
-                
-                upload_waiting[order_id]["warning_msg_id"] = None
-                
+
+            upload_waiting[order_id]["warning_msg_id"] = None
+
         warning_msg = await update.message.reply_text(
             '⚠️ Tekan "📤 Sudah Transfer" terlebih dahulu.'
         )
