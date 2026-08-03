@@ -5039,6 +5039,11 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             order_id = oid
 
+    logger.info(
+        f"[PAYMENT_RECEIVE] selected_order={order_id} "
+        f"user_id={user_id}"
+    )
+
     if order_id is None:
 
         return
