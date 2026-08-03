@@ -430,7 +430,7 @@ async def deliver_album(bot, chat_id: int, file_ids):
             bot.send_message(
                 chat_id,
                 (
-                    "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
+                    "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
                     f"✅ Semua {len(media)} media terkirim!"
                 ),
                 parse_mode="HTML"
@@ -1346,7 +1346,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "order_id": order_id,
         "user_id": query.from_user.id,
         "photo_uploaded": False,
-        "can_upload": False,
         "processing": False,
         "processing_msg_id": None,
         "reupload": False,
@@ -1388,8 +1387,6 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if data["user_id"] == user.id:
 
-            upload_waiting[order_id]["can_upload"] = True
-
             if data.get("upload_msg_id"):
                 try:
                     await context.bot.delete_message(
@@ -1409,6 +1406,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
     )
+
 
 async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2447,7 +2445,7 @@ async def delete_messages_after_delay(
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
                     "Koleksi selengkapnya ada di grup VIP\n\n"
-                    "Chat Admin: @BocilVIP511 👈"
+                    "Chat Admin: @BocilVIP89 👈"
                 ),
                 reply_markup=keyboard
             )
@@ -5020,14 +5018,6 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             order_id = oid
 
     if order_id is None:
-
-        return
-
-    if not upload_waiting[order_id].get("can_upload", False):
-
-        await update.message.reply_text(
-            '⚠️ Tekan "📤 Sudah Transfer" terlebih dahulu.'
-        )
 
         return
 
