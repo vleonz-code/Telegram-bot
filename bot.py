@@ -5048,6 +5048,13 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
+    logger.info(
+        f"[STATE] upload_msg_id={upload_waiting[order_id].get('upload_msg_id')} "
+        f"processing={upload_waiting[order_id].get('processing')} "
+        f"photo_uploaded={upload_waiting[order_id].get('photo_uploaded')} "
+        f"reupload={upload_waiting[order_id].get('reupload')}"
+    )
+
     if not upload_waiting[order_id].get("upload_msg_id"):
 
         # Delete only the current pre-upload photo asynchronously. The queue
