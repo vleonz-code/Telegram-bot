@@ -1401,6 +1401,16 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
             )
 
             upload_waiting[order_id]["upload_msg_id"] = msg.message_id
+
+            pending = read_pending_orders()
+
+            for i, order in enumerate(pending["orders"]):
+                if order["order_id"] == order_id:
+                    pending["orders"][i] = upload_waiting[order_id].copy()
+                    break
+
+            save_pending_orders(pending)
+
             return
 
     msg = await query.message.reply_text(
@@ -5018,6 +5028,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             order_id = oid
 
     if order_id is None:
+
+        return
+
+    if not upload_waiting[order_id].get("upload_msg_id"):
 
         return
 
