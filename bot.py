@@ -357,6 +357,12 @@ file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
 file_manager_restore_waiting = {}  # user_id -> FILE_MANAGER_FILES index
 file_manager_restore_processing = set()  # user_id sedang diproses -> upload lain di jendela ini diabaikan
 
+# Bounded, best-effort cleanup queue for photos sent before upload is enabled.
+# Keeping a fixed queue and worker count prevents photo bursts from creating
+# unbounded background tasks or delaying the payment flow.
+PRE_UPLOAD_CLEANUP_QUEUE_SIZE = 64
+pre_upload_cleanup_queue = asyncio.Queue(maxsize=PRE_UPLOAD_CLEANUP_QUEUE_SIZE)
+
 # Kelola Preview (preview.json) state
 preview_edit_waiting = {}  # user_id -> {"index": int, "chat_id": int, "message_id": int}
 preview_add_waiting = {}   # user_id -> {"chat_id": int, "message_id": int}
@@ -5033,6 +5039,20 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not upload_waiting[order_id].get("upload_msg_id"):
 
+        # Delete only the current pre-upload photo asynchronously. The queue
+        # is bounded so cleanup can never build an unbounded backlog.
+        if update.message.photo:
+            try:
+                pre_upload_cleanup_queue.put_nowait(
+                    (update.message.chat_id, update.message.message_id)
+                )
+            except asyncio.QueueFull:
+                logger.warning(
+                    "Pre-upload cleanup queue full; leaving photo in chat "
+                    f"(chat_id={update.message.chat_id}, "
+                    f"message_id={update.message.message_id})"
+                )
+
         return
 
     if upload_waiting[order_id].get("processing"):
@@ -5546,6 +5566,26 @@ async def channel_auto_post_loop(app):
         await asyncio.sleep(30)
 
 
+async def pre_upload_cleanup_worker(bot):
+    while True:
+        chat_id, message_id = await pre_upload_cleanup_queue.get()
+
+        try:
+            await bot.delete_message(
+                chat_id=chat_id,
+                message_id=message_id
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.warning(
+                "Pre-upload photo cleanup failed "
+                f"(chat_id={chat_id}, message_id={message_id}): {e}"
+            )
+        finally:
+            pre_upload_cleanup_queue.task_done()
+
+
 async def set_admin_commands(app):
     await app.bot.set_my_commands(
         [
@@ -5568,6 +5608,10 @@ def main():
     async def start_background(app):
         await set_admin_commands(app)
         app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
+        app.bot_data["pre_upload_cleanup_tasks"] = [
+            asyncio.create_task(pre_upload_cleanup_worker(app.bot))
+            for _ in range(2)
+        ]
 
     async def stop_background(app):
         task = app.bot_data.get("channel_task")
@@ -5577,6 +5621,12 @@ def main():
                 await task
             except asyncio.CancelledError:
                 pass
+
+        cleanup_tasks = app.bot_data.get("pre_upload_cleanup_tasks", [])
+        for cleanup_task in cleanup_tasks:
+            cleanup_task.cancel()
+        if cleanup_tasks:
+            await asyncio.gather(*cleanup_tasks, return_exceptions=True)
 
     app.post_init = start_background
     app.post_shutdown = stop_background
