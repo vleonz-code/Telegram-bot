@@ -1391,7 +1391,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     # Jika user sudah punya order, jangan buat order baru
     for order_id, data in upload_waiting.items():
 
-        if data["user_id"] == user.id:
+        if str(data.get("user_id")) == str(user.id):
 
             if data.get("upload_msg_id"):
                 try:
