@@ -5155,6 +5155,18 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         upload_waiting[order_id]["reupload"] = False
 
+    try:
+        await update.message.delete()
+        logger.info(
+            f"Foto bukti transfer berhasil dihapus (chat_id={update.message.chat_id}, "
+            f"message_id={update.message.message_id}, order_id={order_id})"
+        )
+    except Exception as e:
+        logger.warning(
+            f"Gagal hapus foto bukti transfer (chat_id={update.message.chat_id}, "
+            f"message_id={update.message.message_id}, order_id={order_id}): {e}"
+        )
+
 
 async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
