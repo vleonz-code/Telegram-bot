@@ -33,7 +33,7 @@ ORDER_HISTORY_EXCLUDED = {
     ADMIN_ID,
     # Tambahkan User ID akun testing di bawah ini
     # Contoh:
-    # 123456789 
+    # 123456789
     #7955763972
 }
 COUNTER_FILE = os.path.join(DATA_DIR, "counter.json")
@@ -46,6 +46,7 @@ PENDING_ORDERS_FILE = os.path.join(DATA_DIR, "pending_orders.json")
 PAYMENT_LOCK_FILE = os.path.join(DATA_DIR, "payment_lock.json")
 FILE_MANAGER_BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 
+
 def migrate_to_volume(filename):
     src = os.path.join(APP_DIR, filename)
     dst = os.path.join(DATA_DIR, filename)
@@ -53,10 +54,11 @@ def migrate_to_volume(filename):
     if not os.path.exists(dst) and os.path.exists(src):
         shutil.copy2(src, dst)
         logger.info(f"{filename} berhasil disalin ke Volume.")
-        
+
 # In-memory cache for vip_packages.json (deep-copied on read/write since
 # callers mutate individual package dicts in place before saving).
 _vip_packages_cache = None
+
 
 def read_vip_packages():
     global _vip_packages_cache
@@ -67,11 +69,13 @@ def read_vip_packages():
     _vip_packages_cache = copy.deepcopy(data)
     return copy.deepcopy(_vip_packages_cache)
 
+
 def save_vip_packages(data):
     global _vip_packages_cache
     with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     _vip_packages_cache = copy.deepcopy(data)
+
 
 def read_order_history():
     if not os.path.exists(ORDER_HISTORY_FILE):
@@ -83,6 +87,7 @@ def read_order_history():
         logger.error(f"Order history read error: {e}")
         return {"orders": []}
 
+
 def save_order_history(data):
     with open(ORDER_HISTORY_FILE, "w", encoding="utf-8") as f:
         json.dump(
@@ -91,7 +96,8 @@ def save_order_history(data):
             ensure_ascii=False,
             indent=2
         )
-        
+
+
 def read_pending_orders():
     if not os.path.exists(PENDING_ORDERS_FILE):
         return {"orders": []}
@@ -102,6 +108,7 @@ def read_pending_orders():
         logger.error(f"Pending orders read error: {e}")
         return {"orders": []}
 
+
 def save_pending_orders(data):
     with open(PENDING_ORDERS_FILE, "w", encoding="utf-8") as f:
         json.dump(
@@ -110,6 +117,7 @@ def save_pending_orders(data):
             ensure_ascii=False,
             indent=2
         )
+
 
 def read_payment_lock():
     if not os.path.exists(PAYMENT_LOCK_FILE):
@@ -122,6 +130,7 @@ def read_payment_lock():
         logger.error(f"Payment lock read error: {e}")
         return {}
 
+
 def save_payment_lock(data):
     with open(PAYMENT_LOCK_FILE, "w", encoding="utf-8") as f:
         json.dump(
@@ -130,7 +139,8 @@ def save_payment_lock(data):
             ensure_ascii=False,
             indent=2
         )
-    
+
+
 def lock_payment(user_id, package_id):
     data = read_payment_lock()
     data[user_id] = {
@@ -139,10 +149,12 @@ def lock_payment(user_id, package_id):
     save_payment_lock(data)
     print(f"[LOCK] User {user_id} locked (package {package_id})")
 
+
 def unlock_payment(user_id):
     data = read_payment_lock()
     data.pop(user_id, None)
     save_payment_lock(data)
+
 
 def get_payment_lock(user_id):
     data = read_payment_lock()
@@ -150,7 +162,8 @@ def get_payment_lock(user_id):
     if lock:
         print(f"[LOCK] User {user_id} already locked")
     return lock
-    
+
+
 def get_locked_package_id(user_id):
     lock = get_payment_lock(user_id)
     if not lock:
@@ -166,6 +179,7 @@ SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 
 # In-memory cache for settings.json — read once, refreshed on every save.
 _settings_cache = None
+
 
 def read_settings():
 
@@ -206,14 +220,14 @@ def read_settings():
 
         data = json.load(f)
 
+    if "join_vip_enabled" not in data:
+        data["join_vip_enabled"] = True
+        save_settings(data)
+
     if "preview_approval_enabled" not in data:
         data["preview_approval_enabled"] = True
         save_settings(data)
 
-        data["join_vip_enabled"] = True
-
-        save_settings(data)
-        
     if "live_chat_enabled" not in data:
         data["live_chat_enabled"] = False
         save_settings(data)
@@ -229,11 +243,11 @@ def read_settings():
     if "channel_post_text" not in data:
         data["channel_post_text"] = ""
         save_settings(data)
-    
+
     if "channel_auto_post" not in data:
         data["channel_auto_post"] = False
         save_settings(data)
-        
+
     if "channel_interval" not in data:
         data["channel_interval"] = 60
         save_settings(data)
@@ -245,10 +259,11 @@ def read_settings():
     if "channel_last_post" not in data:
         data["channel_last_post"] = 0
         save_settings(data)
-        
+
     _settings_cache = dict(data)
 
     return data
+
 
 def save_settings(data):
 
@@ -269,7 +284,8 @@ def save_settings(data):
         )
 
     _settings_cache = dict(data)
-    
+
+
 def load_preview():
     try:
         with open("/data/preview.json", "r", encoding="utf-8") as f:
@@ -290,7 +306,8 @@ def load_preview():
 def save_preview(data):
     with open("/data/preview.json", "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
-    
+
+
 def load_preview_media():
     data = load_preview()
     media = []
@@ -303,7 +320,7 @@ def load_preview_media():
             media.append((media_type, file_id))
 
     return media
-    
+
 
 WIB = timezone(timedelta(hours=7))
 
@@ -362,6 +379,7 @@ FILE_IDS_A = load_preview_media()
 # Media helpers
 # ---------------------------------------------------------------------------
 
+
 def build_media_group(file_ids):
 
     media = []
@@ -381,6 +399,7 @@ def build_media_group(file_ids):
             media.append(InputMediaPhoto(media=fid))
 
     return media
+
 
 async def deliver_album(bot, chat_id: int, file_ids):
 
@@ -426,13 +445,13 @@ async def deliver_album(bot, chat_id: int, file_ids):
         delivered.append(
             success_msg.message_id
         )
-        
+
         if chat_id == ADMIN_ID:
              return True
-            
-            
+
+
         preview_messages = delivered.copy()
-        
+
         last_delivered_messages[
             chat_id
         ] = delivered
@@ -471,11 +490,12 @@ async def deliver_album(bot, chat_id: int, file_ids):
 
         return False
 # ---------------------------------------------------------------------------
-# Approved users 
+# Approved users
 # ---------------------------------------------------------------------------
 
 # In-memory cache for approved.json — read once, refreshed on every save.
 _approved_cache = None
+
 
 def read_approved() -> set:
     global _approved_cache
@@ -490,6 +510,7 @@ def read_approved() -> set:
         return set(_approved_cache)
     except Exception:
         return set()
+
 
 def save_approved(approved: set):
     global _approved_cache
@@ -514,6 +535,7 @@ def save_approved(approved: set):
 # on every /banned interaction. Refreshed automatically after every
 # successful write (ban, unban, reset) via write_blacklist().
 _blacklist_cache = None
+
 
 def read_blacklist() -> dict:
     global _blacklist_cache
@@ -545,6 +567,7 @@ def read_blacklist() -> dict:
         logger.error(f"Blacklist read error: {e}")
         return {}
 
+
 def write_blacklist(bl: dict):
     global _blacklist_cache
     try:
@@ -569,7 +592,8 @@ def write_blacklist(bl: dict):
 
     except Exception as e:
         logger.error(f"Blacklist write error: {e}")
-        
+
+
 def get_package(package_id: int):
 
     data = read_vip_packages()
@@ -588,6 +612,7 @@ def get_package(package_id: int):
 # In-memory cache for users.json — read once, refreshed on every save.
 _users_cache = None
 
+
 def read_user_registry() -> dict:
     global _users_cache
     if _users_cache is not None:
@@ -603,6 +628,7 @@ def read_user_registry() -> dict:
     except Exception as e:
         logger.error(f"User registry read error: {e}")
         return {}
+
 
 def save_user_to_registry(user_id: int, full_name: str, username: str):
 
@@ -647,6 +673,7 @@ def save_user_to_registry(user_id: int, full_name: str, username: str):
 # deep-link access. Refreshed automatically after every increment.
 _counter_cache = None
 
+
 def read_counter() -> int:
     global _counter_cache
     if _counter_cache is not None:
@@ -660,6 +687,7 @@ def read_counter() -> int:
         return _counter_cache
     except Exception:
         return 0
+
 
 def increment_counter() -> int:
     global _counter_cache
@@ -679,6 +707,7 @@ def increment_counter() -> int:
 # ---------------------------------------------------------------------------
 # Admin notification (no counter shown)
 # ---------------------------------------------------------------------------
+
 
 async def notify_admin(bot, full_name: str, username: str, user_id: int):
     now = datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
@@ -702,6 +731,7 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
 # ---------------------------------------------------------------------------
 # /start — deep link handler with approval gate
 # ---------------------------------------------------------------------------
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -740,7 +770,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             increment_counter()
             await notify_admin(context.bot, full_name, username, user_id)
         return
-        
+
     settings = read_settings()
 
     # Already approved
@@ -854,7 +884,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                 except Exception:
                     pass
-                    
+
         await clear_last_repeat(
             update.effective_chat.id,
             context.bot
@@ -900,7 +930,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await notify_admin(context.bot, full_name, username, user_id)
 
             approved = read_approved()
-            
+
             if user_id not in approved:
                approved.add(user_id)
                save_approved(approved)
@@ -959,6 +989,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Callback query — admin presses ✅ Izinkan or ❌ Tolak
 # ---------------------------------------------------------------------------
 
+
 async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -974,7 +1005,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if action == "izin":
-        
+
         pending = pending_requests.pop(user_id, None)
         admin_request_messages.pop(
             user_id,
@@ -998,7 +1029,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         except Exception:
             pass
-            
+
         # Add to approved list
         approved = read_approved()
         approved.add(user_id)
@@ -1011,7 +1042,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.delete_message(chat_id, pending["waiting_msg_id"])
             except Exception:
                 pass
-         
+
             selected_files = FILE_IDS_A
 
             # Deliver album
@@ -1042,7 +1073,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.delete()
 
         return
-        
+
     elif action == "ignore":
 
         admin_request_messages.pop(
@@ -1097,7 +1128,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.delete()
 
         return
-        
+
     elif action == "tolak":
         pending = pending_requests.pop(user_id, None)
         admin_request_messages.pop(
@@ -1129,6 +1160,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
+
 async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1155,14 +1187,15 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Silakan pilih paket vip bocil.",
         reply_markup=keyboard
     )
-    
+
+
 async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         await query.answer()
-        
+
         package_id = int(query.data.split("_")[1])
         package = get_package(package_id)
-    
+
         keyboard = InlineKeyboardMarkup([
     [
         InlineKeyboardButton(
@@ -1183,12 +1216,13 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{package['deskripsi']}\n\n"
 
         "──────────────\n"
-        
+
         f"💰 Harga : {package['harga']}",
 
         reply_markup=keyboard
 
 )
+
 
 async def send_qris_message(chat_id, context, package, package_id):
 
@@ -1268,7 +1302,8 @@ async def send_qris_message(chat_id, context, package, package_id):
         ):
             upload_waiting[order_id]["qris_msg_id"] = msg.message_id
             break
-        
+
+
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
@@ -1337,7 +1372,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     lock_payment(query.from_user.id, package_id)
-            
+
+
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1370,7 +1406,8 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
     )
-    
+
+
 async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1420,6 +1457,7 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
 # Admin commands
 # ---------------------------------------------------------------------------
 
+
 async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1444,7 +1482,8 @@ async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=keyboard,
         parse_mode="HTML",
     )
-    
+
+
 async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1493,6 +1532,8 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         ),
         reply_markup=keyboard
     )
+
+
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1534,6 +1575,7 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
+
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1546,7 +1588,8 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
         ),
         reply_markup=build_payment_keyboard(),
     )
-   
+
+
 async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1559,7 +1602,8 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
         ),
         reply_markup=build_payment_keyboard(),
     )
-    
+
+
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1612,7 +1656,8 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
         ),
         reply_markup=keyboard
     )
-    
+
+
 async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1628,7 +1673,8 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
             [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_channel")]
         ])
     )
-    
+
+
 async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1640,7 +1686,8 @@ async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
     save_settings(settings)
 
     await adminvip_channel_callback(update, context)
-  
+
+
 async def channel_interval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1661,7 +1708,8 @@ async def channel_interval_callback(update: Update, context: ContextTypes.DEFAUL
         caption="⏱ Interval Channel Post",
         reply_markup=keyboard
     )
-    
+
+
 async def channel_set_interval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1673,7 +1721,8 @@ async def channel_set_interval_callback(update: Update, context: ContextTypes.DE
     save_settings(settings)
 
     await adminvip_channel_callback(update, context)
-    
+
+
 async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
@@ -1708,7 +1757,8 @@ async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TY
         "✅ Berhasil dikirim.",
         show_alert=True
     )
-    
+
+
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1815,6 +1865,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         parse_mode="HTML",
     )
 
+
 async def payment_history_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1852,15 +1903,15 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
             else "-"
         )
 
-    text += (
-        f"📋 Order #{i}\n\n"
-        f"👤 {order['full_name']}\n"
-        f"🆔 {order['user_id']}\n"
-        f"🔗 {order['username']}\n\n"
-        f"📦 {package['nama'] if package else '-'}\n"
-        f"💰 {harga}\n\n"
-        f"🕒 {jam}\n\n"
-    )
+        text += (
+            f"📋 Order #{i}\n\n"
+            f"👤 {order['full_name']}\n"
+            f"🆔 {order['user_id']}\n"
+            f"🔗 {order['username']}\n\n"
+            f"📦 {package['nama'] if package else '-'}\n"
+            f"💰 {harga}\n\n"
+            f"🕒 {jam}\n\n"
+        )
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -1881,6 +1932,7 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         caption=text,
         reply_markup=keyboard,
     )
+
 
 async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1946,7 +1998,8 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
         ),
         reply_markup=keyboard,
     )
-    
+
+
 async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1968,7 +2021,8 @@ async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAU
         caption="✅ Order History berhasil dibersihkan.",
         reply_markup=keyboard,
     )
-    
+
+
 async def payment_history_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2035,6 +2089,7 @@ async def payment_history_delete_callback(update: Update, context: ContextTypes.
         reply_markup=keyboard,
     )
 
+
 async def payment_history_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2064,7 +2119,8 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
         caption="✅ Transaksi tanggal berhasil dihapus.",
         reply_markup=keyboard,
     )
-    
+
+
 def build_settings_keyboard(settings):
     """Bangun keyboard halaman Pengaturan dari state settings saat ini.
     Dipakai bersama oleh render penuh (edit_message_media) maupun update
@@ -2135,7 +2191,8 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         ),
         reply_markup=keyboard
     )
-    
+
+
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2167,7 +2224,8 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         ),
         reply_markup=keyboard
     )
-    
+
+
 async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2194,7 +2252,8 @@ async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         parse_mode="HTML",
         reply_markup=keyboard
     )
-    
+
+
 async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2202,9 +2261,11 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     if query.from_user.id != ADMIN_ID:
         return
 
+    global _counter_cache
     try:
         with open(COUNTER_FILE, "w") as f:
             json.dump({"count": 0}, f)
+        _counter_cache = 0
     except Exception as e:
         logger.error(f"Failed to reset counter: {e}")
         return
@@ -2222,6 +2283,7 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         caption="✅ Statistik berhasil direset!",
         reply_markup=keyboard
     )
+
 
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2300,9 +2362,11 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         reply_markup=keyboard
     )
 
+
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
-   
+
+
 async def clear_last_stats(chat_id: int, bot):
     old_message = last_stats_message.pop(chat_id, None)
 
@@ -2314,7 +2378,8 @@ async def clear_last_stats(chat_id: int, bot):
             )
         except Exception:
             pass
-            
+
+
 async def clear_last_repeat(chat_id: int, bot):
     old_message = last_repeat_message.pop(chat_id, None)
 
@@ -2326,7 +2391,8 @@ async def clear_last_repeat(chat_id: int, bot):
             )
         except Exception:
             pass
- 
+
+
 async def delete_messages_after_delay(
     chat_id,
     message_ids,
@@ -2398,7 +2464,8 @@ async def delete_messages_after_delay(
                 chat_id,
                 None
             )
-            
+
+
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2433,13 +2500,14 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         ),
         reply_markup=keyboard,
     )
-    
+
+
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
+
     admin_qris_waiting.discard(query.from_user.id)
-    
+
     context.user_data["qris_chat_id"] = query.message.chat_id
     context.user_data["qris_message_id"] = query.message.message_id
 
@@ -2479,7 +2547,8 @@ async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_T
             reply_markup=keyboard,
             parse_mode="HTML",
         )
-    
+
+
 async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2504,7 +2573,8 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
         reply_markup=keyboard,
         parse_mode="HTML",
     )
-    
+
+
 async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2520,7 +2590,8 @@ async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DE
         caption="⚙️ Pengaturan",
         reply_markup=build_settings_keyboard(settings)
     )
-    
+
+
 async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2534,6 +2605,7 @@ async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes
         caption="⚙️ Pengaturan",
         reply_markup=build_settings_keyboard(settings)
     )
+
 
 async def adminvip_toggle_livechat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -2550,7 +2622,8 @@ async def adminvip_toggle_livechat_callback(update: Update, context: ContextType
         caption="⚙️ Pengaturan",
         reply_markup=build_settings_keyboard(settings)
     )
-   
+
+
 async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2566,7 +2639,8 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
         caption="⚙️ Pengaturan",
         reply_markup=build_settings_keyboard(settings)
     )
-    
+
+
 async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2629,7 +2703,8 @@ async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_T
         caption="⏱ Preview Timer",
         reply_markup=keyboard
     )
-    
+
+
 async def preview_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2686,7 +2761,8 @@ async def adminvip_preview_settings_callback(update: Update, context: ContextTyp
         "🖼 Preview",
         reply_markup=keyboard
     )
-    
+
+
 def build_preview_caption(idx: int, total: int, media_type: str) -> str:
     jenis = "Video" if media_type == "video" else "Foto"
 
@@ -3068,6 +3144,7 @@ async def adminvip_prv_delyes_callback(update: Update, context: ContextTypes.DEF
         max(next_idx, 0)
     )
 
+
 async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3131,6 +3208,7 @@ async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAU
         ),
         reply_markup=keyboard
     )
+
 
 async def preview_media_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     global FILE_IDS_A
@@ -3218,7 +3296,8 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=keyboard,
         parse_mode="HTML",
     )
-    
+
+
 async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3252,7 +3331,8 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
         reply_markup=keyboard,
         parse_mode="HTML",
     )
-    
+
+
 async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3286,7 +3366,8 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=keyboard,
         parse_mode="HTML",
     )
-    
+
+
 async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3322,7 +3403,8 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=keyboard,
         parse_mode="HTML",
     )
-    
+
+
 async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3352,7 +3434,8 @@ async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT
         reply_markup=keyboard,
         parse_mode="HTML",
     )
-    
+
+
 async def adminvip_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
@@ -3374,7 +3457,8 @@ async def adminvip_delete_yes_callback(update: Update, context: ContextTypes.DEF
     save_vip_packages(packages)
 
     await adminvip_packages_callback(update, context)
-    
+
+
 async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -3457,6 +3541,7 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
         reply_markup=keyboard,
     )
 
+
 async def show_add_preview(message, data):
 
     preview = (
@@ -3518,7 +3603,8 @@ async def show_add_preview(message, data):
         reply_markup=keyboard,
         parse_mode="HTML",
     )
-    
+
+
 async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -3527,7 +3613,7 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = admin_add_waiting[user_id]
     text = update.message.text.strip()
-    
+
     if "editing" in data:
         field = data.pop("editing")
 
@@ -3579,7 +3665,8 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await show_add_preview(update.message, data)
         return
-  
+
+
 async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
@@ -3662,7 +3749,8 @@ async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
 
     await livechat_receive(update, context)
-    
+
+
 async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     settings = read_settings()
@@ -3701,7 +3789,8 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
         reply_markup=keyboard
     )
-        
+
+
 async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3731,7 +3820,8 @@ async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_T
     save_vip_packages(packages)
 
     await adminvip_packages_callback(update, context)
-    
+
+
 async def adminadd_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3759,7 +3849,8 @@ async def adminadd_edit_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.edit_message_text(
         title[field]
     )
-    
+
+
 async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -3798,6 +3889,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("✅ User banned.")
 
+
 async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -3818,6 +3910,7 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 BLACKLIST_PAGE_SIZE = 10
 BLACKLIST_DIVIDER = "\n📋 <b>Daftar User</b>\n"
+
 
 def build_blacklist_view(page: int = 1):
     bl = read_blacklist()
@@ -3884,11 +3977,13 @@ def build_blacklist_view(page: int = 1):
 
     return text, keyboard
 
+
 async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
     text, keyboard = build_blacklist_view(1)
     await update.message.reply_text(text, parse_mode="HTML", reply_markup=keyboard)
+
 
 async def banned_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3901,6 +3996,7 @@ async def banned_page_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
     except Exception:
         await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
 
 async def banned_reset_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3924,6 +4020,7 @@ async def banned_reset_ask_callback(update: Update, context: ContextTypes.DEFAUL
     except Exception:
         await query.edit_message_text(reset_ask_text, reply_markup=keyboard)
 
+
 async def banned_reset_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -3935,6 +4032,7 @@ async def banned_reset_yes_callback(update: Update, context: ContextTypes.DEFAUL
         await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
     except Exception:
         await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
 
 async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3974,6 +4072,7 @@ async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_T
     except Exception:
         await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
 
+
 async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4010,6 +4109,7 @@ async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAUL
     except Exception:
         await query.edit_message_text(unban_ask_text, reply_markup=keyboard)
 
+
 async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4030,6 +4130,7 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
         await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
     except Exception:
         await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
 
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -4062,6 +4163,7 @@ FILE_MANAGER_FILES = [
     ("🔒", "payment_lock.json", PAYMENT_LOCK_FILE),
 ]
 
+
 def split_text_into_chunks(text: str, limit: int = 3500):
     chunks = []
     current = ""
@@ -4077,6 +4179,7 @@ def split_text_into_chunks(text: str, limit: int = 3500):
         chunks.append(current)
     return chunks
 
+
 def create_file_manager_backup(name: str, path: str):
     if not os.path.exists(path):
         return None
@@ -4085,6 +4188,7 @@ def create_file_manager_backup(name: str, path: str):
     backup_path = os.path.join(FILE_MANAGER_BACKUP_DIR, f"{name}.{timestamp}.bak")
     shutil.copy2(path, backup_path)
     return backup_path
+
 
 def build_filemgr_list_view():
     available = [
@@ -4114,6 +4218,7 @@ def build_filemgr_list_view():
     keyboard = InlineKeyboardMarkup(keyboard_rows)
     return text, keyboard
 
+
 def build_filemgr_detail_view(idx, icon, name, note=None):
     keyboard = InlineKeyboardMarkup([
         [
@@ -4130,6 +4235,7 @@ def build_filemgr_detail_view(idx, icon, name, note=None):
     if note:
         caption = f"{note}\n\n{caption}"
     return caption, keyboard
+
 
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -4159,6 +4265,7 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
             await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
         except Exception:
             pass
+
 
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -4199,6 +4306,7 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
     ])
     await query.edit_message_caption(caption=f"{icon} {name}\n\nPilih tindakan.", reply_markup=keyboard)
+
 
 async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -4311,6 +4419,7 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
         logger.exception("filemgr_view_callback failed: %s", e)
         raise
 
+
 async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4350,6 +4459,7 @@ async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_
         doc_msg = await query.message.reply_document(document=f, filename=name, caption=f"📥 Download {name}")
     context.user_data["filemgr_download_message_id"] = doc_msg.message_id
 
+
 async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4381,6 +4491,7 @@ async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAUL
         reply_markup=keyboard
     )
 
+
 async def filemgr_edit_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4400,6 +4511,7 @@ async def filemgr_edit_confirm_callback(update: Update, context: ContextTypes.DE
         )
     )
 
+
 def invalidate_file_manager_cache(name: str):
     # File Manager writes bypass read_*/save_* helpers, so drop the matching
     # cache here; the next read_*() call will reload it fresh from disk.
@@ -4414,6 +4526,7 @@ def invalidate_file_manager_cache(name: str):
         _approved_cache = None
     elif name == "blacklist.json":
         _blacklist_cache = None
+
 
 async def file_manager_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE, idx: int):
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
@@ -4438,6 +4551,7 @@ async def file_manager_edit_receive(update: Update, context: ContextTypes.DEFAUL
         f"✅ {name} berhasil diperbarui.\n"
         "📥 Backup otomatis telah dibuat sebelum perubahan."
     )
+
 
 async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -4474,6 +4588,7 @@ async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEF
         reply_markup=keyboard
     )
 
+
 async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4506,6 +4621,7 @@ async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes
         ),
         reply_markup=keyboard
     )
+
 
 async def file_manager_restore_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -4613,10 +4729,11 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
                 pass
     finally:
         file_manager_restore_processing.discard(user_id)
-    
+
+
 def build_adminvip_keyboard():
     keyboard = []
-    
+
     keyboard.append([
         InlineKeyboardButton(
             "📦 Kelola Paket",
@@ -4662,7 +4779,8 @@ def build_adminvip_keyboard():
     ])
 
     return InlineKeyboardMarkup(keyboard)
-    
+
+
 def build_payment_keyboard():
 
     keyboard = []
@@ -4696,7 +4814,8 @@ def build_payment_keyboard():
     ])
 
     return InlineKeyboardMarkup(keyboard)
-    
+
+
 async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -4723,6 +4842,7 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
     )
 
+
 async def send_stats(chat_id: int, bot):
     count = read_counter()
 
@@ -4748,6 +4868,8 @@ async def send_stats(chat_id: int, bot):
     )
 
     last_stats_message[chat_id] = msg.message_id
+
+
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -4756,6 +4878,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update.effective_chat.id,
         context.bot
     )
+
 
 async def do_reset_stats(chat_id: int, bot):
     try:
@@ -4783,6 +4906,7 @@ async def do_reset_stats(chat_id: int, bot):
 
     last_stats_message[chat_id] = msg.message_id
 
+
 async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.effective_user.id != ADMIN_ID:
@@ -4796,6 +4920,7 @@ async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # /getid — admin tool to retrieve Telegram file_id from any media
 # ---------------------------------------------------------------------------
 
+
 async def getid_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -4804,6 +4929,7 @@ async def getid_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "📎 Kirim satu file media (foto, video, dokumen, audio, voice, animasi, atau sticker).\n\n"
         "Ketik /cancel untuk membatalkan."
     )
+
 
 async def getid_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -4845,6 +4971,7 @@ async def getid_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await msg.reply_text("⚠️ Tidak ada media yang terdeteksi. Kirim ulang atau /cancel.")
         getid_waiting.add(user_id)
 
+
 async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
@@ -4874,7 +5001,8 @@ async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await payment_receive(update, context)
-    
+
+
 async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
@@ -4890,7 +5018,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if order_id is None:
 
         return
-        
+
     if upload_waiting[order_id].get("processing"):
 
         if upload_waiting[order_id].get("processing_msg_id") is None:
@@ -4903,7 +5031,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             upload_waiting[order_id]["processing_msg_id"] = msg.message_id
 
         return
-        
+
     if upload_waiting[order_id].get("photo_uploaded"):
 
         await update.message.reply_text(
@@ -4924,11 +5052,11 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     upload_waiting[order_id]["processing"] = True
-    
+
     upload_waiting[order_id]["photo_file_id"] = update.message.photo[-1].file_id
 
     upload_waiting[order_id]["photo_uploaded"] = True
-    
+
     pending = read_pending_orders()
 
     for i, order in enumerate(pending["orders"]):
@@ -5011,6 +5139,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         upload_waiting[order_id]["reupload"] = False
 
+
 async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
@@ -5036,8 +5165,6 @@ async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
     settings["qris_file_id"] = file_id
 
     save_settings(settings)
-    
-    logger.info(settings)
 
     admin_qris_waiting.discard(user_id)
 
@@ -5072,6 +5199,8 @@ async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ),
         reply_markup=keyboard,
     )
+
+
 async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -5105,7 +5234,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         except Exception:
             pass
-    
+
         try:
             if data.get("processing_msg_id"):
                 await context.bot.delete_message(
@@ -5114,14 +5243,14 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 )
         except Exception:
             pass
-            
+
         try:
             await query.edit_message_text(
                 "✅ Pembayaran telah disetujui."
             )
         except Exception as e:
             logger.error(f"Edit admin message error: {e}")
-    
+
         await context.bot.send_message(
             chat_id=user_id,
             text=(
@@ -5129,7 +5258,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 f"Silakan bergabung ke VIP:\n{vip_link}"
             )
         )
-        
+
         if user_id not in ORDER_HISTORY_EXCLUDED:
 
             history = read_order_history()
@@ -5141,8 +5270,6 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 "package_id": data["package_id"],
                 "time": datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
             })
-
-            logger.info(history)
 
             save_order_history(history)
 
@@ -5156,7 +5283,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
 
         save_pending_orders(pending)
-        
+
         unlock_payment(user_id)
 
     elif action == "pay_no":
@@ -5172,7 +5299,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         upload_waiting[order_id]["processing"] = False
         upload_waiting[order_id]["processing_msg_id"] = None
         upload_waiting[order_id]["photo_file_id"] = None
-        
+
         pending = read_pending_orders()
 
         for i, order in enumerate(pending["orders"]):
@@ -5181,7 +5308,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 break
 
         save_pending_orders(pending)
-        
+
         await query.edit_message_text(
             "❌ Pembayaran ditolak."
         )
@@ -5205,7 +5332,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             "Yakin ingin membatasi akses user ini?",
             reply_markup=keyboard
         )
-        
+
     elif action == "pay_ban_cancel":
 
         keyboard = InlineKeyboardMarkup([
@@ -5236,10 +5363,10 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             ),
             reply_markup=keyboard
         )
-        
+
     elif action == "pay_ban_yes":
         blacklist = read_blacklist()
-        
+
         blacklist[user_id] = {
             "full_name": data["full_name"],
             "username": data["username"]
@@ -5272,7 +5399,8 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.edit_message_text(
             "✅ User berhasil dibatasi."
         )
-        
+
+
 async def livechat_reply_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -5284,12 +5412,15 @@ async def livechat_reply_callback(update: Update, context: ContextTypes.DEFAULT_
     await query.message.reply_text(
         "💬 Silakan kirim balasan untuk user."
     )
-        
+
+
 async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
     getid_waiting.discard(update.effective_user.id)
     await update.message.reply_text("❌ /getid dibatalkan.")
+
+
 #---------------------------------------------------------------------------
 # POST DARI BOT
 #---------------------------------------------------------------------------
@@ -5317,6 +5448,7 @@ migrate_to_volume("counter.json")
 migrate_to_volume("order_history.json")
 migrate_to_volume("pending_orders.json")
 
+
 def restore_pending_orders():
     global upload_waiting
     global next_order_id
@@ -5337,10 +5469,11 @@ def restore_pending_orders():
             max_order_id = order_id
 
     next_order_id = max_order_id + 1
-    
+
 # ---------------------------------------------------------------------------
 # AUTO CHANNEL POST
 # ---------------------------------------------------------------------------
+
 
 async def channel_auto_post_loop(app):
     while True:
@@ -5382,7 +5515,8 @@ async def channel_auto_post_loop(app):
             logger.error(f"Channel Auto Post Error: {e}")
 
         await asyncio.sleep(30)
-    
+
+
 async def set_admin_commands(app):
     await app.bot.set_my_commands(
         [
@@ -5392,13 +5526,14 @@ async def set_admin_commands(app):
         scope=BotCommandScopeChat(chat_id=ADMIN_ID),
     )
 
+
 def main():
     token = os.environ.get("BOT_TOKEN")
     if not token:
         raise ValueError("BOT_TOKEN environment variable is not set.")
 
     restore_pending_orders()
-    
+
     app = ApplicationBuilder().token(token).build()
 
     async def start_background(app):
@@ -5416,11 +5551,11 @@ def main():
 
     app.post_init = start_background
     app.post_shutdown = stop_background
-    
+
     app.add_handler(CommandHandler("getid", getid_start))
     app.add_handler(CommandHandler("cancel", getid_cancel))
     app.add_handler(CommandHandler("channeltest", channeltest))
-    
+
     app.add_handler(CommandHandler("start",      start))
     app.add_handler(CommandHandler("adminvip",   adminvip))
     app.add_handler(CommandHandler("stats",      stats))
@@ -5826,19 +5961,19 @@ def main():
         filters.PHOTO | filters.VIDEO | filters.Document.ALL,
         photo_router,
     ))
-    
+
     app.add_handler(MessageHandler(
         filters.PHOTO | filters.VIDEO | filters.Document.ALL |
         filters.AUDIO | filters.VOICE | filters.ANIMATION | filters.Sticker.ALL,
         getid_receive,
     ))
-    
+
     app.add_handler(
     MessageHandler(
         filters.TEXT & ~filters.COMMAND,
         admin_text_receive,
     ))
-    
+
     logger.info("Bot is running...")
     app.run_polling()
 
