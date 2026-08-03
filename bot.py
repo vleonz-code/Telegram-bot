@@ -5055,6 +5055,26 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
+    if (
+        update.message.photo
+        and (
+            upload_waiting[order_id].get("processing")
+            or upload_waiting[order_id].get("photo_uploaded")
+        )
+    ):
+        try:
+            pre_upload_cleanup_queue.put_nowait(
+                (update.message.chat_id, update.message.message_id)
+            )
+        except asyncio.QueueFull:
+            logger.warning(
+                "Extra proof cleanup queue full; leaving photo in chat "
+                f"(chat_id={update.message.chat_id}, "
+                f"message_id={update.message.message_id})"
+            )
+
+        return
+
     if upload_waiting[order_id].get("processing"):
 
         if upload_waiting[order_id].get("processing_msg_id") is None:
