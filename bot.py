@@ -1386,8 +1386,9 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     # Jika user sudah punya order, jangan buat order baru
     for order_id, data in upload_waiting.items():
 
-        upload_waiting[order_id]["can_upload"] = True
         if data["user_id"] == user.id:
+
+            upload_waiting[order_id]["can_upload"] = True
 
             if data.get("upload_msg_id"):
                 try:
@@ -1408,7 +1409,6 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
     )
-
 
 async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
