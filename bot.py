@@ -1349,6 +1349,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "processing": False,
         "processing_msg_id": None,
         "warning_msg_id": None,
+        "early_photo_msg_ids": [],
         "reupload": False,
         "package_id": package["id"],
         "paket": package["nama"],
@@ -5051,7 +5052,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not upload_waiting[order_id].get("upload_msg_id"):
-
+        if update.message.photo:
+            upload_waiting[order_id]["early_photo_msg_ids"].append(
+                update.message.message_id
+            )
         old_warning = upload_waiting[order_id].get("warning_msg_id")
 
         if old_warning:
@@ -5192,7 +5196,18 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             pass
 
         upload_waiting[order_id]["upload_msg_id"] = None
-        
+
+    for message_id in upload_waiting[order_id]["early_photo_msg_ids"]:
+        try:
+            await context.bot.delete_message(
+                chat_id=update.effective_chat.id,
+                message_id=message_id
+            )
+        except Exception:
+            pass
+
+    upload_waiting[order_id]["early_photo_msg_ids"] = []
+
     if not upload_waiting[order_id].get("reupload"):
 
         status_msg = await update.message.reply_text(
