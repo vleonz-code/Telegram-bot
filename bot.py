@@ -5363,6 +5363,18 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         unlock_payment(user_id)
 
     elif action == "pay_no":
+
+        if data.get("status_msg_id"):
+            try:
+                await context.bot.delete_message(
+                    chat_id=user_id,
+                    message_id=data["status_msg_id"]
+                )
+            except Exception:
+                pass
+
+            upload_waiting[order_id]["status_msg_id"] = None
+
         await context.bot.send_message(
             chat_id=user_id,
             text=(
@@ -5370,6 +5382,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 "Silakan upload ulang bukti transfer."
             )
         )
+
         upload_waiting[order_id]["photo_uploaded"] = False
         upload_waiting[order_id]["reupload"] = True
         upload_waiting[order_id]["processing"] = False
