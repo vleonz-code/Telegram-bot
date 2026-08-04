@@ -25,6 +25,20 @@ APP_DIR = os.path.dirname(__file__)
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
+PAYMENT_TRACE_FILE = os.path.join(DATA_DIR, "payment_trace.log")
+payment_trace_logger = logging.getLogger("payment_trace")
+payment_trace_logger.setLevel(logging.INFO)
+payment_trace_logger.propagate = False
+if not payment_trace_logger.handlers:
+    _payment_trace_handler = logging.FileHandler(
+        PAYMENT_TRACE_FILE,
+        encoding="utf-8"
+    )
+    _payment_trace_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    )
+    payment_trace_logger.addHandler(_payment_trace_handler)
+
 DEEP_LINK_A = "UC3A6P"
 
 ADMIN_ID = 7602115007
@@ -5399,70 +5413,189 @@ async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    callback_started_at = time.perf_counter()
+    payment_trace_logger.info(
+        "PAYMENT_ADMIN_CALLBACK_RECEIVED "
+        f"callback_query_id={query.id} "
+        f"callback_data={query.data!r} "
+        f"admin_message_id="
+        f"{query.message.message_id if query.message else None}"
+    )
+    payment_trace_logger.info(
+        "PAYMENT_ADMIN_QUERY_ANSWER_START "
+        f"callback_query_id={query.id}"
+    )
     await query.answer()
+    payment_trace_logger.info(
+        "PAYMENT_ADMIN_QUERY_ANSWER_SUCCESS "
+        f"callback_query_id={query.id} "
+        f"elapsed_ms="
+        f"{(time.perf_counter() - callback_started_at) * 1000:.2f}"
+    )
 
     if query.from_user.id != ADMIN_ID:
+        payment_trace_logger.warning(
+            "PAYMENT_ADMIN_CALLBACK_NON_ADMIN "
+            f"user_id={query.from_user.id}"
+        )
         return
 
     try:
         action, oid = query.data.split("|", 1)
         order_id = int(oid)
     except Exception:
+        payment_trace_logger.error(
+            "PAYMENT_ADMIN_CALLBACK_PARSE_FAILED "
+            f"callback_data={query.data!r}"
+        )
         return
 
     data = upload_waiting.get(order_id)
 
     user_id = data["user_id"] if data else None
     if not data:
+        payment_trace_logger.error(
+            "PAYMENT_ADMIN_ORDER_NOT_FOUND "
+            f"action={action} "
+            f"order_id={order_id}"
+        )
         await query.edit_message_text(
             "⚠️ Data pembayaran sudah tidak tersedia."
         )
         return
 
     if action == "pay_ok":
+        payment_trace_logger.info(
+            "PAY_OK_RECEIVED "
+            f"order_id={order_id} "
+            f"user_id={user_id} "
+            f"processing={data.get('processing')} "
+            f"photo_uploaded={data.get('photo_uploaded')} "
+            f"photo_file_id_present={bool(data.get('photo_file_id'))}"
+        )
+        payment_trace_logger.info(
+            "PAY_OK_PROCESSING_EDIT_START "
+            f"order_id={order_id}"
+        )
         try:
             await query.edit_message_text(
                 "⏳ Persetujuan sedang diproses..."
             )
+            payment_trace_logger.info(
+                "PAY_OK_PROCESSING_EDIT_SUCCESS "
+                f"order_id={order_id}"
+            )
         except Exception as e:
             logger.error(f"Edit processing message error: {e}")
+            payment_trace_logger.error(
+                "PAY_OK_PROCESSING_EDIT_FAILED "
+                f"order_id={order_id} "
+                f"exception={repr(e)}"
+            )
 
         package = get_package(data["package_id"])
         vip_link = package["vip_link"]
 
+        payment_trace_logger.info(
+            "PAY_OK_DELETE_STATUS_START "
+            f"order_id={order_id} "
+            f"message_id={data.get('status_msg_id')}"
+        )
         try:
             await context.bot.delete_message(
                 chat_id=user_id,
                 message_id=data["status_msg_id"]
             )
-        except Exception:
+            payment_trace_logger.info(
+                "PAY_OK_DELETE_STATUS_SUCCESS "
+                f"order_id={order_id}"
+            )
+        except Exception as e:
+            payment_trace_logger.warning(
+                "PAY_OK_DELETE_STATUS_FAILED "
+                f"order_id={order_id} "
+                f"exception={repr(e)}"
+            )
             pass
 
+        payment_trace_logger.info(
+            "PAY_OK_DELETE_PROCESSING_START "
+            f"order_id={order_id} "
+            f"message_id={data.get('processing_msg_id')}"
+        )
         try:
             if data.get("processing_msg_id"):
                 await context.bot.delete_message(
                     chat_id=user_id,
                     message_id=data["processing_msg_id"]
                 )
-        except Exception:
+                payment_trace_logger.info(
+                    "PAY_OK_DELETE_PROCESSING_SUCCESS "
+                    f"order_id={order_id}"
+                )
+            else:
+                payment_trace_logger.info(
+                    "PAY_OK_DELETE_PROCESSING_SKIPPED "
+                    f"order_id={order_id}"
+                )
+        except Exception as e:
+            payment_trace_logger.warning(
+                "PAY_OK_DELETE_PROCESSING_FAILED "
+                f"order_id={order_id} "
+                f"exception={repr(e)}"
+            )
             pass
 
+        payment_trace_logger.info(
+            "PAY_OK_FINAL_EDIT_START "
+            f"order_id={order_id}"
+        )
         try:
             await query.edit_message_text(
                 "✅ Pembayaran telah disetujui."
             )
+            payment_trace_logger.info(
+                "PAY_OK_FINAL_EDIT_SUCCESS "
+                f"order_id={order_id}"
+            )
         except Exception as e:
             logger.error(f"Edit admin message error: {e}")
-
-        await context.bot.send_message(
-            chat_id=user_id,
-            text=(
-                "👉🏻 Pembayaran berhasil diverifikasi.\n\n"
-                f"Silakan bergabung ke VIP:\n{vip_link}"
+            payment_trace_logger.error(
+                "PAY_OK_FINAL_EDIT_FAILED "
+                f"order_id={order_id} "
+                f"exception={repr(e)}"
             )
+
+        payment_trace_logger.info(
+            "PAY_OK_USER_NOTICE_START "
+            f"order_id={order_id} "
+            f"user_id={user_id}"
         )
+        try:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=(
+                    "👉🏻 Pembayaran berhasil diverifikasi.\n\n"
+                    f"Silakan bergabung ke VIP:\n{vip_link}"
+                )
+            )
+            payment_trace_logger.info(
+                "PAY_OK_USER_NOTICE_SUCCESS "
+                f"order_id={order_id}"
+            )
+        except Exception as e:
+            payment_trace_logger.error(
+                "PAY_OK_USER_NOTICE_FAILED "
+                f"order_id={order_id} "
+                f"exception={repr(e)}"
+            )
+            raise
 
         if user_id not in ORDER_HISTORY_EXCLUDED:
+            payment_trace_logger.info(
+                "PAY_OK_HISTORY_SAVE_START "
+                f"order_id={order_id}"
+            )
 
             history = read_order_history()
 
@@ -5475,8 +5608,21 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             })
 
             save_order_history(history)
+            payment_trace_logger.info(
+                "PAY_OK_HISTORY_SAVE_SUCCESS "
+                f"order_id={order_id}"
+            )
+        else:
+            payment_trace_logger.info(
+                "PAY_OK_HISTORY_SAVE_SKIPPED "
+                f"order_id={order_id}"
+            )
 
         upload_waiting.pop(order_id, None)
+        payment_trace_logger.info(
+            "PAY_OK_PENDING_REMOVE_START "
+            f"order_id={order_id}"
+        )
         pending = read_pending_orders()
 
         pending["orders"] = [
@@ -5486,8 +5632,29 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
 
         save_pending_orders(pending)
+        payment_trace_logger.info(
+            "PAY_OK_PENDING_REMOVE_SUCCESS "
+            f"order_id={order_id}"
+        )
 
+        payment_trace_logger.info(
+            "PAY_OK_UNLOCK_START "
+            f"order_id={order_id} "
+            f"user_id={user_id}"
+        )
         unlock_payment(user_id)
+        payment_trace_logger.info(
+            "PAY_OK_UNLOCK_SUCCESS "
+            f"order_id={order_id} "
+            f"user_id={user_id}"
+        )
+        payment_trace_logger.info(
+            "PAY_OK_COMPLETED "
+            f"order_id={order_id} "
+            f"user_id={user_id} "
+            f"total_elapsed_ms="
+            f"{(time.perf_counter() - callback_started_at) * 1000:.2f}"
+        )
 
     elif action == "pay_no":
         previous_prompt_msg_id = upload_waiting[order_id].get(
