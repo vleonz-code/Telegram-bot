@@ -5082,16 +5082,6 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not upload_waiting[order_id].get("upload_msg_id"):
 
-    # (biarkan kode hapus foto yang sudah ada di sini)
-
-    await update.message.reply_text(
-        "⚠️ Kamu masih berada di halaman pembayaran.\n\n"
-        "Untuk mengirim bukti transfer, silakan tekan tombol 📤 Sudah Transfer terlebih dahulu.\n\n"
-        "Setelah area upload terbuka, kirim screenshot atau foto bukti transfer di sana."
-    )
-
-    return
-
         # Delete only the current pre-upload photo asynchronously. The queue
         # is bounded so cleanup can never build an unbounded backlog.
         if update.message.photo:
