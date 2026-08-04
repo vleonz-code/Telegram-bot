@@ -6,6 +6,7 @@ import asyncio
 import time
 import copy
 import html
+import traceback
 import psutil
 psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan pertama
 import sys
@@ -110,6 +111,37 @@ def read_pending_orders():
 
 
 def save_pending_orders(data):
+    stack = traceback.extract_stack()
+    caller = stack[-2]
+    timestamp = datetime.now(WIB).strftime("%Y-%m-%d %H:%M:%S.%f %Z")
+
+    logger.info(
+        "PENDING_ORDERS_SAVE "
+        f"caller={caller.name} "
+        f"caller_location={caller.filename}:{caller.lineno} "
+        f"timestamp={timestamp} "
+        f"order_count={len(data.get('orders', []))}"
+    )
+
+    for order in data.get("orders", []):
+        photo_file_id = order.get("photo_file_id")
+        photo_file_preview = (
+            str(photo_file_id)[:12]
+            if photo_file_id is not None
+            else None
+        )
+        logger.info(
+            "PENDING_ORDERS_SAVE_ORDER "
+            f"caller={caller.name} "
+            f"order_id={order.get('order_id')} "
+            f"processing={order.get('processing')} "
+            f"photo_uploaded={order.get('photo_uploaded')} "
+            f"photo_file_id_prefix={photo_file_preview} "
+            f"upload_msg_id={order.get('upload_msg_id')} "
+            f"qris_msg_id={order.get('qris_msg_id')} "
+            f"timestamp={timestamp}"
+        )
+
     with open(PENDING_ORDERS_FILE, "w", encoding="utf-8") as f:
         json.dump(
             data,
