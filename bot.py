@@ -5420,6 +5420,13 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     if action == "pay_ok":
+        try:
+            await query.edit_message_text(
+                "⏳ Persetujuan sedang diproses..."
+            )
+        except Exception as e:
+            logger.error(f"Edit processing message error: {e}")
+
         package = get_package(data["package_id"])
         vip_link = package["vip_link"]
 
