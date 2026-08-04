@@ -1415,6 +1415,17 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         data = upload_waiting[order_id]
 
+        for notice_msg_id in data.get("pre_upload_notice_msg_ids", []):
+            try:
+                await context.bot.delete_message(
+                    chat_id=query.message.chat_id,
+                    message_id=notice_msg_id
+                )
+            except Exception:
+                pass
+
+        data["pre_upload_notice_msg_ids"] = []
+
         if (
             data.get("processing")
             or data.get("photo_uploaded")
@@ -5089,11 +5100,15 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pre_upload_cleanup_queue.put_nowait(
                     (update.message.chat_id, update.message.message_id)
                 )
-                await update.message.reply_text(
+                notice_msg = await update.message.reply_text(
                     "⚠️ Kamu masih berada di halaman pembayaran.\n\n"
                     "Tekan tombol 📤 Sudah Transfer terlebih dahulu "
                     "agar area upload bukti transfer dibuka."
                 )
+                upload_waiting[order_id].setdefault(
+                    "pre_upload_notice_msg_ids",
+                    []
+                ).append(notice_msg.message_id)
             except asyncio.QueueFull:
                 logger.warning(
                     "Pre-upload cleanup queue full; leaving photo in chat "
