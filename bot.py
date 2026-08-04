@@ -1,4 +1,3 @@
-import os
 import json
 import logging
 import shutil
@@ -1408,14 +1407,8 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
             upload_waiting[order_id]["upload_msg_id"] = msg.message_id
 
-            logger.info(
-                f"[UPLOAD_CALLBACK] order_id={order_id} "
-                f"user_id={user.id} "
-                f"upload_msg_id={msg.message_id}"
-            )
-
             pending = read_pending_orders()
-            
+
             for i, order in enumerate(pending["orders"]):
                 if order["order_id"] == order_id:
                     pending["orders"][i] = upload_waiting[order_id].copy()
@@ -5039,21 +5032,9 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             order_id = oid
 
-    logger.info(
-        f"[PAYMENT_RECEIVE] selected_order={order_id} "
-        f"user_id={user_id}"
-    )
-
     if order_id is None:
 
         return
-
-    logger.info(
-        f"[STATE] upload_msg_id={upload_waiting[order_id].get('upload_msg_id')} "
-        f"processing={upload_waiting[order_id].get('processing')} "
-        f"photo_uploaded={upload_waiting[order_id].get('photo_uploaded')} "
-        f"reupload={upload_waiting[order_id].get('reupload')}"
-    )
 
     if not upload_waiting[order_id].get("upload_msg_id"):
 
