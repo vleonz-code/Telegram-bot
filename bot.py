@@ -6,7 +6,7 @@ import asyncio
 import time
 import copy
 import html
-import traceback
+import inspect
 import psutil
 psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan pertama
 import sys
@@ -25,6 +25,26 @@ DATA_DIR = "/data"
 APP_DIR = os.path.dirname(__file__)
 
 os.makedirs(DATA_DIR, exist_ok=True)
+
+PAYMENT_TRACE_FILE = os.path.join(DATA_DIR, "payment_trace.log")
+payment_trace_logger = logging.getLogger("payment_trace")
+payment_trace_logger.setLevel(logging.INFO)
+payment_trace_logger.propagate = False
+
+if not any(
+    isinstance(handler, logging.FileHandler)
+    and os.path.abspath(handler.baseFilename)
+    == os.path.abspath(PAYMENT_TRACE_FILE)
+    for handler in payment_trace_logger.handlers
+):
+    payment_trace_handler = logging.FileHandler(
+        PAYMENT_TRACE_FILE,
+        encoding="utf-8",
+    )
+    payment_trace_handler.setFormatter(logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(message)s"
+    ))
+    payment_trace_logger.addHandler(payment_trace_handler)
 
 DEEP_LINK_A = "UC3A6P"
 
@@ -111,15 +131,21 @@ def read_pending_orders():
 
 
 def save_pending_orders(data):
-    stack = traceback.extract_stack()
-    caller = stack[-2]
+    caller = inspect.stack()[1]
     timestamp = datetime.now(WIB).strftime("%Y-%m-%d %H:%M:%S.%f %Z")
 
     logger.info(
         "PENDING_ORDERS_SAVE "
-        f"caller={caller.name} "
+        f"caller={caller.function} "
         f"caller_location={caller.filename}:{caller.lineno} "
         f"timestamp={timestamp} "
+        f"order_count={len(data.get('orders', []))}"
+    )
+    payment_trace_logger.info(
+        "PENDING_ORDERS_SAVE "
+        f"timestamp={timestamp} "
+        f"caller={caller.function} "
+        f"caller_line={caller.lineno} "
         f"order_count={len(data.get('orders', []))}"
     )
 
@@ -132,7 +158,7 @@ def save_pending_orders(data):
         )
         logger.info(
             "PENDING_ORDERS_SAVE_ORDER "
-            f"caller={caller.name} "
+            f"caller={caller.function} "
             f"order_id={order.get('order_id')} "
             f"processing={order.get('processing')} "
             f"photo_uploaded={order.get('photo_uploaded')} "
@@ -140,6 +166,18 @@ def save_pending_orders(data):
             f"upload_msg_id={order.get('upload_msg_id')} "
             f"qris_msg_id={order.get('qris_msg_id')} "
             f"timestamp={timestamp}"
+        )
+        payment_trace_logger.info(
+            "PENDING_ORDERS_SAVE_ORDER "
+            f"timestamp={timestamp} "
+            f"caller={caller.function} "
+            f"caller_line={caller.lineno} "
+            f"order_id={order.get('order_id')} "
+            f"processing={order.get('processing')} "
+            f"photo_uploaded={order.get('photo_uploaded')} "
+            f"photo_file_id_prefix={photo_file_preview} "
+            f"upload_msg_id={order.get('upload_msg_id')} "
+            f"qris_msg_id={order.get('qris_msg_id')}"
         )
 
     with open(PENDING_ORDERS_FILE, "w", encoding="utf-8") as f:
@@ -5276,11 +5314,31 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"update_id={update.update_id} "
         f"media_group_id={update.message.media_group_id}"
     )
+    payment_trace_logger.info(
+        "PAYMENT_PIPELINE_BEFORE_SET "
+        f"timestamp={datetime.now(WIB).strftime('%Y-%m-%d %H:%M:%S.%f %Z')} "
+        f"order_id={order_id} "
+        f"processing_lama={upload_waiting[order_id].get('processing')} "
+        f"photo_uploaded_lama={upload_waiting[order_id].get('photo_uploaded')} "
+        f"photo_file_id_lama={upload_waiting[order_id].get('photo_file_id')} "
+        f"update_id={update.update_id} "
+        f"photo_message_id={update.message.message_id}"
+    )
     upload_waiting[order_id]["processing"] = True
 
     upload_waiting[order_id]["photo_file_id"] = update.message.photo[-1].file_id
 
     upload_waiting[order_id]["photo_uploaded"] = True
+    payment_trace_logger.info(
+        "PAYMENT_PIPELINE_AFTER_SET "
+        f"timestamp={datetime.now(WIB).strftime('%Y-%m-%d %H:%M:%S.%f %Z')} "
+        f"order_id={order_id} "
+        f"processing_baru={upload_waiting[order_id].get('processing')} "
+        f"photo_uploaded_baru={upload_waiting[order_id].get('photo_uploaded')} "
+        f"photo_file_id_baru={upload_waiting[order_id].get('photo_file_id')} "
+        f"update_id={update.update_id} "
+        f"photo_message_id={update.message.message_id}"
+    )
     logger.info(
         "PAYMENT_PIPELINE_AFTER_SET "
         f"order_id={order_id} "
@@ -5773,6 +5831,23 @@ def restore_pending_orders():
     for order in pending["orders"]:
 
         order_id = order["order_id"]
+
+        restore_photo_file_id = order.get("photo_file_id")
+        restore_photo_file_id_prefix = (
+            str(restore_photo_file_id)[:12]
+            if restore_photo_file_id is not None
+            else None
+        )
+        payment_trace_logger.info(
+            "RESTORE_PENDING "
+            f"timestamp={datetime.now(WIB).strftime('%Y-%m-%d %H:%M:%S.%f %Z')} "
+            f"order_id={order_id} "
+            f"processing={order.get('processing')} "
+            f"photo_uploaded={order.get('photo_uploaded')} "
+            f"photo_file_id_prefix={restore_photo_file_id_prefix} "
+            f"upload_msg_id={order.get('upload_msg_id')} "
+            f"qris_msg_id={order.get('qris_msg_id')}"
+        )
 
         upload_waiting[order_id] = order
 
