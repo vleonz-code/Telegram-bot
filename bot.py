@@ -1336,9 +1336,25 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 break
 
         if uploaded_order is not None:
-            await query.message.reply_text(
+            previous_notice_msg_id = uploaded_order.get(
+                "payment_received_notice_msg_id"
+            )
+
+            if previous_notice_msg_id:
+                try:
+                    await context.bot.delete_message(
+                        chat_id=query.message.chat_id,
+                        message_id=previous_notice_msg_id
+                    )
+                except Exception:
+                    pass
+
+            notice_msg = await query.message.reply_text(
                 "✅ Bukti transfer sudah diterima.\n\n"
                 "Mohon tunggu verifikasi admin."
+            )
+            uploaded_order["payment_received_notice_msg_id"] = (
+                notice_msg.message_id
             )
             return
 
