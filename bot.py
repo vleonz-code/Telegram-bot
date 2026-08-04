@@ -1384,8 +1384,6 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     await query.answer()
 
-    global next_order_id
-
     user = query.from_user
     package_id = int(query.data.split("_")[2])
     locked_package_id = get_locked_package_id(user.id)
@@ -1463,7 +1461,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         return
 
-    msg = await query.message.reply_text(
+    await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
     )
 
@@ -5193,7 +5191,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = f"@{user.username}" if user.username else "-"
 
     try:
-        admin_photo_msg = await context.bot.send_photo(
+        await context.bot.send_photo(
 
             chat_id=ADMIN_ID,
 
