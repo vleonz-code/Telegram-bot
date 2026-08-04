@@ -5260,7 +5260,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
         status_msg = await update.message.reply_text(
-            "✅ Pembayaran kamu sedang diproses.\n"
+            "✅ Bukti transfer pengganti telah diterima.\n"
             "⏳ Estimasi waktu: 1–3 menit...\n\n"
         )
 
