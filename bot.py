@@ -1387,11 +1387,15 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     global next_order_id
 
     user = query.from_user
+    package_id = int(query.data.split("_")[2])
 
     # Jika user sudah punya order, jangan buat order baru
     for order_id, data in upload_waiting.items():
 
-        if str(data.get("user_id")) == str(user.id):
+        if (
+            str(data.get("user_id")) == str(user.id)
+            and data.get("package_id") == package_id
+        ):
 
             if data.get("upload_msg_id"):
                 try:
@@ -5029,9 +5033,19 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     for oid, data in upload_waiting.items():
 
-        if data["user_id"] == user_id:
+        if (
+            data["user_id"] == user_id
+            and data.get("upload_msg_id")
+        ):
 
             order_id = oid
+            break
+
+    if order_id is None:
+        for oid, data in upload_waiting.items():
+
+            if data["user_id"] == user_id:
+                order_id = oid
 
     if order_id is None:
 
