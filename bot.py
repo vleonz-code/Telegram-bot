@@ -5082,21 +5082,27 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not upload_waiting[order_id].get("upload_msg_id"):
 
-        # Delete only the current pre-upload photo asynchronously. The queue
-        # is bounded so cleanup can never build an unbounded backlog.
-        if update.message.photo:
-            try:
-                pre_upload_cleanup_queue.put_nowait(
-                    (update.message.chat_id, update.message.message_id)
-                )
-            except asyncio.QueueFull:
-                logger.warning(
-                    "Pre-upload cleanup queue full; leaving photo in chat "
-                    f"(chat_id={update.message.chat_id}, "
-                    f"message_id={update.message.message_id})"
-                )
+    # Delete only the current pre-upload photo asynchronously. The queue
+    # is bounded so cleanup can never build an unbounded backlog.
+    if update.message.photo:
+        try:
+            pre_upload_cleanup_queue.put_nowait(
+                (update.message.chat_id, update.message.message_id)
+            )
+        except asyncio.QueueFull:
+            logger.warning(
+                "Pre-upload cleanup queue full; leaving photo in chat "
+                f"(chat_id={update.message.chat_id}, "
+                f"message_id={update.message.message_id})"
+            )
 
-        return
+    await update.message.reply_text(
+        "⚠️ Kamu masih berada di halaman pembayaran.\n\n"
+        "Untuk mengirim bukti transfer, silakan tekan tombol 📤 Sudah Transfer terlebih dahulu.\n\n"
+        "Setelah area upload terbuka, kirim screenshot atau foto bukti transfer di sana."
+    )
+
+    return
 
     if (
         update.message.photo
