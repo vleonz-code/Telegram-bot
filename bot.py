@@ -5157,6 +5157,38 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     order_id = None
 
+    def log_payment_return(
+        reason,
+        trace_order_id,
+        trace_data=None,
+        duplicate_by_processing=None,
+        duplicate_by_photo_uploaded=None,
+    ):
+        trace_data = trace_data or {}
+        trace_photo_file_id = trace_data.get("photo_file_id")
+        trace_photo_file_id_prefix = (
+            str(trace_photo_file_id)[:12]
+            if trace_photo_file_id
+            else None
+        )
+        trace_message = getattr(update, "message", None)
+        payment_trace_logger.info(
+            f"{reason} "
+            f"timestamp={datetime.now(WIB).strftime('%Y-%m-%d %H:%M:%S.%f %Z')} "
+            f"order_id={trace_order_id} "
+            f"update_id={getattr(update, 'update_id', None)} "
+            f"photo_message_id={getattr(trace_message, 'message_id', None)} "
+            f"user_id={user_id} "
+            f"processing={trace_data.get('processing')} "
+            f"photo_uploaded={trace_data.get('photo_uploaded')} "
+            f"photo_file_id_prefix={trace_photo_file_id_prefix} "
+            f"upload_msg_id={trace_data.get('upload_msg_id')} "
+            f"qris_msg_id={trace_data.get('qris_msg_id')} "
+            f"reason={reason} "
+            f"duplicate_by_processing={duplicate_by_processing} "
+            f"duplicate_by_photo_uploaded={duplicate_by_photo_uploaded}"
+        )
+
     logger.info(
         "PAYMENT_RECEIVE_START "
         f"user_id={user_id} "
@@ -5198,6 +5230,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"PAYMENT_RECEIVE_BRANCH user_id={user_id} "
             "branch=NO_ORDER"
         )
+        log_payment_return(
+            "RETURN_ORDER_NOT_FOUND",
+            order_id,
+        )
         return
 
     logger.info(
@@ -5229,6 +5265,11 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"message_id={update.message.message_id})"
                 )
 
+        log_payment_return(
+            "RETURN_NO_UPLOAD_MSG",
+            order_id,
+            upload_waiting[order_id],
+        )
         return
 
     if (
@@ -5253,6 +5294,17 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"message_id={update.message.message_id})"
             )
 
+        log_payment_return(
+            "RETURN_DUPLICATE_PHOTO",
+            order_id,
+            upload_waiting[order_id],
+            duplicate_by_processing=bool(
+                upload_waiting[order_id].get("processing")
+            ),
+            duplicate_by_photo_uploaded=bool(
+                upload_waiting[order_id].get("photo_uploaded")
+            ),
+        )
         return
 
     if upload_waiting[order_id].get("processing"):
@@ -5270,6 +5322,11 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             upload_waiting[order_id]["processing_msg_id"] = msg.message_id
 
+        log_payment_return(
+            "RETURN_ALREADY_PROCESSING",
+            order_id,
+            upload_waiting[order_id],
+        )
         return
 
     if upload_waiting[order_id].get("photo_uploaded"):
@@ -5283,6 +5340,11 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Mohon tunggu verifikasi admin."
         )
 
+        log_payment_return(
+            "RETURN_PHOTO_ALREADY_UPLOADED",
+            order_id,
+            upload_waiting[order_id],
+        )
         return
 
     if not update.message.photo:
@@ -5297,6 +5359,11 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         )
 
+        log_payment_return(
+            "RETURN_NOT_PHOTO",
+            order_id,
+            upload_waiting[order_id],
+        )
         return
 
     logger.info(
