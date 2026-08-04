@@ -1323,6 +1323,25 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         package = get_package(package_id)
 
+        uploaded_order = None
+        for order_id, data in upload_waiting.items():
+            if (
+                data.get("user_id") == query.from_user.id
+                and str(data.get("package_id")) == str(package_id)
+                and data.get("processing") is True
+                and data.get("photo_uploaded") is True
+                and data.get("photo_file_id")
+            ):
+                uploaded_order = data
+                break
+
+        if uploaded_order is not None:
+            await query.message.reply_text(
+                "✅ Bukti transfer sudah diterima.\n\n"
+                "Mohon tunggu verifikasi admin."
+            )
+            return
+
         await send_qris_message(
             query.message.chat_id,
             context,
