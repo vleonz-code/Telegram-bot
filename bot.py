@@ -1388,40 +1388,58 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     user = query.from_user
     package_id = int(query.data.split("_")[2])
+    locked_package_id = get_locked_package_id(user.id)
+    target_order_id = None
 
-    # Jika user sudah punya order, jangan buat order baru
     for order_id, data in upload_waiting.items():
-
         if (
             str(data.get("user_id")) == str(user.id)
-            and data.get("package_id") == package_id
+            and data.get("qris_msg_id") == query.message.message_id
         ):
+            target_order_id = order_id
+            break
 
-            if data.get("upload_msg_id"):
-                try:
-                    await context.bot.delete_message(
-                        chat_id=query.message.chat_id,
-                        message_id=data["upload_msg_id"]
-                    )
-                except Exception:
-                    pass
+    if target_order_id is None:
+        for order_id, data in upload_waiting.items():
+            if (
+                str(data.get("user_id")) == str(user.id)
+                and str(data.get("package_id"))
+                == str(locked_package_id or package_id)
+            ):
+                target_order_id = order_id
+                break
 
-            msg = await query.message.reply_text(
-                "Silakan upload screenshot bukti transfer disini.\n\n"
-            )
+    # Jika user sudah punya order, jangan buat order baru
+    if target_order_id is not None:
+        order_id = target_order_id
 
-            upload_waiting[order_id]["upload_msg_id"] = msg.message_id
+        data = upload_waiting[order_id]
 
-            pending = read_pending_orders()
+        if data.get("upload_msg_id"):
+            try:
+                await context.bot.delete_message(
+                    chat_id=query.message.chat_id,
+                    message_id=data["upload_msg_id"]
+                )
+            except Exception:
+                pass
 
-            for i, order in enumerate(pending["orders"]):
-                if order["order_id"] == order_id:
-                    pending["orders"][i] = upload_waiting[order_id].copy()
-                    break
+        msg = await query.message.reply_text(
+            "Silakan upload screenshot bukti transfer disini.\n\n"
+        )
 
-            save_pending_orders(pending)
+        upload_waiting[order_id]["upload_msg_id"] = msg.message_id
 
-            return
+        pending = read_pending_orders()
+
+        for i, order in enumerate(pending["orders"]):
+            if order["order_id"] == order_id:
+                pending["orders"][i] = upload_waiting[order_id].copy()
+                break
+
+        save_pending_orders(pending)
+
+        return
 
     msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
