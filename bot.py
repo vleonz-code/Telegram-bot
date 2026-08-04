@@ -1391,6 +1391,24 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     locked_package_id = get_locked_package_id(user.id)
     target_order_id = None
 
+    logger.info(
+        "UPLOAD_CALLBACK "
+        f"user_id={user.id} "
+        f"callback_message_id={query.message.message_id} "
+        f"callback_package_id={package_id} "
+        f"locked_package_id={locked_package_id}"
+    )
+    for debug_order_id, debug_data in upload_waiting.items():
+        if debug_data.get("user_id") == user.id:
+            logger.info(
+                "UPLOAD_CALLBACK_ORDER "
+                f"order_id={debug_order_id} "
+                f"user_id={debug_data.get('user_id')} "
+                f"package_id={debug_data.get('package_id')} "
+                f"qris_msg_id={debug_data.get('qris_msg_id')} "
+                f"upload_msg_id={debug_data.get('upload_msg_id')}"
+            )
+
     for order_id, data in upload_waiting.items():
         if (
             str(data.get("user_id")) == str(user.id)
@@ -1408,6 +1426,11 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
             ):
                 target_order_id = order_id
                 break
+
+    logger.info(
+        f"UPLOAD_CALLBACK_TARGET user_id={user.id} "
+        f"target_order_id={target_order_id}"
+    )
 
     # Jika user sudah punya order, jangan buat order baru
     if target_order_id is not None:
@@ -5018,28 +5041,43 @@ async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if user_id in getid_waiting:
 
+        logger.info(
+            f"PHOTO_ROUTER user_id={user_id} route=getid_receive"
+        )
         await getid_receive(update, context)
 
         return
 
     if user_id in admin_qris_waiting:
 
+        logger.info(
+            f"PHOTO_ROUTER user_id={user_id} route=admin_qris_receive"
+        )
         await admin_qris_receive(update, context)
 
         return
 
     if user_id in file_manager_restore_waiting:
 
+        logger.info(
+            f"PHOTO_ROUTER user_id={user_id} route=file_manager_restore_receive"
+        )
         await file_manager_restore_receive(update, context)
 
         return
 
     if user_id in preview_edit_waiting or user_id in preview_add_waiting:
 
+        logger.info(
+            f"PHOTO_ROUTER user_id={user_id} route=preview_media_receive"
+        )
         await preview_media_receive(update, context)
 
         return
 
+    logger.info(
+        f"PHOTO_ROUTER user_id={user_id} route=payment_receive"
+    )
     await payment_receive(update, context)
 
 
@@ -5048,6 +5086,22 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
     order_id = None
+
+    logger.info(
+        "PAYMENT_RECEIVE_START "
+        f"user_id={user_id} "
+        f"photo_message_id={update.message.message_id}"
+    )
+    for debug_order_id, debug_data in upload_waiting.items():
+        logger.info(
+            "PAYMENT_RECEIVE_ORDER "
+            f"order_id={debug_order_id} "
+            f"user_id={debug_data.get('user_id')} "
+            f"package_id={debug_data.get('package_id')} "
+            f"processing={debug_data.get('processing')} "
+            f"photo_uploaded={debug_data.get('photo_uploaded')} "
+            f"upload_msg_id={debug_data.get('upload_msg_id')}"
+        )
 
     for oid, data in upload_waiting.items():
 
@@ -5067,10 +5121,27 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if order_id is None:
 
+        logger.info(
+            f"PAYMENT_RECEIVE_BRANCH user_id={user_id} "
+            "branch=NO_ORDER"
+        )
         return
+
+    logger.info(
+        "PAYMENT_RECEIVE_SELECTED "
+        f"user_id={user_id} "
+        f"order_id={order_id} "
+        f"upload_msg_id={upload_waiting[order_id].get('upload_msg_id')} "
+        f"processing={upload_waiting[order_id].get('processing')} "
+        f"photo_uploaded={upload_waiting[order_id].get('photo_uploaded')}"
+    )
 
     if not upload_waiting[order_id].get("upload_msg_id"):
 
+        logger.info(
+            f"PAYMENT_RECEIVE_BRANCH user_id={user_id} "
+            f"order_id={order_id} branch=NO_UPLOAD_MSG_ID"
+        )
         # Delete only the current pre-upload photo asynchronously. The queue
         # is bounded so cleanup can never build an unbounded backlog.
         if update.message.photo:
@@ -5094,6 +5165,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             or upload_waiting[order_id].get("photo_uploaded")
         )
     ):
+        logger.info(
+            f"PAYMENT_RECEIVE_BRANCH user_id={user_id} "
+            f"order_id={order_id} branch=DUPLICATE_PHOTO"
+        )
         try:
             pre_upload_cleanup_queue.put_nowait(
                 (update.message.chat_id, update.message.message_id)
@@ -5109,6 +5184,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if upload_waiting[order_id].get("processing"):
 
+        logger.info(
+            f"PAYMENT_RECEIVE_BRANCH user_id={user_id} "
+            f"order_id={order_id} branch=PROCESSING"
+        )
         if upload_waiting[order_id].get("processing_msg_id") is None:
 
             msg = await update.message.reply_text(
@@ -5122,6 +5201,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if upload_waiting[order_id].get("photo_uploaded"):
 
+        logger.info(
+            f"PAYMENT_RECEIVE_BRANCH user_id={user_id} "
+            f"order_id={order_id} branch=PHOTO_ALREADY_UPLOADED"
+        )
         await update.message.reply_text(
             "✅ Bukti transfer sudah diterima.\n\n"
             "Mohon tunggu verifikasi admin."
@@ -5131,6 +5214,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not update.message.photo:
 
+        logger.info(
+            f"PAYMENT_RECEIVE_BRANCH user_id={user_id} "
+            f"order_id={order_id} branch=NOT_PHOTO"
+        )
         await update.message.reply_text(
 
             "⚠️ Silakan kirim bukti transfer dalam bentuk foto."
@@ -5139,6 +5226,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
+    logger.info(
+        f"PAYMENT_RECEIVE_BRANCH user_id={user_id} "
+        f"order_id={order_id} branch=PAYMENT_PIPELINE"
+    )
     upload_waiting[order_id]["processing"] = True
 
     upload_waiting[order_id]["photo_file_id"] = update.message.photo[-1].file_id
