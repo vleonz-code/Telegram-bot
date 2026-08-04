@@ -5089,6 +5089,11 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pre_upload_cleanup_queue.put_nowait(
                     (update.message.chat_id, update.message.message_id)
                 )
+                await update.message.reply_text(
+                    "⚠️ Kamu masih berada di halaman pembayaran.\n\n"
+                    "Tekan tombol 📤 Sudah Transfer terlebih dahulu "
+                    "agar area upload bukti transfer dibuka."
+                )
             except asyncio.QueueFull:
                 logger.warning(
                     "Pre-upload cleanup queue full; leaving photo in chat "
