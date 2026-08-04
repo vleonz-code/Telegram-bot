@@ -5230,11 +5230,27 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"PAYMENT_RECEIVE_BRANCH user_id={user_id} "
         f"order_id={order_id} branch=PAYMENT_PIPELINE"
     )
+    logger.info(
+        "PAYMENT_RECEIVE_SET_STATE_BEFORE "
+        f"order_id={order_id} "
+        f"user_id={user_id} "
+        f"photo_message_id={update.message.message_id} "
+        f"processing={upload_waiting[order_id].get('processing')} "
+        f"photo_uploaded={upload_waiting[order_id].get('photo_uploaded')}"
+    )
     upload_waiting[order_id]["processing"] = True
 
     upload_waiting[order_id]["photo_file_id"] = update.message.photo[-1].file_id
 
     upload_waiting[order_id]["photo_uploaded"] = True
+    logger.info(
+        "PAYMENT_RECEIVE_SET_STATE_AFTER "
+        f"order_id={order_id} "
+        f"user_id={user_id} "
+        f"photo_message_id={update.message.message_id} "
+        f"processing={upload_waiting[order_id].get('processing')} "
+        f"photo_uploaded={upload_waiting[order_id].get('photo_uploaded')}"
+    )
 
     pending = read_pending_orders()
 
