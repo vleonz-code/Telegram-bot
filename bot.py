@@ -5090,7 +5090,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(
         "PAYMENT_RECEIVE_START "
         f"user_id={user_id} "
-        f"photo_message_id={update.message.message_id}"
+        f"photo_message_id={update.message.message_id} "
+        f"update_id={update.update_id} "
+        f"media_group_id={update.message.media_group_id} "
+        f"date={update.message.date}"
     )
     for debug_order_id, debug_data in upload_waiting.items():
         logger.info(
@@ -5231,12 +5234,15 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"order_id={order_id} branch=PAYMENT_PIPELINE"
     )
     logger.info(
-        "PAYMENT_RECEIVE_SET_STATE_BEFORE "
+        "PAYMENT_PIPELINE_ENTER "
         f"order_id={order_id} "
         f"user_id={user_id} "
         f"photo_message_id={update.message.message_id} "
         f"processing={upload_waiting[order_id].get('processing')} "
-        f"photo_uploaded={upload_waiting[order_id].get('photo_uploaded')}"
+        f"photo_uploaded={upload_waiting[order_id].get('photo_uploaded')} "
+        f"photo_file_id={upload_waiting[order_id].get('photo_file_id')} "
+        f"update_id={update.update_id} "
+        f"media_group_id={update.message.media_group_id}"
     )
     upload_waiting[order_id]["processing"] = True
 
@@ -5244,12 +5250,15 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     upload_waiting[order_id]["photo_uploaded"] = True
     logger.info(
-        "PAYMENT_RECEIVE_SET_STATE_AFTER "
+        "PAYMENT_PIPELINE_AFTER_SET "
         f"order_id={order_id} "
         f"user_id={user_id} "
         f"photo_message_id={update.message.message_id} "
         f"processing={upload_waiting[order_id].get('processing')} "
-        f"photo_uploaded={upload_waiting[order_id].get('photo_uploaded')}"
+        f"photo_uploaded={upload_waiting[order_id].get('photo_uploaded')} "
+        f"photo_file_id={upload_waiting[order_id].get('photo_file_id')} "
+        f"update_id={update.update_id} "
+        f"media_group_id={update.message.media_group_id}"
     )
 
     pending = read_pending_orders()
@@ -5268,29 +5277,56 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     username = f"@{user.username}" if user.username else "-"
 
-    await context.bot.send_photo(
+    logger.info(
+        "PAYMENT_SEND_ADMIN "
+        f"order_id={order_id} "
+        f"photo_message_id={update.message.message_id} "
+        f"photo_file_id={upload_waiting[order_id]['photo_file_id']} "
+        f"update_id={update.update_id} "
+        f"media_group_id={update.message.media_group_id}"
+    )
+    try:
+        admin_photo_msg = await context.bot.send_photo(
 
-        chat_id=ADMIN_ID,
+            chat_id=ADMIN_ID,
 
-        photo=upload_waiting[order_id]["photo_file_id"],
+            photo=upload_waiting[order_id]["photo_file_id"],
 
-        caption=(
+            caption=(
 
-            "📥 Bukti Transfer Baru\n\n"
+                "📥 Bukti Transfer Baru\n\n"
 
-            f"👤 Nama : {user.full_name}\n"
+                f"👤 Nama : {user.full_name}\n"
 
-            f"🔗 Username : {username}\n"
+                f"🔗 Username : {username}\n"
 
-            f"🆔 User ID : {user.id}\n\n"
+                f"🆔 User ID : {user.id}\n\n"
 
-            f"📦 Paket : {upload_waiting[order_id]['paket']}\n"
+                f"📦 Paket : {upload_waiting[order_id]['paket']}\n"
 
-            f"💰 Harga : {upload_waiting[order_id]['harga']}"
+                f"💰 Harga : {upload_waiting[order_id]['harga']}"
+
+            )
 
         )
-
-    )
+    except Exception as e:
+        logger.error(
+            "PAYMENT_SEND_ADMIN_ERROR "
+            f"order_id={order_id} "
+            f"exception={repr(e)} "
+            f"update_id={update.update_id} "
+            f"photo_message_id={update.message.message_id}",
+            exc_info=True
+        )
+        raise
+    else:
+        logger.info(
+            "PAYMENT_SEND_ADMIN_OK "
+            f"order_id={order_id} "
+            f"admin_message_id={admin_photo_msg.message_id} "
+            f"photo_message_id={update.message.message_id} "
+            f"update_id={update.update_id}"
+        )
 
     keyboard = InlineKeyboardMarkup([
         [
