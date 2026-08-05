@@ -1791,7 +1791,10 @@ def build_adminvip_packages_keyboard(packages):
         InlineKeyboardButton(
             "➕ Tambah Paket",
             callback_data="adminvip_add"
-        ),
+        )
+    ])
+
+    keyboard.append([
         InlineKeyboardButton(
             "➕ Edit Desc Menu",
             callback_data="adminvip_menu_desc"
@@ -3227,8 +3230,19 @@ async def render_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, 
             reply_markup=keyboard
         )
         return
-    except Exception:
-        pass
+    except telegram.error.BadRequest as exc:
+        error_text = str(exc).lower()
+
+        # Telegram menganggap halaman yang sama sebagai "tidak berubah".
+        # Jangan hapus lalu kirim ulang media pada kondisi ini karena itu
+        # membuat navigasi terasa berat dan dapat menumpuk pesan baru.
+        if "message is not modified" in error_text:
+            return
+
+        # Error lain tetap memakai fallback lama, misalnya saat pesan awal
+        # masih berupa teks dari menu Pengaturan atau pesan sudah tidak ada.
+    except Exception as exc:
+        logger.warning("Preview media edit failed unexpectedly: %s", exc)
 
     try:
         await context.bot.delete_message(chat_id=chat_id, message_id=message_id)
@@ -3268,8 +3282,6 @@ async def adminvip_prv_noop_callback(update: Update, context: ContextTypes.DEFAU
 async def adminvip_prv_nav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
-    preview_edit_waiting.pop(query.from_user.id, None)
 
     idx = int(query.data.split("_")[3])
 
@@ -3354,7 +3366,7 @@ async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAU
         [
             InlineKeyboardButton(
                 "❌ Batal",
-                callback_data=f"adminvip_prv_nav_{idx}"
+                callback_data=f"adminvip_prv_edit_cancel_{idx}"
             )
         ]
     ])
@@ -3366,6 +3378,22 @@ async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAU
         ),
         reply_markup=keyboard,
         parse_mode="HTML"
+    )
+
+
+async def adminvip_prv_edit_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    preview_edit_waiting.pop(query.from_user.id, None)
+
+    idx = int(query.data.split("_")[4])
+
+    await render_preview_page(
+        context,
+        query.message.chat.id,
+        query.message.message_id,
+        idx
     )
 
 
@@ -6605,6 +6633,11 @@ def main():
     CallbackQueryHandler(
         adminvip_prv_edit_callback,
         pattern=r"^adminvip_prv_edit_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_prv_edit_cancel_callback,
+        pattern=r"^adminvip_prv_edit_cancel_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
