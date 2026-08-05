@@ -1285,24 +1285,34 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔰 GRUP MEMBER VIP OCIL\n\n"
         f"{html.escape(menu_description)}\n\n"
         f"👤 {html.escape(footer_identity)}\n"
-        f"🆔 {user.id}\n\n"
+        f"🆔 {user.id}\n"
         f"📅 {formatted_date}"
         "</pre>"
     )
 
-    await query.edit_message_text(
-        vip_menu_text,
-        reply_markup=InlineKeyboardMarkup([
-            *buttons,
-            [
-                InlineKeyboardButton(
-                    "🆘 Bantuan",
-                    url="https://t.me/BocilVIP511"
-                )
-            ]
-        ]),
+    vip_menu_keyboard = InlineKeyboardMarkup([
+        *buttons,
+        [
+            InlineKeyboardButton(
+                "🆘 Bantuan",
+                url="https://t.me/BocilVIP511"
+            )
+        ]
+    ])
+
+    # Kirim sebagai pesan baru agar Telegram melakukan render penuh pada
+    # format <pre>. Pesan lama dihapus hanya setelah pengiriman berhasil.
+    await context.bot.send_message(
+        chat_id=query.message.chat_id,
+        text=vip_menu_text,
+        reply_markup=vip_menu_keyboard,
         parse_mode="HTML",
     )
+
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
 
 
 async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
