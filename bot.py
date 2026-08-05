@@ -5625,10 +5625,12 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 text=(
                     "🎉 PEMBAYARAN BERHASIL!\n\n"
                     "Halo! Pembayaran kamu telah diverifikasi.\n\n"
-                    "👑 Akses VIP kamu sudah siap.\n\n"
+                    f"👑 Akses VIP <b>{html.escape(package['nama'])}</b> "
+                    "sudah siap.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
                     "⚠️ Mohon jangan bagikan akses ini."
                 ),
+                parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
