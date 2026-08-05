@@ -1243,17 +1243,21 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     packages_data = read_vip_packages()
     packages = packages_data["packages"]
 
-    buttons = []
+    package_buttons = []
     for package in packages:
         if not package.get("aktif", True):
             continue
 
-        buttons.append([
+        package_buttons.append(
             InlineKeyboardButton(
                 package["nama"],
                 callback_data=f"vip_{package['id']}"
+            )
         )
-    ])
+
+    buttons = []
+    for index in range(0, len(package_buttons), 2):
+        buttons.append(package_buttons[index:index + 2])
 
     menu_description = packages_data.get(
         "menu_description",
