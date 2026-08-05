@@ -807,9 +807,8 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
 async def notify_admin_vip_menu(bot, full_name: str, username: str, user_id: int):
     now = datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
     text = (
-        "👀 *Melihat Menu Paket VIP*\n\n"
-        f"👤 {full_name} · {username}\n"
-        f"🆔 `{user_id}`\n"
+        "⚠️ *User Melihat VIP Menu*\n\n"
+        f"👤 {full_name}\n"
         f"🕒 {now}"
     )
     try:
