@@ -1280,14 +1280,14 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{now_wib.year}"
     )
     vip_menu_text = (
-        "<blockquote>"
+        "<pre>"
         f"👋🏻 Halo {html.escape(display_name)}\n"
         "🔰 GRUP MEMBER VIP OCIL\n\n"
         f"{html.escape(menu_description)}\n\n"
         f"👤 {html.escape(footer_identity)}\n"
         f"🆔 {user.id}\n\n"
         f"📅 {formatted_date}"
-        "</blockquote>"
+        "</pre>"
     )
 
     await query.edit_message_text(
