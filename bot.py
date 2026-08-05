@@ -1456,6 +1456,21 @@ async def send_qris_message(chat_id, context, package, package_id):
             break
 
 
+async def show_qris_loading_message(chat_id, context):
+    loading_msg = await context.bot.send_message(
+        chat_id=chat_id,
+        text="⏳ Membuat QRIS..."
+    )
+    await asyncio.sleep(1)
+    try:
+        await context.bot.delete_message(
+            chat_id=chat_id,
+            message_id=loading_msg.message_id
+        )
+    except Exception:
+        pass
+
+
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
@@ -1508,6 +1523,11 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ).append(notice_msg.message_id)
             return
 
+        await show_qris_loading_message(
+            query.message.chat_id,
+            context
+        )
+
         await send_qris_message(
             query.message.chat_id,
             context,
@@ -1557,14 +1577,23 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     save_pending_orders(pending)
 
-    await send_qris_message(
-        query.message.chat_id,
-        context,
-        package,
-        package_id
-    )
-
     lock_payment(query.from_user.id, package_id)
+
+    try:
+        await show_qris_loading_message(
+            query.message.chat_id,
+            context
+        )
+
+        await send_qris_message(
+            query.message.chat_id,
+            context,
+            package,
+            package_id
+        )
+    except Exception:
+        unlock_payment(query.from_user.id)
+        raise
 
 
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
