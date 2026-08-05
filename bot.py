@@ -5527,13 +5527,6 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            f"📥 Incoming VIP ({len(get_incoming_vip_orders())})",
-            callback_data="incoming_vip"
-        )
-    ])
-
-    keyboard.append([
-        InlineKeyboardButton(
             "🗂 File Manager",
             callback_data="filemgr_list"
         ),
