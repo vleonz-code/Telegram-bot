@@ -5988,7 +5988,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
     username = f"@{user.username}" if user.username else "-"
-    order_time = datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
+    order_time = datetime.now(WIB).strftime("%d/%m/%Y %H:%M")
 
     try:
         await context.bot.send_photo(
