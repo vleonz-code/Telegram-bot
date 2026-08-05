@@ -5579,12 +5579,14 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 reply_markup=InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
-                        ),
-                        InlineKeyboardButton(
                             "👑 Gabung VIP",
                             url=vip_link
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🆘 Bantuan",
+                            url="https://t.me/BocilVIP511"
                         )
                     ]
                 ])
