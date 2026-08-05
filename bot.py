@@ -981,9 +981,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text=(
                 "📍 Permintaan ulang belum tersedia.\n\n"
                 "Coba lagi nanti ya. ୨୧\n\n"
-                "👑 Nikmati akses VIP penuh dengan koleksi eksklusif, "
-                "update setiap hari, dan berbagai genre konten.\n\n"
-                "📦 Pilihan paket VIP tersedia di bawah."
+                "VIP dengan koleksi rare eksklusif, "
+                "update setiap hari, dan berbagai genre ochil.\n\n"
+                "📦 Pilihan VIP tersedia di bawah."
             ),
             reply_markup=keyboard
         )
@@ -2713,8 +2713,6 @@ async def delete_messages_after_delay(
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
                     "Koleksi selengkapnya ada di grup VIP.\n\n"
-                    "💌 VIP dengan koleksi rare eksklusif, "
-                    "update setiap hari, dan berbagai genre ochil.\n\n"
                     "Chat Admin: @BocilVIP89 👈"
                 ),
                 reply_markup=keyboard
