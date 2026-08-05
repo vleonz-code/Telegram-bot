@@ -60,8 +60,8 @@ PENDING_ORDERS_FILE = os.path.join(DATA_DIR, "pending_orders.json")
 PAYMENT_LOCK_FILE = os.path.join(DATA_DIR, "payment_lock.json")
 FILE_MANAGER_BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 DEFAULT_VIP_MENU_DESCRIPTION = (
-    "✨ Pilih paket VIP yang sesuai dengan kebutuhanmu.\n"
-    "Nikmati akses eksklusif, update berkala, dan benefit khusus member."
+    "✨ Pilih paket VIP yang kamu suka.\n"
+    "Full akses eksklusif, update berkala, dan benefit khusus member."
 )
 
 
@@ -2700,7 +2700,7 @@ async def delete_messages_after_delay(
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "👑 Gabung VIP",
+                            "✨ Gabung VIP",
                             callback_data="vipmenu"
                         )
                     ]
@@ -2713,9 +2713,8 @@ async def delete_messages_after_delay(
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
                     "Koleksi selengkapnya ada di grup VIP.\n\n"
-                    "👑 Nikmati akses VIP penuh dengan koleksi eksklusif, "
-                    "update setiap hari, dan berbagai genre konten.\n\n"
-                    "📦 Pilihan paket VIP tersedia di bawah.\n\n"
+                    "💌 VIP dengan koleksi rare eksklusif, "
+                    "update setiap hari, dan berbagai genre ochil.\n\n"
                     "Chat Admin: @BocilVIP89 👈"
                 ),
                 reply_markup=keyboard
