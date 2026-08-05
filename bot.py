@@ -3193,7 +3193,7 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
         f"👥 Users       : {len(read_user_registry())}\n"
         f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
-        f"📥 Incoming   : {len(get_incoming_vip_orders())}\n"
+        f"📥 Incoming    : {len(get_incoming_vip_orders())}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
