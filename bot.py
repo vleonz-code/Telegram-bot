@@ -1368,6 +1368,10 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             uploaded_order["payment_received_notice_msg_id"] = (
                 notice_msg.message_id
             )
+            uploaded_order.setdefault(
+                "payment_notice_msg_ids",
+                []
+            ).append(notice_msg.message_id)
             return
 
         await send_qris_message(
@@ -1401,12 +1405,14 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "photo_uploaded": False,
         "processing": False,
         "processing_msg_id": None,
+        "payment_notice_msg_ids": [],
         "reupload": False,
         "package_id": package["id"],
         "paket": package["nama"],
         "harga": package["harga"],
         "full_name": query.from_user.full_name,
-        "username": username
+        "username": username,
+        "package_msg_id": query.message.message_id
     }
 
     pending = read_pending_orders()
@@ -1476,10 +1482,15 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
             or data.get("photo_uploaded")
             or data.get("photo_file_id")
         ):
-            await query.message.reply_text(
+            notice_msg = await query.message.reply_text(
                 "✅ Bukti transfer sudah diterima.\n\n"
                 "Mohon tunggu verifikasi admin."
             )
+            data["payment_received_notice_msg_id"] = notice_msg.message_id
+            data.setdefault(
+                "payment_notice_msg_ids",
+                []
+            ).append(notice_msg.message_id)
             return
 
         if data.get("upload_msg_id"):
@@ -5201,20 +5212,31 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if upload_waiting[order_id].get("photo_uploaded"):
 
-        await update.message.reply_text(
+        notice_msg = await update.message.reply_text(
             "✅ Bukti transfer sudah diterima.\n\n"
             "Mohon tunggu verifikasi admin."
         )
+        upload_waiting[order_id][
+            "payment_received_notice_msg_id"
+        ] = notice_msg.message_id
+        upload_waiting[order_id].setdefault(
+            "payment_notice_msg_ids",
+            []
+        ).append(notice_msg.message_id)
 
         return
 
     if not update.message.photo:
 
-        await update.message.reply_text(
+        notice_msg = await update.message.reply_text(
 
             "⚠️ Silakan kirim bukti transfer dalam bentuk foto."
 
         )
+        upload_waiting[order_id].setdefault(
+            "payment_notice_msg_ids",
+            []
+        ).append(notice_msg.message_id)
 
         return
 
@@ -5490,6 +5512,37 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
 
         package = get_package(data["package_id"])
         vip_link = package["vip_link"]
+
+        payment_message_ids = {
+            data.get("package_msg_id"),
+            data.get("qris_msg_id"),
+            data.get("upload_msg_id"),
+            data.get("status_msg_id"),
+            data.get("processing_msg_id"),
+            data.get("reupload_prompt_msg_id"),
+            data.get("payment_received_notice_msg_id")
+        }
+        payment_message_ids.update(
+            data.get("pre_upload_notice_msg_ids", [])
+        )
+        payment_message_ids.update(
+            data.get("payment_notice_msg_ids", [])
+        )
+        payment_message_ids.discard(None)
+
+        for payment_message_id in payment_message_ids:
+            try:
+                await context.bot.delete_message(
+                    chat_id=user_id,
+                    message_id=payment_message_id
+                )
+            except Exception as e:
+                payment_trace_logger.warning(
+                    "PAY_OK_PAYMENT_AREA_CLEANUP_FAILED "
+                    f"order_id={order_id} "
+                    f"message_id={payment_message_id} "
+                    f"exception={repr(e)}"
+                )
 
         payment_trace_logger.info(
             "PAY_OK_DELETE_STATUS_START "
