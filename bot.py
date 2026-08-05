@@ -5328,8 +5328,8 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
         status_msg = await update.message.reply_text(
-            "✅ Bukti pengganti telah diterima.\n"
-            "⏳ Mohon tunggu balasan admin...\n\n"
+            "✅ Bukti transfer pengganti telah diterima.\n"
+            "⏳ Estimasi waktu: 1–3 menit...\n\n"
         )
 
         upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
@@ -5570,12 +5570,28 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             f"user_id={user_id}"
         )
         try:
-            await context.bot.send_message(
+            success_msg = await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "👉🏻 Pembayaran berhasil diverifikasi.\n\n"
-                    f"Silakan bergabung ke VIP:\n{vip_link}"
-                )
+                    "🎉 PEMBAYARAN BERHASIL!\n\n"
+                    "✅ Pembayaran kamu telah diverifikasi.\n\n"
+                    "👑 Akses VIP kamu sudah siap.\n"
+                    "Tekan tombol di bawah untuk membuka akses VIP."
+                ),
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "👑 Gabung VIP",
+                            url=vip_link
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🏠 Menu Utama",
+                            callback_data="vipmenu"
+                        )
+                    ]
+                ])
             )
             payment_trace_logger.info(
                 "PAY_OK_USER_NOTICE_SUCCESS "
@@ -5588,6 +5604,28 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 f"exception={repr(e)}"
             )
             raise
+
+        try:
+            await context.bot.pin_chat_message(
+                chat_id=user_id,
+                message_id=success_msg.message_id,
+                disable_notification=True
+            )
+            payment_trace_logger.info(
+                "PAY_OK_USER_NOTICE_PIN_SUCCESS "
+                f"order_id={order_id} "
+                f"message_id={success_msg.message_id}"
+            )
+        except Exception as e:
+            logger.warning(
+                f"Pin payment success message error: {e}"
+            )
+            payment_trace_logger.warning(
+                "PAY_OK_USER_NOTICE_PIN_FAILED "
+                f"order_id={order_id} "
+                f"message_id={success_msg.message_id} "
+                f"exception={repr(e)}"
+            )
 
         if user_id not in ORDER_HISTORY_EXCLUDED:
             payment_trace_logger.info(
