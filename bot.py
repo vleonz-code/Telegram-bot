@@ -5328,8 +5328,8 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
         status_msg = await update.message.reply_text(
-            "✅ Bukti transfer pengganti telah diterima.\n"
-            "⏳ Estimasi waktu: 1–3 menit...\n\n"
+            "✅ Bukti pengganti telah diterima.\n"
+            "⏳ Mohon tunggu balasan admin...\n\n"
         )
 
         upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
