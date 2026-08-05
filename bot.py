@@ -170,7 +170,13 @@ def read_pending_orders():
         return {"orders": []}
     try:
         with open(PENDING_ORDERS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        if (
+            not isinstance(data, dict)
+            or not isinstance(data.get("orders"), list)
+        ):
+            raise ValueError("pending orders must contain an orders list")
+        return data
     except Exception as e:
         logger.error(f"Pending orders read error: {e}")
         return {"orders": []}
@@ -1540,6 +1546,18 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ).append(notice_msg.message_id)
             return
 
+        if package is None:
+            if active_order is not None:
+                cleanup_failed_qris_order(
+                    active_order["order_id"],
+                    query.from_user.id
+                )
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text="⚠️ Paket pembayaran sudah tidak tersedia. Hubungi admin."
+            )
+            return
+
         if (
             query.from_user.id in qris_loading_users
             or (
@@ -1573,6 +1591,12 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
+    if package is None:
+        await query.answer(
+            "⚠️ Paket sudah tidak tersedia. Silakan buka menu VIP lagi.",
+            show_alert=True
+        )
+        return
 
     order_id = next_order_id
     next_order_id += 1
@@ -2178,11 +2202,14 @@ async def incoming_vip_callback(update: Update, context: ContextTypes.DEFAULT_TY
             reply_markup=keyboard
         )
     except Exception:
-        await query.edit_message_text(
-            text,
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
+        try:
+            await query.edit_message_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        except Exception as e:
+            logger.warning(f"Incoming VIP menu update failed: {e}")
 
 
 async def incoming_vip_page_callback(
@@ -2204,11 +2231,14 @@ async def incoming_vip_page_callback(
             reply_markup=keyboard
         )
     except Exception:
-        await query.edit_message_text(
-            text,
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
+        try:
+            await query.edit_message_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        except Exception as e:
+            logger.warning(f"Incoming VIP page update failed: {e}")
 
 
 async def incoming_vip_detail_callback(
@@ -2235,11 +2265,14 @@ async def incoming_vip_detail_callback(
                 reply_markup=keyboard
             )
         except Exception:
-            await query.edit_message_text(
-                text,
-                parse_mode="HTML",
-                reply_markup=keyboard
-            )
+            try:
+                await query.edit_message_text(
+                    text,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+            except Exception as e:
+                logger.warning(f"Incoming VIP stale detail update failed: {e}")
         return
 
     package = get_package(data.get("package_id"))
@@ -2275,11 +2308,15 @@ async def incoming_vip_detail_callback(
             reply_markup=detail_keyboard
         )
     except Exception:
-        await query.edit_message_text(
-            detail_text,
-            parse_mode="HTML",
-            reply_markup=detail_keyboard
-        )
+        try:
+            await query.edit_message_text(
+                detail_text,
+                parse_mode="HTML",
+                reply_markup=detail_keyboard
+            )
+        except Exception as e:
+            logger.warning(f"Incoming VIP detail update failed: {e}")
+            return
 
     await delete_incoming_vip_admin_messages(context, data)
 
@@ -2287,25 +2324,43 @@ async def incoming_vip_detail_callback(
     data["incoming_admin_menu_message_id"] = query.message.message_id
     data["incoming_admin_page"] = page
 
-    photo_message = await context.bot.send_photo(
-        chat_id=query.message.chat_id,
-        photo=data["photo_file_id"],
-        caption=(
-            "📥 <b>Bukti Transfer Incoming VIP</b>\n\n"
-            f"👤 {full_name}\n"
-            f"📦 {html.escape(str(package_name))}\n"
-            f"💰 {html.escape(str(package_price))}"
-        ),
-        parse_mode="HTML",
-    )
+    try:
+        photo_message = await context.bot.send_photo(
+            chat_id=query.message.chat_id,
+            photo=data["photo_file_id"],
+            caption=(
+                "📥 <b>Bukti Transfer Incoming VIP</b>\n\n"
+                f"👤 {full_name}\n"
+                f"📦 {html.escape(str(package_name))}\n"
+                f"💰 {html.escape(str(package_price))}"
+            ),
+            parse_mode="HTML",
+        )
+    except Exception as e:
+        logger.error(f"Incoming VIP proof photo send failed: {e}")
+        await restore_incoming_vip_menu(context, data)
+        return
     data["incoming_admin_photo_message_id"] = photo_message.message_id
 
-    action_message = await context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text="📋 <b>Verifikasi Pembayaran</b>",
-        parse_mode="HTML",
-        reply_markup=build_incoming_vip_action_keyboard(order_id)
-    )
+    try:
+        action_message = await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text="📋 <b>Verifikasi Pembayaran</b>",
+            parse_mode="HTML",
+            reply_markup=build_incoming_vip_action_keyboard(order_id)
+        )
+    except Exception as e:
+        logger.error(f"Incoming VIP action message send failed: {e}")
+        try:
+            await context.bot.delete_message(
+                chat_id=query.message.chat_id,
+                message_id=photo_message.message_id
+            )
+        except Exception:
+            pass
+        data["incoming_admin_photo_message_id"] = None
+        await restore_incoming_vip_menu(context, data)
+        return
     data["incoming_admin_action_message_id"] = action_message.message_id
 
 
@@ -5780,7 +5835,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     order_id = None
 
-    for oid, data in upload_waiting.items():
+    for oid, data in reversed(list(upload_waiting.items())):
 
         if (
             data["user_id"] == user_id
@@ -5791,10 +5846,11 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             break
 
     if order_id is None:
-        for oid, data in upload_waiting.items():
+        for oid, data in reversed(list(upload_waiting.items())):
 
             if data["user_id"] == user_id:
                 order_id = oid
+                break
 
     if order_id is None:
 
@@ -6216,6 +6272,17 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             )
 
         package = get_package(data["package_id"])
+        if not package or not package.get("vip_link"):
+            payment_trace_logger.error(
+                "PAY_OK_PACKAGE_NOT_AVAILABLE "
+                f"order_id={order_id} "
+                f"package_id={data.get('package_id')}"
+            )
+            await query.edit_message_text(
+                "⚠️ Paket tidak tersedia atau link VIP belum dikonfigurasi.\n"
+                "Pesanan tetap menunggu tindakan admin."
+            )
+            return
         vip_link = package["vip_link"]
 
         payment_message_ids = {
@@ -6631,9 +6698,17 @@ def restore_pending_orders():
     max_order_id = 0
 
     for order in pending["orders"]:
+        if not isinstance(order, dict):
+            logger.warning("Skipping invalid pending order entry")
+            continue
 
-        order_id = order["order_id"]
+        try:
+            order_id = int(order["order_id"])
+        except (KeyError, TypeError, ValueError):
+            logger.warning("Skipping pending order without valid order_id")
+            continue
 
+        order["order_id"] = order_id
         upload_waiting[order_id] = order
 
         if order_id > max_order_id:
