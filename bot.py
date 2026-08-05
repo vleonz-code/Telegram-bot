@@ -406,6 +406,7 @@ getid_waiting: set = set()
 # }
 upload_waiting = {}
 next_order_id = 1
+qris_loading_users = set()
 admin_edit_waiting = {}
 admin_add_waiting = {}
 admin_menu_description_waiting = {}
@@ -1394,7 +1395,7 @@ async def send_qris_message(chat_id, context, package, package_id):
 
         )
 
-        return
+        return False
 
     msg = await context.bot.send_photo(
 
@@ -1455,6 +1456,8 @@ async def send_qris_message(chat_id, context, package, package_id):
             upload_waiting[order_id]["qris_msg_id"] = msg.message_id
             break
 
+    return True
+
 
 async def show_qris_loading_message(chat_id, context):
     loading_msg = await context.bot.send_message(
@@ -1471,6 +1474,19 @@ async def show_qris_loading_message(chat_id, context):
         pass
 
 
+def cleanup_failed_qris_order(order_id, user_id):
+    upload_waiting.pop(order_id, None)
+
+    pending = read_pending_orders()
+    pending["orders"] = [
+        order
+        for order in pending["orders"]
+        if order.get("order_id") != order_id
+    ]
+    save_pending_orders(pending)
+    unlock_payment(user_id)
+
+
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
@@ -1485,15 +1501,19 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         package = get_package(package_id)
 
         uploaded_order = None
+        active_order = None
         for order_id, data in upload_waiting.items():
             if (
                 data.get("user_id") == query.from_user.id
                 and str(data.get("package_id")) == str(package_id)
-                and data.get("processing") is True
-                and data.get("photo_uploaded") is True
-                and data.get("photo_file_id")
             ):
-                uploaded_order = data
+                active_order = data
+                if (
+                    data.get("processing") is True
+                    and data.get("photo_uploaded") is True
+                    and data.get("photo_file_id")
+                ):
+                    uploaded_order = data
                 break
 
         if uploaded_order is not None:
@@ -1523,17 +1543,30 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ).append(notice_msg.message_id)
             return
 
-        await show_qris_loading_message(
-            query.message.chat_id,
-            context
-        )
+        if (
+            query.from_user.id in qris_loading_users
+            or (
+                active_order is not None
+                and active_order.get("qris_msg_id")
+            )
+        ):
+            return
 
-        await send_qris_message(
-            query.message.chat_id,
-            context,
-            package,
-            package_id
-        )
+        qris_loading_users.add(query.from_user.id)
+        try:
+            await show_qris_loading_message(
+                query.message.chat_id,
+                context
+            )
+
+            await send_qris_message(
+                query.message.chat_id,
+                context,
+                package,
+                package_id
+            )
+        finally:
+            qris_loading_users.discard(query.from_user.id)
 
         return
 
@@ -1579,21 +1612,32 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lock_payment(query.from_user.id, package_id)
 
+    qris_loading_users.add(query.from_user.id)
     try:
         await show_qris_loading_message(
             query.message.chat_id,
             context
         )
 
-        await send_qris_message(
+        qris_created = await send_qris_message(
             query.message.chat_id,
             context,
             package,
             package_id
         )
+        if not qris_created:
+            cleanup_failed_qris_order(
+                order_id,
+                query.from_user.id
+            )
     except Exception:
-        unlock_payment(query.from_user.id)
+        cleanup_failed_qris_order(
+            order_id,
+            query.from_user.id
+        )
         raise
+    finally:
+        qris_loading_users.discard(query.from_user.id)
 
 
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
