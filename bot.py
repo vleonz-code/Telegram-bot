@@ -1991,6 +1991,261 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
     )
 
 
+INCOMING_VIP_PAGE_SIZE = 10
+
+
+def get_incoming_vip_orders():
+    return [
+        (order_id, data)
+        for order_id, data in reversed(list(upload_waiting.items()))
+        if (
+            data.get("qris_msg_id")
+            and data.get("photo_uploaded") is True
+            and data.get("processing") is True
+            and data.get("photo_file_id")
+        )
+    ]
+
+
+def build_incoming_vip_view(page: int = 1):
+    incoming_orders = get_incoming_vip_orders()
+    total = len(incoming_orders)
+
+    if total == 0:
+        text = (
+            "📥 <b>INCOMING VIP</b>\n\n"
+            "Tidak ada pembayaran yang menunggu tindakan."
+        )
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "🔙 Pembayaran",
+                    callback_data="adminvip_payment"
+                )
+            ]
+        ])
+        return text, keyboard
+
+    total_pages = (total + INCOMING_VIP_PAGE_SIZE - 1) // INCOMING_VIP_PAGE_SIZE
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * INCOMING_VIP_PAGE_SIZE
+    page_items = incoming_orders[start:start + INCOMING_VIP_PAGE_SIZE]
+
+    lines = [
+        "📥 <b>INCOMING VIP</b>",
+        f"📊 {total} pembayaran menunggu tindakan",
+        f"📄 Halaman {page}/{total_pages}",
+        "",
+    ]
+    buttons = []
+
+    for index, (order_id, data) in enumerate(page_items, start=start + 1):
+        display_name = data.get("full_name") or data.get("username") or str(
+            data.get("user_id", "-")
+        )
+        package = get_package(data.get("package_id"))
+        package_name = package["nama"] if package else data.get("paket", "-")
+        lines.append(
+            f"{index}. 👤 {html.escape(str(display_name))} · "
+            f"{html.escape(str(package_name))}"
+        )
+        buttons.append(
+            InlineKeyboardButton(
+                f"👤 {display_name}",
+                callback_data=f"incoming_vip_detail_{order_id}_{page}"
+            )
+        )
+
+    keyboard_rows = [
+        buttons[index:index + 2]
+        for index in range(0, len(buttons), 2)
+    ]
+    navigation = []
+    if page > 1:
+        navigation.append(
+            InlineKeyboardButton(
+                "◀ Sebelumnya",
+                callback_data=f"incoming_vip_page_{page - 1}"
+            )
+        )
+    if page < total_pages:
+        navigation.append(
+            InlineKeyboardButton(
+                "Berikutnya ▶",
+                callback_data=f"incoming_vip_page_{page + 1}"
+            )
+        )
+    if navigation:
+        keyboard_rows.append(navigation)
+
+    keyboard_rows.append([
+        InlineKeyboardButton(
+            "🔙 Pembayaran",
+            callback_data="adminvip_payment"
+        )
+    ])
+
+    return "\n".join(lines), InlineKeyboardMarkup(keyboard_rows)
+
+
+def build_incoming_vip_action_keyboard(order_id: int):
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "✅ Terima",
+                callback_data=f"pay_ok|{order_id}"
+            ),
+            InlineKeyboardButton(
+                "📷 Foto Ulang",
+                callback_data=f"pay_no|{order_id}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🚫 Ban User",
+                callback_data=f"pay_ban|{order_id}"
+            )
+        ]
+    ])
+
+
+async def incoming_vip_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        return
+
+    text, keyboard = build_incoming_vip_view(1)
+    try:
+        await query.edit_message_caption(
+            caption=text,
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+    except Exception:
+        await query.edit_message_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+
+
+async def incoming_vip_page_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        return
+
+    page = int(query.data.replace("incoming_vip_page_", ""))
+    text, keyboard = build_incoming_vip_view(page)
+    try:
+        await query.edit_message_caption(
+            caption=text,
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+    except Exception:
+        await query.edit_message_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+
+
+async def incoming_vip_detail_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    await query.answer()
+
+    if query.from_user.id != ADMIN_ID:
+        return
+
+    _, _, _, order_id_str, page_str = query.data.split("_", 4)
+    order_id = int(order_id_str)
+    page = int(page_str)
+    data = upload_waiting.get(order_id)
+
+    if not data or (order_id, data) not in get_incoming_vip_orders():
+        text, keyboard = build_incoming_vip_view(page)
+        try:
+            await query.edit_message_caption(
+                caption=text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        except Exception:
+            await query.edit_message_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        return
+
+    package = get_package(data.get("package_id"))
+    package_name = package["nama"] if package else data.get("paket", "-")
+    package_price = package["harga"] if package else data.get("harga", "-")
+    full_name = html.escape(str(data.get("full_name") or "-"))
+    username = html.escape(str(data.get("username") or "-"))
+    user_id = data.get("user_id", "-")
+
+    detail_text = (
+        "📥 <b>INCOMING VIP</b>\n\n"
+        f"👤 {full_name}\n"
+        f"🔗 {username}\n"
+        f"🆔 {user_id}\n\n"
+        f"📦 {html.escape(str(package_name))}\n"
+        f"💰 {html.escape(str(package_price))}\n\n"
+        "📷 Bukti transfer dikirim di bawah.\n"
+        "Pilih tindakan dari pesan verifikasi."
+    )
+    detail_keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data=f"incoming_vip_page_{page}"
+            )
+        ]
+    ])
+
+    try:
+        await query.edit_message_caption(
+            caption=detail_text,
+            parse_mode="HTML",
+            reply_markup=detail_keyboard
+        )
+    except Exception:
+        await query.edit_message_text(
+            detail_text,
+            parse_mode="HTML",
+            reply_markup=detail_keyboard
+        )
+
+    await context.bot.send_photo(
+        chat_id=query.message.chat_id,
+        photo=data["photo_file_id"],
+        caption=(
+            "📥 <b>Bukti Transfer Incoming VIP</b>\n\n"
+            f"👤 {full_name}\n"
+            f"📦 {html.escape(str(package_name))}\n"
+            f"💰 {html.escape(str(package_price))}"
+        ),
+        parse_mode="HTML",
+    )
+    await context.bot.send_message(
+        chat_id=query.message.chat_id,
+        text="📋 <b>Verifikasi Pembayaran</b>",
+        parse_mode="HTML",
+        reply_markup=build_incoming_vip_action_keyboard(order_id)
+    )
+
+
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -5237,6 +5492,13 @@ def build_payment_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
+            "📥 Incoming VIP",
+            callback_data="incoming_vip"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
             "📋 Order History",
             callback_data="payment_history"
         )
@@ -5778,7 +6040,25 @@ async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
 
+payment_admin_locks = {}
+
+
 async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    try:
+        _, oid = query.data.split("|", 1)
+        order_id = int(oid)
+    except Exception:
+        await _payment_admin_callback_impl(update, context)
+        return
+
+    lock = payment_admin_locks.setdefault(order_id, asyncio.Lock())
+    async with lock:
+        await _payment_admin_callback_impl(update, context)
+
+
+async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     callback_started_at = time.perf_counter()
     payment_trace_logger.info(
@@ -5828,6 +6108,22 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
         await query.edit_message_text(
             "⚠️ Data pembayaran sudah tidak tersedia."
+        )
+        return
+
+    if action in {"pay_ok", "pay_no", "pay_ban", "pay_ban_yes"} and not (
+        data.get("qris_msg_id")
+        and data.get("photo_uploaded") is True
+        and data.get("processing") is True
+        and data.get("photo_file_id")
+    ):
+        payment_trace_logger.warning(
+            "PAYMENT_ADMIN_ORDER_ALREADY_PROCESSED "
+            f"action={action} "
+            f"order_id={order_id}"
+        )
+        await query.edit_message_text(
+            "⚠️ Pembayaran ini sudah diproses atau tidak lagi menunggu."
         )
         return
 
@@ -6542,6 +6838,21 @@ def main():
     CallbackQueryHandler(
         adminvip_payment_callback,
         pattern=r"^adminvip_payment$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        incoming_vip_callback,
+        pattern=r"^incoming_vip$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        incoming_vip_page_callback,
+        pattern=r"^incoming_vip_page_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        incoming_vip_detail_callback,
+        pattern=r"^incoming_vip_detail_\d+_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
