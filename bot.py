@@ -1275,20 +1275,8 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     buttons = []
-    if len(package_buttons) >= 4:
-        # Susun berdasarkan kolom agar empat paket tampil sebagai:
-        # Paket 1 | Paket 3
-        # Paket 2 | Paket 4
-        column_size = (len(package_buttons) + 1) // 2
-        for index in range(column_size):
-            row = [package_buttons[index]]
-            paired_index = index + column_size
-            if paired_index < len(package_buttons):
-                row.append(package_buttons[paired_index])
-            buttons.append(row)
-    else:
-        for index in range(0, len(package_buttons), 2):
-            buttons.append(package_buttons[index:index + 2])
+    for index in range(0, len(package_buttons), 2):
+        buttons.append(package_buttons[index:index + 2])
 
     menu_description = packages_data.get(
         "menu_description",
@@ -3205,6 +3193,7 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
         f"👥 Users       : {len(read_user_registry())}\n"
         f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
+        f"📥 Incoming VIP: {len(get_incoming_vip_orders())}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
@@ -5538,6 +5527,13 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
+            f"📥 Incoming VIP ({len(get_incoming_vip_orders())})",
+            callback_data="incoming_vip"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
             "🗂 File Manager",
             callback_data="filemgr_list"
         ),
@@ -6581,6 +6577,10 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         await query.edit_message_text(
             "✅ User berhasil dibatasi."
         )
+
+        if data.get("incoming_admin_menu_message_id"):
+            await delete_incoming_vip_admin_messages(context, data)
+            await restore_incoming_vip_menu(context, data)
 
 
 async def livechat_reply_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
