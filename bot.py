@@ -5482,6 +5482,24 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
+    # Foto baru dianggap berada di area pembayaran hanya setelah QRIS
+    # berhasil dikirim. Order pending tanpa qris_msg_id bisa berasal dari
+    # proses sebelum tombol Bayar ditekan atau dari state lama yang belum
+    # menampilkan QRIS, sehingga jangan tampilkan instruksi Sudah Transfer.
+    if not upload_waiting[order_id].get("qris_msg_id"):
+        if update.message.photo:
+            try:
+                pre_upload_cleanup_queue.put_nowait(
+                    (update.message.chat_id, update.message.message_id)
+                )
+            except asyncio.QueueFull:
+                logger.warning(
+                    "Pre-payment photo cleanup queue full; leaving photo in chat "
+                    f"(chat_id={update.message.chat_id}, "
+                    f"message_id={update.message.message_id})"
+                )
+        return
+
     if not upload_waiting[order_id].get("upload_msg_id"):
 
         # Delete only the current pre-upload photo asynchronously. The queue
