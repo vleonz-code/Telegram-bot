@@ -914,7 +914,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "📦 Pilih Paket VIP",
+                        "👑 Gabung VIP",
                         callback_data="vipmenu"
                     )
                 ]
@@ -926,7 +926,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=update.effective_chat.id,
             text=(
                 "📍 Permintaan ulang belum tersedia.\n\n"
-                "Coba lagi nanti ya. ୨୧"
+                "Coba lagi nanti ya. ୨୧\n\n"
+                "👑 Nikmati akses VIP penuh dengan koleksi eksklusif, "
+                "update setiap hari, dan berbagai genre konten.\n\n"
+                "📦 Pilihan paket VIP tersedia di bawah."
             ),
             reply_markup=keyboard
         )
@@ -1188,11 +1191,13 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     packages = read_vip_packages()["packages"]
 
     buttons = []
+    active_packages = []
 
     for package in packages:
         if not package.get("aktif", True):
             continue
 
+        active_packages.append(package)
         buttons.append([
             InlineKeyboardButton(
                 package["nama"],
@@ -1201,10 +1206,18 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ])
 
     keyboard = InlineKeyboardMarkup(buttons)
+    package_list = "\n".join(
+        f"{index}. {package['nama']}"
+        for index, package in enumerate(active_packages, start=1)
+    )
 
     await query.edit_message_text(
-        "👑 Membership VIP\n\n"
-        "Silakan pilih paket vip bocil.",
+        "👑 MEMBERSHIP VIP\n\n"
+        "📦 PILIHAN PAKET VIP\n\n"
+        "✨ Pilih paket yang sesuai dengan kebutuhanmu.\n"
+        "Setiap paket memiliki benefit dan harga yang berbeda.\n\n"
+        "📋 Paket tersedia:\n"
+        f"{package_list}",
         reply_markup=keyboard
     )
 
@@ -2548,7 +2561,7 @@ async def delete_messages_after_delay(
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "📦 Pilih Paket VIP",
+                            "👑 Gabung VIP",
                             callback_data="vipmenu"
                         )
                     ]
@@ -2560,7 +2573,10 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "Koleksi selengkapnya ada di grup VIP\n\n"
+                    "Koleksi selengkapnya ada di grup VIP.\n\n"
+                    "👑 Nikmati akses VIP penuh dengan koleksi eksklusif, "
+                    "update setiap hari, dan berbagai genre konten.\n\n"
+                    "📦 Pilihan paket VIP tersedia di bawah.\n\n"
                     "Chat Admin: @BocilVIP89 👈"
                 ),
                 reply_markup=keyboard
