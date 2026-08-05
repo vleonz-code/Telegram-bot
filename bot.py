@@ -5558,10 +5558,7 @@ def build_payment_keyboard():
         InlineKeyboardButton(
             "📥 Incoming VIP",
             callback_data="incoming_vip"
-        )
-    ])
-
-    keyboard.append([
+        ),
         InlineKeyboardButton(
             "📋 Order History",
             callback_data="payment_history"
@@ -5572,10 +5569,7 @@ def build_payment_keyboard():
         InlineKeyboardButton(
             "🗑 Clear Order",
             callback_data="payment_clear"
-        )
-    ])
-
-    keyboard.append([
+        ),
         InlineKeyboardButton(
             "🖼 Edit QRIS",
             callback_data="payment_qris"
