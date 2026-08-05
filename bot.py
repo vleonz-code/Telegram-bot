@@ -999,7 +999,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=update.effective_chat.id,
             text=(
                 "📍 Permintaan ulang belum tersedia.\n\n"
-                "🔐 Koleksi rare eksklusif, "
+                "🔐 Sike Chill Koleksi rare eksklusif, "
                 "update setiap hari, dan berbagai genre ochil. ୨୧\n\n"
             ),
             reply_markup=keyboard
