@@ -5571,11 +5571,10 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 chat_id=user_id,
                 text=(
                     "🎉 PEMBAYARAN BERHASIL!\n\n"
-                    "Halo, pembayaran kamu sudah diverifikasi.\n\n"
-                    "👑 Akses VIP kamu sudah siap:\n"
-                    "━━━━━━━━━━━━━━━━━━\n\n"
-                    "🔗 Klik tombol di bawah untuk bergabung\n"
-                    "⚠️ Jangan bagikan link ini kepada orang lain."
+                    "Halo! Pembayaran kamu telah diverifikasi.\n\n"
+                    "👑 Akses VIP kamu sudah siap.\n\n"
+                    "Tekan tombol di bawah untuk bergabung.\n"
+                    "⚠️ Mohon jangan bagikan akses ini."
                 ),
                 reply_markup=InlineKeyboardMarkup([
                     [
@@ -5601,28 +5600,6 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 f"exception={repr(e)}"
             )
             raise
-
-        try:
-            await context.bot.pin_chat_message(
-                chat_id=user_id,
-                message_id=success_msg.message_id,
-                disable_notification=True
-            )
-            payment_trace_logger.info(
-                "PAY_OK_USER_NOTICE_PIN_SUCCESS "
-                f"order_id={order_id} "
-                f"message_id={success_msg.message_id}"
-            )
-        except Exception as e:
-            logger.warning(
-                f"Pin payment success message error: {e}"
-            )
-            payment_trace_logger.warning(
-                "PAY_OK_USER_NOTICE_PIN_FAILED "
-                f"order_id={order_id} "
-                f"message_id={success_msg.message_id} "
-                f"exception={repr(e)}"
-            )
 
         if user_id not in ORDER_HISTORY_EXCLUDED:
             payment_trace_logger.info(
