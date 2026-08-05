@@ -1246,13 +1246,10 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     packages = packages_data["packages"]
 
     buttons = []
-    active_packages = []
-
     for package in packages:
         if not package.get("aktif", True):
             continue
 
-        active_packages.append(package)
         buttons.append([
             InlineKeyboardButton(
                 package["nama"],
@@ -1260,11 +1257,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     ])
 
-    keyboard = InlineKeyboardMarkup(buttons)
-    package_list = "\n".join(
-        f"{index}. {html.escape(str(package['nama']))}"
-        for index, package in enumerate(active_packages, start=1)
-    )
     menu_description = packages_data.get(
         "menu_description",
         DEFAULT_VIP_MENU_DESCRIPTION
@@ -1756,6 +1748,9 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
     query = update.callback_query
     await query.answer()
 
+    # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
+    admin_add_waiting.pop(query.from_user.id, None)
+
     packages = read_vip_packages()["packages"]
 
     await query.edit_message_media(
@@ -1783,15 +1778,15 @@ def build_adminvip_packages_keyboard(packages):
 
     keyboard.append([
         InlineKeyboardButton(
-            "📝 Edit Deskripsi Menu",
-            callback_data="adminvip_menu_desc"
+            "➕ Tambah Paket",
+            callback_data="adminvip_add"
         )
     ])
 
     keyboard.append([
         InlineKeyboardButton(
-            "➕ Tambah Paket",
-            callback_data="adminvip_add"
+            "➕ Edit Desc Menu",
+            callback_data="adminvip_menu_desc"
         )
     ])
 
