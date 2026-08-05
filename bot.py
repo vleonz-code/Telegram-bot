@@ -5297,8 +5297,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
-            "📋 Verifikasi Pembayaran\n\n"
-            "Silakan pilih tindakan."
+            "📋 Verifikasi Pembayaran"
         ),
         reply_markup=keyboard
     )
@@ -5574,9 +5573,11 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 chat_id=user_id,
                 text=(
                     "🎉 PEMBAYARAN BERHASIL!\n\n"
-                    "✅ Pembayaran kamu telah diverifikasi.\n\n"
-                    "👑 Akses VIP kamu sudah siap.\n"
-                    "Tekan tombol di bawah untuk membuka akses VIP."
+                    "Halo, pembayaran kamu sudah diverifikasi.\n\n"
+                    "👑 Akses VIP kamu sudah siap:\n"
+                    "━━━━━━━━━━━━━━━━━━\n\n"
+                    "🔗 Klik tombol di bawah untuk bergabung\n"
+                    "⚠️ Jangan bagikan link ini kepada orang lain."
                 ),
                 reply_markup=InlineKeyboardMarkup([
                     [
@@ -5587,8 +5588,8 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                     ],
                     [
                         InlineKeyboardButton(
-                            "🏠 Menu Utama",
-                            callback_data="vipmenu"
+                            "🆘 Bantuan",
+                            url="https://t.me/BocilVIP511"
                         )
                     ]
                 ])
@@ -5778,8 +5779,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
 
         await query.edit_message_text(
             text=(
-                "📋 Verifikasi Pembayaran\n\n"
-                "Silakan pilih tindakan."
+                "📋 Verifikasi Pembayaran"
             ),
             reply_markup=keyboard
         )
