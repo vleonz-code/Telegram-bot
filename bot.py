@@ -3131,8 +3131,7 @@ async def send_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, id
     ada pesan media yang bisa di-edit, mis. saat pertama kali membuka menu
     atau saat daftar Preview baru saja kosong)."""
 
-    data = load_preview()
-    items = data.get("preview", [])
+    items = FILE_IDS_A
 
     if not items:
         return await context.bot.send_message(
@@ -3148,9 +3147,7 @@ async def send_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, id
 
     total = len(items)
     idx = idx % total
-    item = items[idx]
-    media_type = item.get("type", "").lower()
-    file_id = item.get("file_id", "").strip()
+    media_type, file_id = items[idx]
 
     caption = build_preview_caption(idx, total, media_type)
     keyboard = build_preview_nav_keyboard(idx, total)
@@ -3179,8 +3176,7 @@ async def render_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, 
     (mis. daftar baru saja kosong lalu diisi lagi), fallback: hapus pesan
     lama lalu kirim pesan media baru."""
 
-    data = load_preview()
-    items = data.get("preview", [])
+    items = FILE_IDS_A
 
     if not items:
         try:
@@ -3209,9 +3205,7 @@ async def render_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, 
 
     total = len(items)
     idx = idx % total
-    item = items[idx]
-    media_type = item.get("type", "").lower()
-    file_id = item.get("file_id", "").strip()
+    media_type, file_id = items[idx]
 
     caption = build_preview_caption(idx, total, media_type)
     keyboard = build_preview_nav_keyboard(idx, total)
@@ -3281,15 +3275,19 @@ async def adminvip_prv_noop_callback(update: Update, context: ContextTypes.DEFAU
 
 async def adminvip_prv_nav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
     idx = int(query.data.split("_")[3])
 
-    await render_preview_page(
-        context,
-        query.message.chat.id,
-        query.message.message_id,
-        idx
+    # Jawab callback dan mulai update media secara bersamaan. Sebelumnya
+    # Telegram harus menunggu query.answer() selesai sebelum edit media
+    # dimulai, sehingga indikator loading terasa lebih lama.
+    await asyncio.gather(
+        query.answer(),
+        render_preview_page(
+            context,
+            query.message.chat.id,
+            query.message.message_id,
+            idx
+        )
     )
 
 
