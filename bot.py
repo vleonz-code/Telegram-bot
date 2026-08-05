@@ -803,6 +803,27 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
         logger.error(f"Failed to notify admin: {e}")
 
 # ---------------------------------------------------------------------------
+async def notify_admin_vip_menu(bot, full_name: str, username: str, user_id: int):
+    now = datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
+    text = (
+        "🟢 *Media VIP Diakses — Menu Paket VIP*\n\n"
+        f"Name: {full_name}\n"
+        f"Username: {username}\n"
+        f"User ID: `{user_id}`\n\n"
+        "📍 Akses: Melihat daftar paket VIP\n"
+        f"Time: {now}"
+    )
+    try:
+        await bot.send_message(
+            chat_id=ADMIN_ID,
+            text=text,
+            parse_mode="Markdown",
+            disable_notification=True
+        )
+    except Exception as e:
+        logger.error(f"Failed to notify admin about VIP menu access: {e}")
+
+
 # /start — deep link handler with approval gate
 # ---------------------------------------------------------------------------
 
@@ -1307,6 +1328,13 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=vip_menu_text,
         reply_markup=vip_menu_keyboard,
         parse_mode="HTML",
+    )
+
+    await notify_admin_vip_menu(
+        context.bot,
+        user.full_name or "-",
+        f"@{user.username}" if user.username else "-",
+        user.id,
     )
 
     try:
