@@ -1262,20 +1262,44 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     keyboard = InlineKeyboardMarkup(buttons)
     package_list = "\n".join(
-        f"{index}. {package['nama']}"
+        f"{index}. {html.escape(str(package['nama']))}"
         for index, package in enumerate(active_packages, start=1)
     )
     menu_description = packages_data.get(
         "menu_description",
         DEFAULT_VIP_MENU_DESCRIPTION
     ).strip()
+    user = query.from_user
+    display_name = user.first_name or user.username or "Member"
+    footer_identity = (
+        f"@{user.username}"
+        if user.username
+        else (user.full_name or display_name)
+    )
+    date_months = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+    ]
+    now_wib = datetime.now(WIB)
+    formatted_date = (
+        f"{now_wib.day} {date_months[now_wib.month - 1]} "
+        f"{now_wib.year}"
+    )
+    vip_menu_text = (
+        "<blockquote>"
+        f"👋🏻 Halo {html.escape(display_name)}\n"
+        "🔰 GRUP MEMBER VIP OCIL\n\n"
+        f"{html.escape(menu_description)}\n\n"
+        "📋 Paket tersedia:\n"
+        f"{package_list}\n\n"
+        f"👤 {html.escape(footer_identity)}\n"
+        f"🆔 {user.id}\n"
+        f"📅 {formatted_date}"
+        "</blockquote>"
+    )
 
     await query.edit_message_text(
-        "👑 MEMBERSHIP VIP\n\n"
-        "📦 PILIHAN PAKET VIP\n\n"
-        f"{menu_description}\n\n"
-        "📋 Paket tersedia:\n"
-        f"{package_list}",
+        vip_menu_text,
         reply_markup=InlineKeyboardMarkup([
             *buttons,
             [
@@ -1284,7 +1308,8 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     url="https://t.me/BocilVIP511"
                 )
             ]
-        ])
+        ]),
+        parse_mode="HTML",
     )
 
 
