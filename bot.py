@@ -1290,8 +1290,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"👋🏻 Halo {html.escape(display_name)}\n"
         "🔰 GRUP MEMBER VIP OCIL\n\n"
         f"{html.escape(menu_description)}\n\n"
-        "📋 Paket tersedia:\n"
-        f"{package_list}\n\n"
         f"👤 {html.escape(footer_identity)}\n"
         f"🆔 {user.id}\n"
         f"📅 {formatted_date}"
