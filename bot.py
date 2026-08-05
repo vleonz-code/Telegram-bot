@@ -1275,8 +1275,20 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     buttons = []
-    for index in range(0, len(package_buttons), 2):
-        buttons.append(package_buttons[index:index + 2])
+    if len(package_buttons) >= 4:
+        # Susun berdasarkan kolom agar empat paket tampil sebagai:
+        # Paket 1 | Paket 3
+        # Paket 2 | Paket 4
+        column_size = (len(package_buttons) + 1) // 2
+        for index in range(column_size):
+            row = [package_buttons[index]]
+            paired_index = index + column_size
+            if paired_index < len(package_buttons):
+                row.append(package_buttons[paired_index])
+            buttons.append(row)
+    else:
+        for index in range(0, len(package_buttons), 2):
+            buttons.append(package_buttons[index:index + 2])
 
     menu_description = packages_data.get(
         "menu_description",
@@ -2109,6 +2121,60 @@ def build_incoming_vip_action_keyboard(order_id: int):
     ])
 
 
+async def delete_incoming_vip_admin_messages(
+    context: ContextTypes.DEFAULT_TYPE,
+    data: dict
+):
+    chat_id = data.get("incoming_admin_chat_id", ADMIN_ID)
+    message_ids = {
+        data.get("incoming_admin_photo_message_id"),
+        data.get("incoming_admin_action_message_id"),
+    }
+    message_ids.discard(None)
+
+    for message_id in message_ids:
+        try:
+            await context.bot.delete_message(
+                chat_id=chat_id,
+                message_id=message_id
+            )
+        except Exception:
+            pass
+
+
+async def restore_incoming_vip_menu(
+    context: ContextTypes.DEFAULT_TYPE,
+    data: dict
+):
+    chat_id = data.get("incoming_admin_chat_id")
+    message_id = data.get("incoming_admin_menu_message_id")
+    if not chat_id or not message_id:
+        return
+
+    page = data.get("incoming_admin_page", 1)
+    text, keyboard = build_incoming_vip_view(page)
+
+    try:
+        await context.bot.edit_message_caption(
+            chat_id=chat_id,
+            message_id=message_id,
+            caption=text,
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+    except Exception:
+        try:
+            await context.bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        except Exception:
+            pass
+
+
 async def incoming_vip_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -2227,7 +2293,13 @@ async def incoming_vip_detail_callback(
             reply_markup=detail_keyboard
         )
 
-    await context.bot.send_photo(
+    await delete_incoming_vip_admin_messages(context, data)
+
+    data["incoming_admin_chat_id"] = query.message.chat_id
+    data["incoming_admin_menu_message_id"] = query.message.message_id
+    data["incoming_admin_page"] = page
+
+    photo_message = await context.bot.send_photo(
         chat_id=query.message.chat_id,
         photo=data["photo_file_id"],
         caption=(
@@ -2238,12 +2310,15 @@ async def incoming_vip_detail_callback(
         ),
         parse_mode="HTML",
     )
-    await context.bot.send_message(
+    data["incoming_admin_photo_message_id"] = photo_message.message_id
+
+    action_message = await context.bot.send_message(
         chat_id=query.message.chat_id,
         text="📋 <b>Verifikasi Pembayaran</b>",
         parse_mode="HTML",
         reply_markup=build_incoming_vip_action_keyboard(order_id)
     )
+    data["incoming_admin_action_message_id"] = action_message.message_id
 
 
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -6361,6 +6436,11 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             f"order_id={order_id} "
             f"user_id={user_id}"
         )
+
+        if data.get("incoming_admin_menu_message_id"):
+            await delete_incoming_vip_admin_messages(context, data)
+            await restore_incoming_vip_menu(context, data)
+
         payment_trace_logger.info(
             "PAY_OK_COMPLETED "
             f"order_id={order_id} "
@@ -6411,6 +6491,11 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         await query.edit_message_text(
             "❌ Pembayaran ditolak."
         )
+
+        if data.get("incoming_admin_menu_message_id"):
+            await delete_incoming_vip_admin_messages(context, data)
+            await restore_incoming_vip_menu(context, data)
+
     elif action == "pay_ban":
 
         keyboard = InlineKeyboardMarkup([
