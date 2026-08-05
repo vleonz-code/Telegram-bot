@@ -5988,6 +5988,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
 
     username = f"@{user.username}" if user.username else "-"
+    order_time = datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
 
     try:
         await context.bot.send_photo(
@@ -5997,20 +5998,18 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             photo=upload_waiting[order_id]["photo_file_id"],
 
             caption=(
-
-                "📥 Bukti Transfer Baru\n\n"
-
-                f"👤 Nama : {user.full_name}\n"
-
-                f"🔗 Username : {username}\n"
-
-                f"🆔 User ID : {user.id}\n\n"
-
-                f"📦 Paket : {upload_waiting[order_id]['paket']}\n"
-
-                f"💰 Harga : {upload_waiting[order_id]['harga']}"
-
-            )
+                "📥 <b>BUKTI TRANSFER BARU</b>\n\n"
+                f"🧾 <b>Order ID</b> : #{order_id}\n"
+                f"👤 <b>Nama</b> : {html.escape(user.full_name)}\n"
+                f"🔗 <b>Username</b> : {html.escape(username)}\n"
+                f"🆔 <b>User ID</b> : {user.id}\n\n"
+                f"📦 <b>Paket</b> : "
+                f"{html.escape(str(upload_waiting[order_id]['paket']))}\n"
+                f"💰 <b>Harga</b> : "
+                f"{html.escape(str(upload_waiting[order_id]['harga']))}\n"
+                f"🕒 <b>Waktu</b> : {order_time}"
+            ),
+            parse_mode="HTML"
 
         )
     except Exception as e:
