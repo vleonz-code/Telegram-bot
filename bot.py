@@ -5623,10 +5623,10 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
             success_msg = await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "🎉 PEMBAYARAN BERHASIL!\n\n"
+                    "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
                     "Halo! Pembayaran kamu telah diverifikasi.\n\n"
+                    f"📦 Pilihan Paket: <b>{html.escape(package['nama'])}</b>\n\n"
                     "👑 Akses VIP kamu sudah siap.\n\n"
-                    f"📦 Paket: <b>{html.escape(package['nama'])}</b>\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
                     "⚠️ Mohon jangan bagikan akses ini."
                 ),
