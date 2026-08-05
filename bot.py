@@ -1285,7 +1285,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🔰 GRUP MEMBER VIP OCIL\n\n"
         f"{html.escape(menu_description)}\n\n"
         f"👤 {html.escape(footer_identity)}\n"
-        f"🆔 {user.id}\n\n"
+        f"🆔 {user.id}\n"
         f"📅 {formatted_date}"
         "</blockquote>"
     )
@@ -1700,6 +1700,10 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
     query = update.callback_query
     await query.answer()
 
+    # Hentikan mode Edit Paket jika admin menekan Batal atau kembali
+    # ke detail paket tanpa mengirim perubahan.
+    admin_edit_waiting.pop(query.from_user.id, None)
+
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
 
@@ -1752,6 +1756,7 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
 
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
+    admin_edit_waiting.pop(query.from_user.id, None)
 
     packages = read_vip_packages()["packages"]
 
@@ -1770,22 +1775,23 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
 def build_adminvip_packages_keyboard(packages):
     keyboard = []
 
+    package_buttons = []
     for package in packages:
-        keyboard.append([
+        package_buttons.append(
             InlineKeyboardButton(
                 f"{package['nama']}",
                 callback_data=f"adminvip_{package['id']}"
             )
-        ])
+        )
+
+    for index in range(0, len(package_buttons), 2):
+        keyboard.append(package_buttons[index:index + 2])
 
     keyboard.append([
         InlineKeyboardButton(
             "➕ Tambah Paket",
             callback_data="adminvip_add"
-        )
-    ])
-
-    keyboard.append([
+        ),
         InlineKeyboardButton(
             "➕ Edit Desc Menu",
             callback_data="adminvip_menu_desc"
@@ -2742,6 +2748,9 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
 
+    admin_add_waiting.pop(query.from_user.id, None)
+    admin_edit_waiting.pop(query.from_user.id, None)
+
     await clear_last_stats(
         query.message.chat_id,
         context.bot
@@ -3259,6 +3268,8 @@ async def adminvip_prv_noop_callback(update: Update, context: ContextTypes.DEFAU
 async def adminvip_prv_nav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
+    preview_edit_waiting.pop(query.from_user.id, None)
 
     idx = int(query.data.split("_")[3])
 
