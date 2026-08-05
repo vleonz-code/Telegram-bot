@@ -5298,9 +5298,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=ADMIN_ID,
         text=(
             "📋 Verifikasi Pembayaran\n\n"
-            f"👤 {user.full_name}\n"
-            f"📦 {upload_waiting[order_id]['paket']}\n"
-            f"💰 {upload_waiting[order_id]['harga']}"
+            "Silakan pilih tindakan."
         ),
         reply_markup=keyboard
     )
@@ -5743,9 +5741,7 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
         await query.edit_message_text(
             text=(
                 "📋 Verifikasi Pembayaran\n\n"
-                f"👤 {data['full_name']}\n"
-                f"📦 {data['paket']}\n"
-                f"💰 {data['harga']}"
+                "Silakan pilih tindakan."
             ),
             reply_markup=keyboard
         )
