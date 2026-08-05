@@ -1295,19 +1295,17 @@ async def send_qris_message(chat_id, context, package, package_id):
             [
 
                 InlineKeyboardButton(
-
-                    "📤 Sudah Transfer",
-
-                    callback_data=f"upload_bukti_{package_id}"
-
-                ),
-
-                InlineKeyboardButton(
-
                     "❌ Batalkan",
-
                     callback_data="cancel_order"
-
+ 
+                ),
+ 
+                InlineKeyboardButton(
+ 
+                    "📤 Sudah Transfer",
+ 
+                    callback_data=f"upload_bukti_{package_id}"
+ 
                 )
 
             ]
@@ -5582,14 +5580,12 @@ async def payment_admin_callback(update: Update, context: ContextTypes.DEFAULT_T
                 reply_markup=InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "👑 Gabung VIP",
-                            url=vip_link
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(
                             "🆘 Bantuan",
                             url="https://t.me/BocilVIP511"
+                        ),
+                        InlineKeyboardButton(
+                            "👑 Gabung VIP",
+                            url=vip_link
                         )
                     ]
                 ])
