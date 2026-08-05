@@ -1302,7 +1302,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             *buttons,
             [
                 InlineKeyboardButton(
-                    "🆘 Bantuan - Ke Admin",
+                    "🆘 Bantuan",
                     url="https://t.me/BocilVIP511"
                 )
             ]
