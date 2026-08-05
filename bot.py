@@ -59,6 +59,10 @@ ORDER_HISTORY_FILE = os.path.join(DATA_DIR, "order_history.json")
 PENDING_ORDERS_FILE = os.path.join(DATA_DIR, "pending_orders.json")
 PAYMENT_LOCK_FILE = os.path.join(DATA_DIR, "payment_lock.json")
 FILE_MANAGER_BACKUP_DIR = os.path.join(DATA_DIR, "backups")
+DEFAULT_VIP_MENU_DESCRIPTION = (
+    "✨ Pilih paket VIP yang sesuai dengan kebutuhanmu.\n"
+    "Nikmati akses eksklusif, update berkala, dan benefit khusus member."
+)
 
 
 def migrate_to_volume(filename):
@@ -89,6 +93,55 @@ def save_vip_packages(data):
     with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     _vip_packages_cache = copy.deepcopy(data)
+
+
+def migrate_vip_menu_description():
+    """Move the menu description from settings.json to vip_packages.json."""
+    if not os.path.exists(VIP_PACKAGES_FILE):
+        return
+
+    try:
+        with open(VIP_PACKAGES_FILE, "r", encoding="utf-8") as f:
+            packages_data = json.load(f)
+    except Exception as e:
+        logger.error(f"VIP packages migration read error: {e}")
+        return
+
+    settings_data = None
+    legacy_description = None
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                settings_data = json.load(f)
+            legacy_description = settings_data.pop(
+                "vip_menu_description",
+                None
+            )
+        except Exception as e:
+            logger.error(f"Settings migration read error: {e}")
+            return
+
+    packages_changed = False
+    if "menu_description" not in packages_data:
+        packages_data["menu_description"] = (
+            legacy_description.strip()
+            if isinstance(legacy_description, str)
+            and legacy_description.strip()
+            else DEFAULT_VIP_MENU_DESCRIPTION
+        )
+        packages_changed = True
+
+    if packages_changed:
+        save_vip_packages(packages_data)
+
+    if settings_data is not None and legacy_description is not None:
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(
+                settings_data,
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
 
 
 def read_order_history():
@@ -355,6 +408,7 @@ upload_waiting = {}
 next_order_id = 1
 admin_edit_waiting = {}
 admin_add_waiting = {}
+admin_menu_description_waiting = {}
 admin_qris_waiting = set()
 admin_channel_waiting = set()
 admin_channel_interval_waiting = set()
@@ -1188,7 +1242,8 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    packages = read_vip_packages()["packages"]
+    packages_data = read_vip_packages()
+    packages = packages_data["packages"]
 
     buttons = []
     active_packages = []
@@ -1210,15 +1265,26 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{index}. {package['nama']}"
         for index, package in enumerate(active_packages, start=1)
     )
+    menu_description = packages_data.get(
+        "menu_description",
+        DEFAULT_VIP_MENU_DESCRIPTION
+    ).strip()
 
     await query.edit_message_text(
         "👑 MEMBERSHIP VIP\n\n"
         "📦 PILIHAN PAKET VIP\n\n"
-        "✨ Pilih paket yang sesuai dengan kebutuhanmu.\n"
-        "Setiap paket memiliki benefit dan harga yang berbeda.\n\n"
+        f"{menu_description}\n\n"
         "📋 Paket tersedia:\n"
         f"{package_list}",
-        reply_markup=keyboard
+        reply_markup=InlineKeyboardMarkup([
+            *buttons,
+            [
+                InlineKeyboardButton(
+                    "🆘 Bantuan - Ke Admin",
+                    url="https://t.me/BocilVIP511"
+                )
+            ]
+        ])
     )
 
 
@@ -1669,6 +1735,19 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
 
     packages = read_vip_packages()["packages"]
 
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["PACKAGE_BANNER_FILE_ID"],
+            caption=(
+                "Pilih paket yang ingin dikelola:"
+            ),
+            parse_mode="HTML",
+        ),
+        reply_markup=build_adminvip_packages_keyboard(packages),
+    )
+
+
+def build_adminvip_packages_keyboard(packages):
     keyboard = []
 
     for package in packages:
@@ -1678,6 +1757,13 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
                 callback_data=f"adminvip_{package['id']}"
             )
         ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "📝 Edit Deskripsi Menu",
+            callback_data="adminvip_menu_desc"
+        )
+    ])
 
     keyboard.append([
         InlineKeyboardButton(
@@ -1693,16 +1779,51 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
         )
     ])
 
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["PACKAGE_BANNER_FILE_ID"],
-            caption=(
-                "Pilih paket yang ingin dikelola:"
-            ),
-            parse_mode="HTML",
+    return InlineKeyboardMarkup(keyboard)
+
+
+async def adminvip_menu_description_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    await query.answer()
+
+    packages_data = read_vip_packages()
+    admin_menu_description_waiting[query.from_user.id] = {
+        "chat_id": query.message.chat_id,
+        "message_id": query.message.message_id,
+    }
+
+    await query.edit_message_caption(
+        caption=(
+            "📝 <b>Edit Deskripsi Menu Paket</b>\n\n"
+            "Deskripsi ini akan tampil di atas daftar tombol paket.\n\n"
+            "Silakan kirim teks baru. Baris baru dan emoji akan dipertahankan.\n\n"
+            "<b>Deskripsi saat ini:</b>\n"
+            f"{html.escape(packages_data.get('menu_description', DEFAULT_VIP_MENU_DESCRIPTION))}"
         ),
-        reply_markup=InlineKeyboardMarkup(keyboard),
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "❌ Batal",
+                    callback_data="adminvip_menu_desc_cancel"
+                )
+            ]
+        ]),
+        parse_mode="HTML",
     )
+
+
+async def adminvip_menu_description_cancel_callback(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    admin_menu_description_waiting.pop(
+        update.callback_query.from_user.id,
+        None
+    )
+    await adminvip_packages_callback(update, context)
 
 
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3805,11 +3926,44 @@ async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     user_id = update.effective_user.id
 
+    if user_id in admin_menu_description_waiting:
+        state = admin_menu_description_waiting.pop(user_id)
+        description = update.message.text.strip()
+
+        if not description:
+            await update.message.reply_text(
+                "❌ Deskripsi tidak boleh kosong."
+            )
+            admin_menu_description_waiting[user_id] = state
+            return
+
+        packages_data = read_vip_packages()
+        packages_data["menu_description"] = description
+        save_vip_packages(packages_data)
+
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
+
+        await context.bot.edit_message_caption(
+            chat_id=state["chat_id"],
+            message_id=state["message_id"],
+            caption="✅ <b>Deskripsi menu paket berhasil diperbarui.</b>",
+            parse_mode="HTML",
+            reply_markup=build_adminvip_packages_keyboard(
+                read_vip_packages()["packages"]
+            ),
+        )
+        return
+
     if user_id in admin_edit_waiting:
         await admin_edit_receive(update, context)
+        return
 
     if user_id in admin_add_waiting:
         await admin_add_receive(update, context)
+        return
 
     if update.effective_user.id in admin_channel_waiting:
 
@@ -5914,6 +6068,7 @@ migrate_to_volume("blacklist.json")
 migrate_to_volume("counter.json")
 migrate_to_volume("order_history.json")
 migrate_to_volume("pending_orders.json")
+migrate_vip_menu_description()
 
 
 def restore_pending_orders():
@@ -6302,6 +6457,16 @@ def main():
     CallbackQueryHandler(
         adminvip_packages_back_callback,
         pattern=r"^adminvip_packages_back$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_menu_description_callback,
+        pattern=r"^adminvip_menu_desc$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_menu_description_cancel_callback,
+        pattern=r"^adminvip_menu_desc_cancel$"
     ))
     app.add_handler(
     CallbackQueryHandler(
