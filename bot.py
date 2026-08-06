@@ -1621,12 +1621,22 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
+        # Track the source message before any awaited admin notification.
+        # Otherwise a concurrent ban can clean it up first, then this
+        # callback may continue and recreate the package menu with "Bayar".
+        track_vip_message(query.from_user.id, query.message.message_id)
+
         await notify_admin_vip_package(
             context.bot,
             query.from_user,
             package,
         )
-        track_vip_message(query.from_user.id, query.message.message_id)
+        if is_banned_user(query.from_user.id):
+            await cleanup_user_vip_activity(
+                query.from_user.id,
+                context.bot
+            )
+            return
 
         keyboard = InlineKeyboardMarkup([
     [
@@ -1654,6 +1664,12 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
 
 )
+
+        if is_banned_user(query.from_user.id):
+            await cleanup_user_vip_activity(
+                query.from_user.id,
+                context.bot
+            )
 
 
 async def send_qris_message(chat_id, context, package, package_id):
