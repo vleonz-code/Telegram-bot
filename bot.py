@@ -910,7 +910,11 @@ async def update_vip_activity(
             )
         else:
             raise ValueError("VIP activity message has no message_id")
-    except Exception:
+    except Exception as e:
+        logger.warning(
+            "VIP activity edit failed; trying new message "
+            f"(user_id={user_id}, message_id={message_id}): {e}"
+        )
         try:
             message = await bot.send_message(
                 chat_id=ADMIN_ID,
@@ -1868,6 +1872,13 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
     locked_package_id = get_locked_package_id(user.id)
     target_order_id = None
 
+    logger.info(
+        "VIP upload callback received "
+        f"(user_id={user.id}, package_id={package_id}, "
+        f"locked_package_id={locked_package_id}, "
+        f"message_id={query.message.message_id})"
+    )
+
     for order_id, data in upload_waiting.items():
         if (
             str(data.get("user_id")) == str(user.id)
@@ -1891,6 +1902,44 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
         order_id = target_order_id
 
         data = upload_waiting[order_id]
+
+        activity_package_id = (
+            data.get("package_id")
+            or locked_package_id
+            or package_id
+        )
+        activity_package = None
+        try:
+            activity_package = get_package(int(activity_package_id))
+        except (TypeError, ValueError):
+            logger.warning(
+                "VIP upload callback has invalid activity package "
+                f"(user_id={user.id}, order_id={order_id}, "
+                f"package_id={activity_package_id})"
+            )
+
+        if activity_package is not None:
+            username = f"@{user.username}" if user.username else "-"
+            await notify_admin_vip_package(
+                context.bot,
+                user.full_name or "-",
+                username,
+                user.id,
+                activity_package["nama"],
+            )
+            if data.get("qris_msg_id"):
+                await notify_admin_vip_qris(
+                    context.bot,
+                    user.full_name or "-",
+                    username,
+                    user.id,
+                    activity_package["nama"],
+                )
+            logger.info(
+                "VIP upload callback activity synchronized "
+                f"(user_id={user.id}, order_id={order_id}, "
+                f"has_qris={bool(data.get('qris_msg_id'))})"
+            )
 
         for notice_msg_id in data.get("pre_upload_notice_msg_ids", []):
             try:
