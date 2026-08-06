@@ -1561,26 +1561,17 @@ async def send_qris_message(chat_id, context, package, package_id):
         photo=qris_file_id,
 
         caption=(
-
-            "*PEMBAYARAN GROUP BOCIL*\n"
-
-            "*────── . 👇🏻 . ──────*\n\n"
-
-            "*Pilihan Paket*\n"
-
-            f"*{package['nama']}*\n"
-
-            f"*💰 Nominal {package['harga']}*\n\n"
-
-            "*Scan kode QR diatas untuk melakukan pembayaran, bayar sesuai pilihan paket lalu kirim (screenshot/foto) transfer Anda disini sebagai bukti.*\n\n"
-
-            "*✅ Pembayaran via*\n"
-
-            "*(Ovo, Dana, Shopeepay, Gopay, TNG, Maybank, USDT)*\n\n"
-
+            "<b>PEMBAYARAN GROUP BOCIL</b>\n\n"
+            "<b>Pilihan Paket</b>\n"
+            f"<b>{html.escape(package['nama'])}</b>\n"
+            f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
+            "<blockquote>Scan kode QR di atas untuk melakukan pembayaran, "
+            "bayar sesuai nominal paket, lalu kirim screenshot/foto bukti "
+            "transfer di sini.</blockquote>\n\n"
+            "✅ <b>Pembayaran via</b>\n"
+            "(Ovo, Dana, Shopeepay, Gopay, TNG, Maybank, USDT)\n\n"
         ),
-
-        parse_mode="Markdown",
+        parse_mode="HTML",
 
         reply_markup=InlineKeyboardMarkup([
 
