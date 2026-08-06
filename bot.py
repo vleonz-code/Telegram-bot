@@ -426,6 +426,7 @@ admin_request_counts = {}     # user_id -> jumlah percobaan
 
 last_delivered_messages = {}
 preview_delete_tasks = {}
+active_vip_messages = {}  # user_id -> set(message_id) for active VIP messages
 admin_reply_waiting = {}
 blocked_notified = set()
 file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
@@ -494,6 +495,9 @@ async def deliver_album(bot, chat_id: int, file_ids):
 
         return False
 
+    if chat_id != ADMIN_ID and is_banned_user(chat_id):
+        return False
+
     try:
 
         progress = await bot.send_message(
@@ -530,12 +534,24 @@ async def deliver_album(bot, chat_id: int, file_ids):
         if chat_id == ADMIN_ID:
              return True
 
+        if is_banned_user(chat_id):
+            for message_id in delivered:
+                try:
+                    await bot.delete_message(
+                        chat_id=chat_id,
+                        message_id=message_id
+                    )
+                except Exception:
+                    pass
+            return False
+
 
         preview_messages = delivered.copy()
 
         last_delivered_messages[
             chat_id
         ] = delivered
+        active_vip_messages.setdefault(chat_id, set()).update(delivered)
 
         settings = read_settings()
 
@@ -675,6 +691,137 @@ def write_blacklist(bl: dict):
         logger.error(f"Blacklist write error: {e}")
 
 
+def track_vip_message(user_id: int, message_id: int):
+    if message_id:
+        active_vip_messages.setdefault(user_id, set()).add(message_id)
+
+
+def is_banned_user(user_id: int) -> bool:
+    return user_id != ADMIN_ID and user_id in read_blacklist()
+
+
+async def reject_banned_callback(query) -> bool:
+    if is_banned_user(query.from_user.id):
+        await query.answer(
+            "🚫 Akses VIP Anda telah dibatasi.",
+            show_alert=True
+        )
+        return True
+    return False
+
+
+def collect_payment_message_ids(data: dict):
+    message_ids = {
+        data.get("package_msg_id"),
+        data.get("qris_msg_id"),
+        data.get("upload_msg_id"),
+        data.get("status_msg_id"),
+        data.get("processing_msg_id"),
+        data.get("reupload_prompt_msg_id"),
+        data.get("payment_received_notice_msg_id"),
+    }
+    message_ids.update(data.get("pre_upload_notice_msg_ids", []))
+    message_ids.update(data.get("payment_notice_msg_ids", []))
+    return {message_id for message_id in message_ids if message_id}
+
+
+async def cleanup_user_vip_activity(user_id: int, bot):
+    if user_id == ADMIN_ID:
+        return
+
+    message_ids = set(active_vip_messages.pop(user_id, set()))
+    message_ids.update(last_delivered_messages.pop(user_id, []) or [])
+
+    preview_task = preview_delete_tasks.pop(user_id, None)
+    if preview_task:
+        preview_task.cancel()
+
+    pending_request = pending_requests.pop(user_id, None)
+    if pending_request:
+        message_ids.add(pending_request.get("waiting_msg_id"))
+
+    admin_request_message_id = admin_request_messages.pop(user_id, None)
+    admin_request_counts.pop(user_id, None)
+    deeplink_spam_tracker.pop(user_id, None)
+    if user_id in admin_request_order:
+        admin_request_order.remove(user_id)
+
+    if admin_request_message_id:
+        try:
+            await bot.delete_message(
+                chat_id=ADMIN_ID,
+                message_id=admin_request_message_id
+            )
+        except Exception:
+            pass
+
+    for order_id, data in list(upload_waiting.items()):
+        if data.get("user_id") != user_id:
+            continue
+        message_ids.update(collect_payment_message_ids(data))
+        upload_waiting.pop(order_id, None)
+
+    pending = read_pending_orders()
+    pending["orders"] = [
+        order
+        for order in pending.get("orders", [])
+        if order.get("user_id") != user_id
+    ]
+    save_pending_orders(pending)
+
+    unlock_payment(user_id)
+    qris_loading_users.discard(user_id)
+
+    repeat_message_id = last_repeat_message.pop(user_id, None)
+    if repeat_message_id:
+        message_ids.add(repeat_message_id)
+
+    for message_id in message_ids:
+        try:
+            await bot.delete_message(
+                chat_id=user_id,
+                message_id=message_id
+            )
+        except Exception:
+            pass
+
+
+async def ban_user_and_cleanup(
+    user_id: int,
+    bot,
+    full_name: str = "-",
+    username: str = "-",
+    notify_user: bool = True,
+):
+    if user_id == ADMIN_ID:
+        logger.warning("Refused to ban ADMIN_ID from VIP access callback")
+        return False
+
+    blacklist = read_blacklist()
+    blacklist[user_id] = {
+        "full_name": full_name or "-",
+        "username": username or "-",
+    }
+    write_blacklist(blacklist)
+
+    approved = read_approved()
+    if user_id in approved:
+        approved.discard(user_id)
+        save_approved(approved)
+
+    await cleanup_user_vip_activity(user_id, bot)
+
+    if notify_user:
+        try:
+            await bot.send_message(
+                chat_id=user_id,
+                text="🚫 Akses VIP Anda telah dibatasi."
+            )
+        except Exception:
+            pass
+    return True
+
+
 def get_package(package_id: int):
 
     data = read_vip_packages()
@@ -800,10 +947,22 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
         f"Time: {now}"
     )
     try:
+        reply_markup = None
+        if user_id != ADMIN_ID:
+            reply_markup = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "🚫 Ban User",
+                        callback_data=f"vip_ban|{user_id}"
+                    )
+                ]
+            ])
+
         await bot.send_message(
             chat_id=ADMIN_ID,
             text=text,
             parse_mode="Markdown",
+            reply_markup=reply_markup,
             disable_notification=True
         )
     except Exception as e:
@@ -826,6 +985,95 @@ async def notify_admin_vip_menu(bot, full_name: str, username: str, user_id: int
         )
     except Exception as e:
         logger.error(f"Failed to notify admin about VIP menu access: {e}")
+
+
+def user_display_name(user):
+    return user.first_name or user.username or user.full_name or "Member"
+
+
+async def notify_admin_vip_package(
+    bot,
+    user,
+    package,
+):
+    text = (
+        "📦 <b>User Memilih Paket</b>\n\n"
+        f"👤 Halo, {html.escape(user_display_name(user))}\n"
+        f"📦 Paket: {html.escape(str(package['nama']))}\n"
+        f"🆔 User ID: <code>{user.id}</code>"
+    )
+    try:
+        await bot.send_message(
+            chat_id=ADMIN_ID,
+            text=text,
+            parse_mode="HTML",
+            disable_notification=True
+        )
+    except Exception as e:
+        logger.error(f"Failed to notify admin about package selection: {e}")
+
+
+async def notify_admin_vip_payment(
+    bot,
+    user,
+    package,
+):
+    text = (
+        "💸 <b>User Klik Bayar</b>\n\n"
+        f"👤 Halo, {html.escape(user_display_name(user))}\n"
+        f"📦 Paket: {html.escape(str(package['nama']))}\n"
+        f"💰 Harga: {html.escape(str(package['harga']))}\n"
+        f"🆔 User ID: <code>{user.id}</code>"
+    )
+    try:
+        await bot.send_message(
+            chat_id=ADMIN_ID,
+            text=text,
+            parse_mode="HTML",
+            disable_notification=True
+        )
+    except Exception as e:
+        logger.error(f"Failed to notify admin about payment click: {e}")
+
+
+async def vip_access_ban_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    if query.from_user.id != ADMIN_ID:
+        await query.answer("Akses admin diperlukan.", show_alert=True)
+        return
+
+    try:
+        _, user_id_str = query.data.split("|", 1)
+        user_id = int(user_id_str)
+    except (ValueError, AttributeError):
+        await query.answer("Data user tidak valid.", show_alert=True)
+        return
+
+    await query.answer()
+
+    registry = read_user_registry()
+    user_data = registry.get(user_id, {})
+    full_name = user_data.get("full_name", "-")
+    username = user_data.get("username", "-")
+
+    await ban_user_and_cleanup(
+        user_id,
+        context.bot,
+        full_name,
+        username,
+    )
+
+    try:
+        await query.edit_message_text(
+            "🚫 User dibatasi.\n"
+            f"User ID: {user_id}"
+        )
+    except Exception as e:
+        logger.warning(
+            "VIP access ban notification update failed: "
+            f"user_id={user_id} exception={repr(e)}"
+        )
 
 
 # /start — deep link handler with approval gate
@@ -890,19 +1138,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         recent_taps.append(now_ts)
 
         if len(recent_taps) >= DEEPLINK_SPAM_THRESHOLD:
-            deeplink_spam_tracker.pop(user_id, None)
-            admin_request_counts.pop(user_id, None)
-            admin_request_messages.pop(user_id, None)
-            pending_requests.pop(user_id, None)
-
-            bl = read_blacklist()
-            bl[user_id] = {"full_name": full_name, "username": username}
-            write_blacklist(bl)
-
-            approved = read_approved()
-            if user_id in approved:
-                approved.discard(user_id)
-                save_approved(approved)
+            await ban_user_and_cleanup(
+                user_id,
+                context.bot,
+                full_name,
+                username,
+                notify_user=False,
+            )
 
             await context.bot.send_message(
                 chat_id=ADMIN_ID,
@@ -1104,6 +1346,25 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception:
         return
 
+    pending = pending_requests.get(user_id)
+    if action == "izin" and is_banned_user(user_id):
+        try:
+            await query.edit_message_text(
+                "🚫 User sudah dibatasi. Persetujuan dibatalkan."
+            )
+        except Exception:
+            pass
+        if pending:
+            try:
+                await context.bot.delete_message(
+                    chat_id=pending["chat_id"],
+                    message_id=pending["waiting_msg_id"]
+                )
+            except Exception:
+                pass
+        await cleanup_user_vip_activity(user_id, context.bot)
+        return
+
     if action == "izin":
 
         pending = pending_requests.pop(user_id, None)
@@ -1206,26 +1467,17 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
-        bl = read_blacklist()
-        bl[user_id] = {"full_name": full_name, "username": username}
-        write_blacklist(bl)
-
-        approved = read_approved()
-        if user_id in approved:
-            approved.discard(user_id)
-            save_approved(approved)
-
-        admin_request_messages.pop(
+        await ban_user_and_cleanup(
             user_id,
-            None
+            context.bot,
+            full_name,
+            username,
         )
 
-        admin_request_counts.pop(
-            user_id,
-            None
-        )
-
-        await query.message.delete()
+        try:
+            await query.message.delete()
+        except Exception:
+            pass
 
         return
 
@@ -1243,9 +1495,13 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Add to blacklist
         full_name = pending["full_name"] if pending else "-"
         username  = pending["username"]  if pending else "-"
-        bl = read_blacklist()
-        bl[user_id] = {"full_name": full_name, "username": username}
-        write_blacklist(bl)
+        await ban_user_and_cleanup(
+            user_id,
+            context.bot,
+            full_name,
+            username,
+            notify_user=False,
+        )
 
         if pending:
             chat_id = pending["chat_id"]
@@ -1263,6 +1519,8 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if await reject_banned_callback(query):
+        return
     await query.answer()
 
     packages_data = read_vip_packages()
@@ -1327,12 +1585,13 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Kirim sebagai pesan baru agar Telegram melakukan render penuh pada
     # format <blockquote>. Pesan lama dihapus hanya setelah pengiriman berhasil.
-    await context.bot.send_message(
+    menu_message = await context.bot.send_message(
         chat_id=query.message.chat_id,
         text=vip_menu_text,
         reply_markup=vip_menu_keyboard,
         parse_mode="HTML",
     )
+    track_vip_message(user.id, menu_message.message_id)
 
     await notify_admin_vip_menu(
         context.bot,
@@ -1349,10 +1608,25 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
+        if await reject_banned_callback(query):
+            return
         await query.answer()
 
         package_id = int(query.data.split("_")[1])
         package = get_package(package_id)
+        if package is None:
+            await query.answer(
+                "⚠️ Paket sudah tidak tersedia.",
+                show_alert=True
+            )
+            return
+
+        await notify_admin_vip_package(
+            context.bot,
+            query.from_user,
+            package,
+        )
+        track_vip_message(query.from_user.id, query.message.message_id)
 
         keyboard = InlineKeyboardMarkup([
     [
@@ -1383,6 +1657,10 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def send_qris_message(chat_id, context, package, package_id):
+
+    if is_banned_user(chat_id):
+        await cleanup_user_vip_activity(chat_id, context.bot)
+        return False
 
     settings = read_settings()
 
@@ -1451,12 +1729,24 @@ async def send_qris_message(chat_id, context, package, package_id):
         ])
 
     )
+    if is_banned_user(chat_id):
+        try:
+            await context.bot.delete_message(
+                chat_id=chat_id,
+                message_id=msg.message_id
+            )
+        except Exception:
+            pass
+        await cleanup_user_vip_activity(chat_id, context.bot)
+        return False
+
     for order_id, data in upload_waiting.items():
         if (
             data["user_id"] == chat_id
             and data["package_id"] == package_id
         ):
             upload_waiting[order_id]["qris_msg_id"] = msg.message_id
+            track_vip_message(chat_id, msg.message_id)
             break
 
     return True
@@ -1492,6 +1782,9 @@ def cleanup_failed_qris_order(order_id, user_id):
 
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+
+    if await reject_banned_callback(query):
+        return
 
     if get_payment_lock(query.from_user.id):
         await query.answer(
@@ -1598,6 +1891,18 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    await notify_admin_vip_payment(
+        context.bot,
+        query.from_user,
+        package,
+    )
+    if is_banned_user(query.from_user.id):
+        await cleanup_user_vip_activity(
+            query.from_user.id,
+            context.bot
+        )
+        return
+
     order_id = next_order_id
     next_order_id += 1
 
@@ -1663,9 +1968,11 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    user = query.from_user
+    if await reject_banned_callback(query):
+        return
     await query.answer()
 
-    user = query.from_user
     package_id = int(query.data.split("_")[2])
     locked_package_id = get_locked_package_id(user.id)
     target_order_id = None
@@ -1714,6 +2021,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 "✅ Bukti transfer sudah diterima.\n\n"
                 "Mohon tunggu verifikasi admin."
             )
+            track_vip_message(user.id, notice_msg.message_id)
             data["payment_received_notice_msg_id"] = notice_msg.message_id
             data.setdefault(
                 "payment_notice_msg_ids",
@@ -1733,6 +2041,7 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
         msg = await query.message.reply_text(
             "Silakan upload screenshot bukti transfer disini.\n\n"
         )
+        track_vip_message(user.id, msg.message_id)
 
         upload_waiting[order_id]["upload_msg_id"] = msg.message_id
 
@@ -1747,16 +2056,18 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         return
 
-    await query.message.reply_text(
+    upload_msg = await query.message.reply_text(
         "Silakan upload screenshot bukti transfer disini.\n\n"
     )
+    track_vip_message(user.id, upload_msg.message_id)
 
 
 async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
     user_id = query.from_user.id
+    if await reject_banned_callback(query):
+        return
+    await query.answer()
 
     unlock_payment(user_id)
 
@@ -4701,15 +5012,12 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
-    bl = read_blacklist()
-    bl[target_id] = {"full_name": full_name, "username": username}
-    write_blacklist(bl)
-
-    # Also remove from approved list if present
-    approved = read_approved()
-    if target_id in approved:
-        approved.discard(target_id)
-        save_approved(approved)
+    await ban_user_and_cleanup(
+        target_id,
+        context.bot,
+        full_name,
+        username,
+    )
 
     await update.message.reply_text("✅ User banned.")
 
@@ -5802,6 +6110,16 @@ async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
 
+    if is_banned_user(user_id):
+        if update.message.photo:
+            try:
+                pre_upload_cleanup_queue.put_nowait(
+                    (update.message.chat_id, update.message.message_id)
+                )
+            except asyncio.QueueFull:
+                pass
+        return
+
     if user_id in getid_waiting:
 
         await getid_receive(update, context)
@@ -5832,6 +6150,9 @@ async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
+
+    if is_banned_user(user_id):
+        return
 
     order_id = None
 
@@ -6596,37 +6917,12 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         )
 
     elif action == "pay_ban_yes":
-        blacklist = read_blacklist()
-
-        blacklist[user_id] = {
-            "full_name": data["full_name"],
-            "username": data["username"]
-        }
-
-        write_blacklist(blacklist)
-
-        upload_waiting.pop(order_id, None)
-        unlock_payment(user_id)
-
-        pending = read_pending_orders()
-
-        pending["orders"] = [
-            order
-            for order in pending["orders"]
-            if order["order_id"] != order_id
-        ]
-
-        save_pending_orders(pending)
-
-        try:
-            await context.bot.send_message(
-                chat_id=user_id,
-                text=(
-                    "🚫 Akses Anda telah dibatasi."
-                )
-            )
-        except Exception:
-            pass
+        await ban_user_and_cleanup(
+            user_id,
+            context.bot,
+            data["full_name"],
+            data["username"],
+        )
 
         await query.edit_message_text(
             "✅ User berhasil dibatasi."
@@ -6874,6 +7170,12 @@ def main():
         CallbackQueryHandler(
             approval_callback,
             pattern=r"^(izin|tolak|reset|ignore|ban)\|"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            vip_access_ban_callback,
+            pattern=r"^vip_ban\|\d+$"
         )
     )
     app.add_handler(
