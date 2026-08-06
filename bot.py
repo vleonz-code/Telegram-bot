@@ -1526,11 +1526,11 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 ])
 
         await query.edit_message_text(
-            f"👑 <b>{html.escape(package['nama'])}</b>\n\n"
+            f"<b>{html.escape(package['nama'])}</b>\n\n"
             f"<blockquote>{html.escape(package['deskripsi'])}</blockquote>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n"
+            f"──────────\n"
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━",
+            f"──────────",
             reply_markup=keyboard,
             parse_mode="HTML"
         )
