@@ -873,6 +873,9 @@ async def update_vip_activity(
                 activity["steps"].append("package")
             if "qris" not in activity["steps"]:
                 activity["steps"].append("qris")
+        elif stage == "cancelled":
+            if "cancelled" not in activity["steps"]:
+                activity["steps"].append("cancelled")
 
     activity["full_name"] = full_name or activity.get("full_name", "-")
     activity["username"] = username or activity.get("username", "-")
@@ -880,21 +883,29 @@ async def update_vip_activity(
 
     now = datetime.now(WIB).strftime("%d/%m/%Y %I:%M %p")
     lines = ["🟢 <b>Aktivitas VIP User</b>", ""]
-    lines.extend([
-        f"👤 {html.escape(activity['full_name'])}",
-        f"🔗 {html.escape(activity['username'])}",
-        f"🆔 <code>{user_id}</code>",
-        "",
-    ])
 
+    name_str = html.escape(activity["full_name"])
+    user_str = html.escape(activity["username"])
+    lines.append("👤 <b>BUYER DETAILS</b>")
+    lines.append(f"{name_str} · {user_str} · <code>{user_id}</code>")
+    lines.append("")
+
+    step_lines = []
     if "menu" in activity["steps"]:
-        lines.append("🟢 Melihat VIP Menu")
+        step_lines.append("Masuk VIP Menu")
     if "package" in activity["steps"]:
         packages = activity.get("packages", [])
         package_text = ", ".join(packages) if packages else "Paket VIP"
-        lines.append(f"📦 Melihat Paket: {html.escape(package_text)}")
+        step_lines.append(f"Melihat Paket: {html.escape(package_text)}")
     if "qris" in activity["steps"]:
-        lines.append("💳 Melihat QRIS")
+        step_lines.append("Membuat Halaman Qris")
+    if "cancelled" in activity["steps"]:
+        step_lines.append("Status: ❌ Dibatalkan")
+
+    for i, step in enumerate(step_lines):
+        connector = "└" if i == len(step_lines) - 1 else "├"
+        lines.append(f"{connector} {step}")
+
     lines.extend(["", f"🕒 {now}"])
     text = "\n".join(lines)
 
@@ -968,6 +979,21 @@ async def notify_admin_vip_qris(
         user_id,
         "qris",
         package_name,
+    )
+
+
+async def notify_admin_vip_cancelled(
+    bot,
+    full_name: str,
+    username: str,
+    user_id: int,
+):
+    await update_vip_activity(
+        bot,
+        full_name,
+        username,
+        user_id,
+        "cancelled",
     )
 
 
@@ -1568,8 +1594,9 @@ async def send_qris_message(chat_id, context, package, package_id):
             "<blockquote>Scan kode QR di atas untuk melakukan pembayaran, "
             "bayar sesuai nominal paket, lalu kirim screenshot/foto bukti "
             "transfer di sini.</blockquote>\n\n"
-            "✅ <b>Pembayaran via</b>\n"
-            "(Ovo, Dana, Shopeepay, Gopay, TNG, Maybank, USDT)\n\n"
+            "<b>Pembayaran via :</b>\n"
+            "🟣 OVO · 🔵 Dana · 🟠 ShopeePay\n"
+            "🟢 GoPay · 📱 TNG · 🏦 Maybank · 💵 USDT\n\n"
         ),
         parse_mode="HTML",
 
@@ -1981,6 +2008,14 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     await query.message.reply_text(
         "❌ Order berhasil dibatalkan.\n\n"
+    )
+
+    user = query.from_user
+    await notify_admin_vip_cancelled(
+        context.bot,
+        user.full_name or "-",
+        f"@{user.username}" if user.username else "-",
+        user.id,
     )
 # ---------------------------------------------------------------------------
 # Admin commands
