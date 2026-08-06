@@ -58,6 +58,7 @@ VIP_PACKAGES_FILE = os.path.join(DATA_DIR, "vip_packages.json")
 ORDER_HISTORY_FILE = os.path.join(DATA_DIR, "order_history.json")
 PENDING_ORDERS_FILE = os.path.join(DATA_DIR, "pending_orders.json")
 PAYMENT_LOCK_FILE = os.path.join(DATA_DIR, "payment_lock.json")
+VIP_ACTIVITY_FILE = os.path.join(DATA_DIR, "vip_activity.json")
 FILE_MANAGER_BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 DEFAULT_VIP_MENU_DESCRIPTION = (
     "✨ Pilih paket VIP yang kamu suka.\n"
@@ -190,6 +191,26 @@ def save_pending_orders(data):
             ensure_ascii=False,
             indent=2
         )
+
+
+def read_vip_activity() -> dict:
+    if not os.path.exists(VIP_ACTIVITY_FILE):
+        return {}
+    try:
+        with open(VIP_ACTIVITY_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception as e:
+        logger.error(f"VIP activity read error: {e}")
+        return {}
+
+
+def save_vip_activity(data: dict):
+    try:
+        with open(VIP_ACTIVITY_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"VIP activity write error: {e}")
 
 
 def read_payment_lock():
@@ -809,23 +830,145 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
     except Exception as e:
         logger.error(f"Failed to notify admin: {e}")
 
-# ---------------------------------------------------------------------------
-async def notify_admin_vip_menu(bot, full_name: str, username: str, user_id: int):
-    now = datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
-    text = (
-        "⚠️ *User Melihat VIP Menu*\n\n"
-        f"👤 {full_name}\n"
-        f"🕒 {now}"
-    )
+async def update_vip_activity(
+    bot,
+    full_name: str,
+    username: str,
+    user_id: int,
+    stage: str,
+    package_name: str = None,
+):
+    """Create or update one quiet admin activity message per user."""
+    if user_id == ADMIN_ID:
+        return
+
+    activities = read_vip_activity()
+    key = str(user_id)
+    activity = activities.get(key, {})
+
+    if stage == "menu":
+        activity = {
+            "full_name": full_name or "-",
+            "username": username or "-",
+            "steps": ["menu"],
+            "packages": [],
+        }
+        if activities.get(key, {}).get("message_id"):
+            activity["message_id"] = activities[key]["message_id"]
+    else:
+        activity.setdefault("full_name", full_name or "-")
+        activity.setdefault("username", username or "-")
+        activity.setdefault("steps", ["menu"])
+        activity.setdefault("packages", [])
+
+        if stage == "package":
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
+            if "package" not in activity["steps"]:
+                activity["steps"].append("package")
+        elif stage == "qris":
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
+            if "package" not in activity["steps"]:
+                activity["steps"].append("package")
+            if "qris" not in activity["steps"]:
+                activity["steps"].append("qris")
+
+    activity["full_name"] = full_name or activity.get("full_name", "-")
+    activity["username"] = username or activity.get("username", "-")
+    activities[key] = activity
+
+    now = datetime.now(WIB).strftime("%d/%m/%Y %I:%M %p")
+    lines = ["🟢 <b>Aktivitas VIP User</b>", ""]
+    lines.extend([
+        f"👤 {html.escape(activity['full_name'])}",
+        f"🔗 {html.escape(activity['username'])}",
+        f"🆔 <code>{user_id}</code>",
+        "",
+    ])
+
+    if "menu" in activity["steps"]:
+        lines.append("🟢 Melihat VIP Menu")
+    if "package" in activity["steps"]:
+        packages = activity.get("packages", [])
+        package_text = ", ".join(packages) if packages else "Paket VIP"
+        lines.append(f"📦 Melihat Paket: {html.escape(package_text)}")
+    if "qris" in activity["steps"]:
+        lines.append("💳 Melihat QRIS")
+    lines.extend(["", f"🕒 {now}"])
+    text = "\n".join(lines)
+
+    message_id = activity.get("message_id")
     try:
-        await bot.send_message(
-            chat_id=ADMIN_ID,
-            text=text,
-            parse_mode="Markdown",
-            disable_notification=True
-        )
-    except Exception as e:
-        logger.error(f"Failed to notify admin about VIP menu access: {e}")
+        if message_id:
+            await bot.edit_message_text(
+                chat_id=ADMIN_ID,
+                message_id=message_id,
+                text=text,
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+        else:
+            raise ValueError("VIP activity message has no message_id")
+    except Exception:
+        try:
+            message = await bot.send_message(
+                chat_id=ADMIN_ID,
+                text=text,
+                parse_mode="HTML",
+                disable_notification=True,
+                disable_web_page_preview=True,
+            )
+            activity["message_id"] = message.message_id
+        except Exception as e:
+            logger.error(f"Failed to update VIP activity notification: {e}")
+            return
+
+    save_vip_activity(activities)
+
+
+async def notify_admin_vip_menu(bot, full_name: str, username: str, user_id: int):
+    await update_vip_activity(
+        bot,
+        full_name,
+        username,
+        user_id,
+        "menu",
+    )
+
+
+async def notify_admin_vip_package(
+    bot,
+    full_name: str,
+    username: str,
+    user_id: int,
+    package_name: str,
+):
+    await update_vip_activity(
+        bot,
+        full_name,
+        username,
+        user_id,
+        "package",
+        package_name,
+    )
+
+
+async def notify_admin_vip_qris(
+    bot,
+    full_name: str,
+    username: str,
+    user_id: int,
+    package_name: str,
+):
+    await update_vip_activity(
+        bot,
+        full_name,
+        username,
+        user_id,
+        "qris",
+        package_name,
+    )
 
 
 # /start — deep link handler with approval gate
@@ -1353,6 +1496,21 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         package_id = int(query.data.split("_")[1])
         package = get_package(package_id)
+        if package is None:
+            await query.answer(
+                "⚠️ Paket sudah tidak tersedia.",
+                show_alert=True
+            )
+            return
+
+        user = query.from_user
+        await notify_admin_vip_package(
+            context.bot,
+            user.full_name or "-",
+            f"@{user.username}" if user.username else "-",
+            user.id,
+            package["nama"],
+        )
 
         keyboard = InlineKeyboardMarkup([
     [
@@ -1574,12 +1732,21 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context
             )
 
-            await send_qris_message(
+            qris_created = await send_qris_message(
                 query.message.chat_id,
                 context,
                 package,
                 package_id
             )
+            if qris_created:
+                user = query.from_user
+                await notify_admin_vip_qris(
+                    context.bot,
+                    user.full_name or "-",
+                    f"@{user.username}" if user.username else "-",
+                    user.id,
+                    package["nama"],
+                )
         finally:
             qris_loading_users.discard(query.from_user.id)
 
@@ -1650,6 +1817,15 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cleanup_failed_qris_order(
                 order_id,
                 query.from_user.id
+            )
+        else:
+            user = query.from_user
+            await notify_admin_vip_qris(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+                package["nama"],
             )
     except Exception:
         cleanup_failed_qris_order(
@@ -6683,6 +6859,7 @@ migrate_to_volume("blacklist.json")
 migrate_to_volume("counter.json")
 migrate_to_volume("order_history.json")
 migrate_to_volume("pending_orders.json")
+migrate_to_volume("vip_activity.json")
 migrate_vip_menu_description()
 
 
