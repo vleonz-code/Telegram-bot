@@ -1747,6 +1747,14 @@ async def send_qris_message(chat_id, context, package, package_id):
         ):
             upload_waiting[order_id]["qris_msg_id"] = msg.message_id
             track_vip_message(chat_id, msg.message_id)
+            pending = read_pending_orders()
+            for index, order in enumerate(pending["orders"]):
+                if order.get("order_id") == order_id:
+                    pending["orders"][index] = (
+                        upload_waiting[order_id].copy()
+                    )
+                    break
+            save_pending_orders(pending)
             break
 
     return True
@@ -1780,19 +1788,42 @@ def cleanup_failed_qris_order(order_id, user_id):
     unlock_payment(user_id)
 
 
+async def refresh_pending_qris_order(order_id, user_id, bot):
+    """Reuse an unpaid pending order when its old QRIS is no longer visible."""
+    data = upload_waiting.get(order_id)
+    if not data:
+        return False
+
+    for field in ("qris_msg_id", "upload_msg_id"):
+        message_id = data.get(field)
+        if message_id:
+            try:
+                await bot.delete_message(
+                    chat_id=user_id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
+            data[field] = None
+
+    pending = read_pending_orders()
+    for index, order in enumerate(pending["orders"]):
+        if order.get("order_id") == order_id:
+            pending["orders"][index] = data.copy()
+            break
+    save_pending_orders(pending)
+    return True
+
+
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
     if await reject_banned_callback(query):
         return
 
-    if get_payment_lock(query.from_user.id):
-        await query.answer(
-            "⏳ Anda masih memiliki transaksi yang belum selesai.",
-            show_alert=True
-        )
-
-        package_id = get_locked_package_id(query.from_user.id)
+    payment_lock = get_payment_lock(query.from_user.id)
+    if payment_lock:
+        package_id = payment_lock.get("package_id")
 
         package = get_package(package_id)
 
@@ -1813,6 +1844,10 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 break
 
         if uploaded_order is not None:
+            await query.answer(
+                "⏳ Anda masih memiliki transaksi yang belum selesai.",
+                show_alert=True
+            )
             previous_notice_msg_id = uploaded_order.get(
                 "payment_received_notice_msg_id"
             )
@@ -1840,6 +1875,10 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if package is None:
+            await query.answer(
+                "⚠️ Paket pembayaran sudah tidak tersedia.",
+                show_alert=True
+            )
             if active_order is not None:
                 cleanup_failed_qris_order(
                     active_order["order_id"],
@@ -1851,32 +1890,58 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        if (
-            query.from_user.id in qris_loading_users
-            or (
-                active_order is not None
-                and active_order.get("qris_msg_id")
+        if query.from_user.id in qris_loading_users:
+            await query.answer(
+                "⏳ QRIS sedang dibuat. Mohon tunggu sebentar.",
+                show_alert=True
             )
-        ):
             return
 
-        qris_loading_users.add(query.from_user.id)
-        try:
-            await show_qris_loading_message(
-                query.message.chat_id,
-                context
+        if active_order is None:
+            # A lock may survive a restart while its order is no longer
+            # available in memory. Release only this stale lock.
+            unlock_payment(query.from_user.id)
+        else:
+            order_id = active_order["order_id"]
+            await refresh_pending_qris_order(
+                order_id,
+                query.from_user.id,
+                context.bot
             )
 
-            await send_qris_message(
-                query.message.chat_id,
-                context,
-                package,
-                package_id
+            await query.answer(
+                "⏳ QRIS sedang disiapkan ulang.",
+                show_alert=True
             )
-        finally:
-            qris_loading_users.discard(query.from_user.id)
 
-        return
+            qris_loading_users.add(query.from_user.id)
+            try:
+                await show_qris_loading_message(
+                    query.message.chat_id,
+                    context
+                )
+
+                qris_created = await send_qris_message(
+                    query.message.chat_id,
+                    context,
+                    package,
+                    package_id
+                )
+                if not qris_created:
+                    cleanup_failed_qris_order(
+                        order_id,
+                        query.from_user.id
+                    )
+            except Exception:
+                cleanup_failed_qris_order(
+                    order_id,
+                    query.from_user.id
+                )
+                raise
+            finally:
+                qris_loading_users.discard(query.from_user.id)
+
+            return
 
     await query.answer()
 
