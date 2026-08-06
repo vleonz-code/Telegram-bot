@@ -887,7 +887,8 @@ async def update_vip_activity(
     name_str = html.escape(activity["full_name"])
     user_str = html.escape(activity["username"])
     lines.append("👤 <b>BUYER DETAILS</b>")
-    lines.append(f"{name_str} · {user_str} · <code>{user_id}</code>")
+    lines.append(f"{name_str} · {user_str}")
+    lines.append(f"🆔 <code>{user_id}</code>")
     lines.append("")
 
     step_lines = []
@@ -898,7 +899,7 @@ async def update_vip_activity(
         package_text = ", ".join(packages) if packages else "Paket VIP"
         step_lines.append(f"Melihat Paket: {html.escape(package_text)}")
     if "qris" in activity["steps"]:
-        step_lines.append("Membuat Halaman Qris")
+        step_lines.append("Melihat Qris")
     if "cancelled" in activity["steps"]:
         step_lines.append("Status: ❌ Dibatalkan")
 
