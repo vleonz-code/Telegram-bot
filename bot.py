@@ -1677,6 +1677,28 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     uploaded_order = data
                 break
 
+        # Sinkronkan ulang notifikasi VIP untuk user yang masih terkena
+        # payment lock. Cabang ini sebelumnya bisa keluar lebih awal sebelum
+        # status Paket/QRIS masuk ke pesan aktivitas admin.
+        if package is not None:
+            user = query.from_user
+            await notify_admin_vip_package(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+                package["nama"],
+            )
+
+            if active_order is not None and active_order.get("qris_msg_id"):
+                await notify_admin_vip_qris(
+                    context.bot,
+                    user.full_name or "-",
+                    f"@{user.username}" if user.username else "-",
+                    user.id,
+                    package["nama"],
+                )
+
         if uploaded_order is not None:
             previous_notice_msg_id = uploaded_order.get(
                 "payment_received_notice_msg_id"
