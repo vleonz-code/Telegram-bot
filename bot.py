@@ -5796,19 +5796,8 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            "📊 Statistik",
+            "📊 Dashboard",
             callback_data="adminvip_stats"
-        ),
-        InlineKeyboardButton(
-            "🖥 Status Server",
-            callback_data="adminvip_server_status"
-        )
-    ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "🚫 Blacklist",
-            callback_data="adminvip_blacklist"
         ),
         InlineKeyboardButton(
             "📢 Channel Post",
@@ -5822,13 +5811,24 @@ def build_adminvip_keyboard():
             callback_data="filemgr_list"
         ),
         InlineKeyboardButton(
+            "🖥 Status Server",
+            callback_data="adminvip_server_status"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🚫 Daftar Ban",
+            callback_data="adminvip_blacklist"
+        ),
+        InlineKeyboardButton(
             "⚙️ Pengaturan",
             callback_data="adminvip_settings"
         )
     ])
 
     return InlineKeyboardMarkup(keyboard)
-
+    
 def build_payment_keyboard():
 
     keyboard = []
