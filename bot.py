@@ -882,7 +882,7 @@ async def update_vip_activity(
     activities[key] = activity
 
     now = datetime.now(WIB).strftime("%d/%m/%Y %I:%M %p")
-    lines = ["🟢 <b>Aktivitas VIP User</b>", ""]
+    lines = ["⚪️ <b>Aktivitas VIP User</b>", ""]
 
     name_str = html.escape(activity["full_name"])
     user_str = html.escape(activity["username"])
