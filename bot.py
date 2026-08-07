@@ -897,7 +897,7 @@ async def update_vip_activity(
     if "package" in activity["steps"]:
         packages = activity.get("packages", [])
         package_text = ", ".join(packages) if packages else "Paket VIP"
-        step_lines.append(f"👁️ Paket: {html.escape(package_text)}")
+        step_lines.append(f"👁️ {html.escape(package_text)}")
     if "qris" in activity["steps"]:
         step_lines.append("👁️ 📋 Qris")
     if "cancelled" in activity["steps"]:
