@@ -886,9 +886,10 @@ async def update_vip_activity(
 
     name_str = html.escape(activity["full_name"])
     user_str = html.escape(activity["username"])
-    lines.append("👤 <b>BUYER DETAILS</b>")
-    lines.append(f"{name_str} · {user_str}")
-    lines.append(f"🆔 <code>{user_id}</code>")
+    lines.append("🧾 <b>BUYER DETAILS</b>")
+    lines.append(f"👤 Nama : {name_str}")
+    lines.append(f"🔗 Username : {user_str}")
+    lines.append(f"🆔 User ID : <code>{user_id}</code>")
     lines.append("")
 
     step_lines = []
