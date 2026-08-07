@@ -1697,6 +1697,12 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # status Paket/QRIS masuk ke pesan aktivitas admin.
         if package is not None:
             user = query.from_user
+            await notify_admin_vip_menu(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+            )
             await notify_admin_vip_package(
                 context.bot,
                 user.full_name or "-",
