@@ -893,13 +893,13 @@ async def update_vip_activity(
 
     step_lines = []
     if "menu" in activity["steps"]:
-        step_lines.append("Masuk VIP Menu")
+        step_lines.append("👁️ VIP Menu")
     if "package" in activity["steps"]:
         packages = activity.get("packages", [])
         package_text = ", ".join(packages) if packages else "Paket VIP"
-        step_lines.append(f"Melihat Paket: {html.escape(package_text)}")
+        step_lines.append(f"👁️ Paket: {html.escape(package_text)}")
     if "qris" in activity["steps"]:
-        step_lines.append("Melihat 📋 Qris")
+        step_lines.append("👁️ 📋 Qris")
     if "cancelled" in activity["steps"]:
         step_lines.append("Status: ❌ Dibatalkan")
 
