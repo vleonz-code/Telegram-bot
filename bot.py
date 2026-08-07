@@ -922,6 +922,9 @@ async def update_vip_activity(
             )
         else:
             raise ValueError("VIP activity message has no message_id")
+    except telegram.error.RetryAfter:
+        save_vip_activity(activities)
+        return
     except Exception:
         try:
             message = await bot.send_message(
@@ -1703,16 +1706,16 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"@{user.username}" if user.username else "-",
                 user.id,
             )
-            await notify_admin_vip_package(
-                context.bot,
-                user.full_name or "-",
-                f"@{user.username}" if user.username else "-",
-                user.id,
-                package["nama"],
-            )
-
             if active_order is not None and active_order.get("qris_msg_id"):
                 await notify_admin_vip_qris(
+                    context.bot,
+                    user.full_name or "-",
+                    f"@{user.username}" if user.username else "-",
+                    user.id,
+                    package["nama"],
+                )
+            else:
+                await notify_admin_vip_package(
                     context.bot,
                     user.full_name or "-",
                     f"@{user.username}" if user.username else "-",
