@@ -1124,7 +1124,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ],
                 [
                     InlineKeyboardButton(
-                        "❌ Abaikan",
+                        "🔚 Tutup",
                         callback_data=f"ignore|{user_id}"
                     ),
                 ]
