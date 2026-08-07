@@ -1762,13 +1762,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        if (
-            query.from_user.id in qris_loading_users
-            or (
-                active_order is not None
-                and active_order.get("qris_msg_id")
-            )
-        ):
+        if query.from_user.id in qris_loading_users:
+
             return
 
         qris_loading_users.add(query.from_user.id)
