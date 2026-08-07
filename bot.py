@@ -1601,7 +1601,7 @@ async def send_qris_message(chat_id, context, package, package_id):
             "transfer di sini.</blockquote>\n\n"
             "<b>Pembayaran via :</b>\n"
             "🟣 OVO · 🔵 Dana · 🟠 ShopeePay\n"
-            "🟢 GoPay · 📱 TNG · 🏦 Maybank · 💵 USDT\n\n"
+            "🟢 GoPay · 📱 TNG · 🏦 Maybank\n\n"
         ),
         parse_mode="HTML",
 
