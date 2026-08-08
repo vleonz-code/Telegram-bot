@@ -2148,21 +2148,11 @@ def build_adminvip_packages_keyboard(packages):
 
     keyboard.append([
         InlineKeyboardButton(
-            "── ⚙️ Pengaturan ──",
-            callback_data="adminvip_paket_noop"
-        )
-    ])
-
-    keyboard.append([
-        InlineKeyboardButton(
             "➕ Tambah Paket",
             callback_data="adminvip_add"
-        )
-    ])
-
-    keyboard.append([
+        ),
         InlineKeyboardButton(
-            "➕ Edit Desc Menu",
+            "✏️ Edit Desc Menu",
             callback_data="adminvip_menu_desc"
         )
     ])
@@ -2175,10 +2165,6 @@ def build_adminvip_packages_keyboard(packages):
     ])
 
     return InlineKeyboardMarkup(keyboard)
-
-
-async def adminvip_paket_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
 
 
 async def adminvip_menu_description_callback(
@@ -7217,11 +7203,6 @@ def main():
     CallbackQueryHandler(
         adminvip_packages_callback,
         pattern=r"^adminvip_packages$"
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-        adminvip_paket_noop_callback,
-        pattern=r"^adminvip_paket_noop$"
     ))
     app.add_handler(
     CallbackQueryHandler(
