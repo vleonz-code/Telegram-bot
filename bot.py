@@ -532,7 +532,7 @@ async def deliver_album(bot, chat_id: int, file_ids):
             bot.send_message(
                 chat_id,
                 (
-                    "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
+                    "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
                     f"✅ Semua {len(media)} media terkirim!"
                 ),
                 parse_mode="HTML"
@@ -3436,8 +3436,8 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "Koleksi selengkapnya ada di grup VIP.\n\n"
-                    "Chat Admin: @BocilVIP89 👈"
+                    "Video selengkapnya ada di grup VIP.\n\n"
+                    "Chat Admin: @BocilVIP511 👈"
                 ),
                 reply_markup=keyboard
             )
