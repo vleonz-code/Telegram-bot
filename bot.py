@@ -2148,8 +2148,22 @@ def build_adminvip_packages_keyboard(packages):
 
     keyboard.append([
         InlineKeyboardButton(
-            "⚙️ Pengaturan Paket",
-            callback_data="adminvip_paket_settings"
+            "── ⚙️ Pengaturan ──",
+            callback_data="adminvip_paket_noop"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "➕ Tambah Paket",
+            callback_data="adminvip_add"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "➕ Edit Desc Menu",
+            callback_data="adminvip_menu_desc"
         )
     ])
 
@@ -2163,38 +2177,8 @@ def build_adminvip_packages_keyboard(packages):
     return InlineKeyboardMarkup(keyboard)
 
 
-async def adminvip_paket_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "➕ Tambah Paket",
-                callback_data="adminvip_add"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "✏️ Edit Desc Menu",
-                callback_data="adminvip_menu_desc"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 Kembali",
-                callback_data="adminvip_packages"
-            )
-        ]
-    ])
-    await query.edit_message_caption(
-        caption=(
-            "⚙️ <b>Pengaturan Paket</b>\n\n"
-            "Pilih aksi yang ingin dilakukan."
-        ),
-        reply_markup=keyboard,
-        parse_mode="HTML",
-    )
+async def adminvip_paket_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
 
 
 async def adminvip_menu_description_callback(
@@ -6648,7 +6632,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 text=(
                     "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
                     "Pembayaran kamu telah diverifikasi.\n\n"
-                    f"Pilihan VIP: 📁 <b>{html.escape(package['nama'])}</b>\n\n"
+                    f"Pilihan VIP: <b>{html.escape(package['nama'])}</b>\n\n"
                     "✨ Akses VIP kamu sudah siap.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
                     "⚠️ Mohon jangan bagikan akses ini."
@@ -7236,8 +7220,8 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
-        adminvip_paket_settings_callback,
-        pattern=r"^adminvip_paket_settings$"
+        adminvip_paket_noop_callback,
+        pattern=r"^adminvip_paket_noop$"
     ))
     app.add_handler(
     CallbackQueryHandler(
