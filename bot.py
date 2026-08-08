@@ -6620,9 +6620,9 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 chat_id=user_id,
                 text=(
                     "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
-                    "Halo! Pembayaran kamu telah diverifikasi.\n\n"
-                    f"📦 Pilihan Paket: <b>{html.escape(package['nama'])}</b>\n\n"
-                    "👑 Akses VIP kamu sudah siap.\n\n"
+                    "Selamat! Pembayaran kamu telah diverifikasi.\n\n"
+                    f"Pilihan VIP: <b>{html.escape(package['nama'])}</b>\n\n"
+                    "Akses VIP kamu sudah siap.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
                     "⚠️ Mohon jangan bagikan akses ini."
                 ),
