@@ -11,7 +11,7 @@ psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan
 import sys
 import telegram
 from datetime import datetime, timezone, timedelta
-from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
+from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat, CopyTextButton
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 
@@ -2178,6 +2178,7 @@ async def adminvip_menu_description_callback(
     await query.answer()
 
     packages_data = read_vip_packages()
+    menu_description = packages_data.get('menu_description', DEFAULT_VIP_MENU_DESCRIPTION)
     admin_menu_description_waiting[query.from_user.id] = {
         "chat_id": query.message.chat_id,
         "message_id": query.message.message_id,
@@ -2189,9 +2190,15 @@ async def adminvip_menu_description_callback(
             "Deskripsi ini akan tampil di atas daftar tombol paket.\n\n"
             "Silakan kirim teks baru. Baris baru dan emoji akan dipertahankan.\n\n"
             "<b>Deskripsi saat ini:</b>\n"
-            f"<blockquote>{html.escape(packages_data.get('menu_description', DEFAULT_VIP_MENU_DESCRIPTION))}</blockquote>"
+            f"<blockquote>{html.escape(menu_description)}</blockquote>"
         ),
         reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "📋 Salin",
+                    copy_text=CopyTextButton(text=menu_description[:256])
+                )
+            ],
             [
                 InlineKeyboardButton(
                     "❌ Batal",
