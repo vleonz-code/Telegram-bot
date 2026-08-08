@@ -1545,22 +1545,24 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
     [
         InlineKeyboardButton(
+            "💸 Bayar Sekarang",
+            callback_data=f"bayar_{package_id}"
+        )
+    ],
+    [
+        InlineKeyboardButton(
             "🔙 Kembali",
             callback_data="vipmenu"
-        ),
-        InlineKeyboardButton(
-            "💸 Bayar",
-            callback_data=f"bayar_{package_id}"
         )
     ]
 ])
 
         await query.edit_message_text(
-            f"<b>{html.escape(package['nama'])}</b>\n\n"
-            f"<blockquote>{html.escape(package['deskripsi'])}</blockquote>\n\n"
-            f"──────────\n"
+            f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
+            f"━━━━━━━━━━━━━━\n\n"
+            f"<blockquote>❝ {html.escape(package['deskripsi'])} ❞</blockquote>\n\n"
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n"
-            f"──────────",
+            f"━━━━━━━━━━━━━━",
             reply_markup=keyboard,
             parse_mode="HTML"
         )
@@ -3468,7 +3470,6 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     settings = read_settings()
 
     admin_panel_text = (
-        "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
         f"👥 Users       : {len(read_user_registry())}\n"
@@ -5789,26 +5790,15 @@ def build_adminvip_keyboard():
             callback_data="adminvip_packages"
         ),
         InlineKeyboardButton(
-            "📊 Statistik",
-            callback_data="adminvip_stats"
-        )
-    ])
-
-    keyboard.append([
-        InlineKeyboardButton(
             "💳 Pembayaran",
             callback_data="adminvip_payment"
-        ),
-        InlineKeyboardButton(
-            "🚫 Blacklist",
-            callback_data="adminvip_blacklist"
         )
     ])
 
     keyboard.append([
         InlineKeyboardButton(
-            "🗂 File Manager",
-            callback_data="filemgr_list"
+            "📊 Dashboard",
+            callback_data="adminvip_stats"
         ),
         InlineKeyboardButton(
             "📢 Channel Post",
@@ -5818,8 +5808,8 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            "⚙️ Pengaturan",
-            callback_data="adminvip_settings"
+            "🗂 File Manager",
+            callback_data="filemgr_list"
         ),
         InlineKeyboardButton(
             "🖥 Status Server",
@@ -5827,9 +5817,19 @@ def build_adminvip_keyboard():
         )
     ])
 
+    keyboard.append([
+        InlineKeyboardButton(
+            "🚫 Daftar Ban",
+            callback_data="adminvip_blacklist"
+        ),
+        InlineKeyboardButton(
+            "⚙️ Pengaturan",
+            callback_data="adminvip_settings"
+        )
+    ])
+
     return InlineKeyboardMarkup(keyboard)
-
-
+    
 def build_payment_keyboard():
 
     keyboard = []
@@ -5873,7 +5873,6 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     admin_panel_text = (
-        "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
         f"👥 Users       : {len(read_user_registry())}\n"
