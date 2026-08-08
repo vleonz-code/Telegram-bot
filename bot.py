@@ -3642,11 +3642,14 @@ async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_T
         InlineKeyboardButton("5 Menit", callback_data="preview_set_300"),
         InlineKeyboardButton("10 Menit", callback_data="preview_set_600"),
         InlineKeyboardButton("15 Menit", callback_data="preview_set_900"),
+        InlineKeyboardButton("30 Menit", callback_data="preview_set_1800"),
     ]
 
     rows = [
-        timer_buttons[0:4],
+        timer_buttons[0:2],
+        timer_buttons[2:4],
         timer_buttons[4:6],
+        timer_buttons[6:7],
     ]
     rows.append([
         InlineKeyboardButton(
