@@ -5872,6 +5872,7 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     admin_panel_text = (
+        "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
         f"👥 Users       : {len(read_user_registry())}\n"
