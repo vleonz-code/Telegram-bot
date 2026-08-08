@@ -6620,7 +6620,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 chat_id=user_id,
                 text=(
                     "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
-                    "Selamat! Pembayaran kamu telah diverifikasi.\n\n"
+                    "Pembayaran kamu telah diverifikasi.\n\n"
                     f"Pilihan VIP: <b>{html.escape(package['nama'])}</b>\n\n"
                     "Akses VIP kamu sudah siap.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
@@ -6630,7 +6630,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 reply_markup=InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "👑 Gabung VIP",
+                            "🔗 Buka Akses VIP",
                             url=vip_link
                         )
                     ],
