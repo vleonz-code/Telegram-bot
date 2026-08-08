@@ -3468,7 +3468,6 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     settings = read_settings()
 
     admin_panel_text = (
-        "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
         f"👥 Users       : {len(read_user_registry())}\n"
@@ -3636,56 +3635,27 @@ async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
 
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "30 Detik",
-                callback_data="preview_set_30"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "1 Menit",
-                callback_data="preview_set_60"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "3 Menit",
-                callback_data="preview_set_180"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "5 Menit",
-                callback_data="preview_set_300"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "10 Menit",
-                callback_data="preview_set_600"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "15 Menit",
-                callback_data="preview_set_900"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "30 Menit",
-                callback_data="preview_set_1800"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 Kembali",
-                callback_data="adminvip_settings"
-            )
-        ]
+    timer_buttons = [
+        InlineKeyboardButton("30 Detik", callback_data="preview_set_30"),
+        InlineKeyboardButton("1 Menit", callback_data="preview_set_60"),
+        InlineKeyboardButton("3 Menit", callback_data="preview_set_180"),
+        InlineKeyboardButton("5 Menit", callback_data="preview_set_300"),
+        InlineKeyboardButton("10 Menit", callback_data="preview_set_600"),
+        InlineKeyboardButton("15 Menit", callback_data="preview_set_900"),
+    ]
+
+    rows = [
+        timer_buttons[0:4],
+        timer_buttons[4:6],
+    ]
+    rows.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="adminvip_settings"
+        )
     ])
+
+    keyboard = InlineKeyboardMarkup(rows)
 
     # Masih di banner Pengaturan yang sama, hanya caption & keyboard yang
     # berubah -> edit_message_caption (edit_message_text akan gagal karena
@@ -5872,7 +5842,6 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     admin_panel_text = (
-        "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
         f"👥 Users       : {len(read_user_registry())}\n"
