@@ -847,14 +847,21 @@ async def update_vip_activity(
     activity = activities.get(key, {})
 
     if stage == "menu":
+        old_message_id = activities.get(key, {}).get("message_id")
         activity = {
             "full_name": full_name or "-",
             "username": username or "-",
             "steps": ["menu"],
             "packages": [],
         }
-        if activities.get(key, {}).get("message_id"):
-            activity["message_id"] = activities[key]["message_id"]
+        if old_message_id:
+            try:
+                await bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=old_message_id
+                )
+            except Exception:
+                pass
     else:
         activity.setdefault("full_name", full_name or "-")
         activity.setdefault("username", username or "-")
