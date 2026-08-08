@@ -2189,7 +2189,7 @@ async def adminvip_menu_description_callback(
             "Deskripsi ini akan tampil di atas daftar tombol paket.\n\n"
             "Silakan kirim teks baru. Baris baru dan emoji akan dipertahankan.\n\n"
             "<b>Deskripsi saat ini:</b>\n"
-            f"{html.escape(packages_data.get('menu_description', DEFAULT_VIP_MENU_DESCRIPTION))}"
+            f"<blockquote>{html.escape(packages_data.get('menu_description', DEFAULT_VIP_MENU_DESCRIPTION))}</blockquote>"
         ),
         reply_markup=InlineKeyboardMarkup([
             [
@@ -4376,8 +4376,8 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.edit_message_caption(
         caption=(
             f"📄 <b>Edit Deskripsi</b>\n\n"
-            f"Deskripsi saat ini :\n"
-            f"<blockquote>{package['deskripsi']}</blockquote>\n\n"
+            f"Deskripsi saat ini:\n"
+            f"{package['deskripsi']}\n\n"
             "Silakan update deskripsi baru."
         ),
         reply_markup=keyboard,
