@@ -1545,7 +1545,7 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
     [
         InlineKeyboardButton(
-            "💸 Bayar Sekarang",
+            "💸 Bayar",
             callback_data=f"bayar_{package_id}"
         )
     ],
@@ -6622,7 +6622,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                     "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
                     "Pembayaran kamu telah diverifikasi.\n\n"
                     f"Pilihan VIP: <b>{html.escape(package['nama'])}</b>\n\n"
-                    "Akses VIP kamu sudah siap.\n\n"
+                    "✨ Akses VIP kamu sudah siap.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
                     "⚠️ Mohon jangan bagikan akses ini."
                 ),
@@ -6630,7 +6630,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 reply_markup=InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "🔗 Buka Akses VIP",
+                            "🔗 Buka VIP",
                             url=vip_link
                         )
                     ],
