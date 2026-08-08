@@ -11,7 +11,7 @@ psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan
 import sys
 import telegram
 from datetime import datetime, timezone, timedelta
-from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat, CopyTextButton
+from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 
@@ -2189,16 +2189,10 @@ async def adminvip_menu_description_callback(
             "📝 <b>Edit Deskripsi Menu Paket</b>\n\n"
             "Deskripsi ini akan tampil di atas daftar tombol paket.\n\n"
             "Silakan kirim teks baru. Baris baru dan emoji akan dipertahankan.\n\n"
-            "<b>Deskripsi saat ini:</b>\n"
-            f"<blockquote>{html.escape(menu_description)}</blockquote>"
+            "<b>Deskripsi saat ini:</b> (ketuk teks di bawah untuk menyalin)\n"
+            f"<blockquote><code>{html.escape(menu_description)}</code></blockquote>"
         ),
         reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "📋 Salin",
-                    copy_text=CopyTextButton(text=menu_description[:256])
-                )
-            ],
             [
                 InlineKeyboardButton(
                     "❌ Batal",
