@@ -4376,8 +4376,8 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
     await query.edit_message_caption(
         caption=(
             f"📄 <b>Edit Deskripsi</b>\n\n"
-            f"Deskripsi saat ini:\n"
-            f"{package['deskripsi']}\n\n"
+            f"Deskripsi saat ini :\n"
+            f"<blockquote>{package['deskripsi']}</blockquote>\n\n"
             "Silakan update deskripsi baru."
         ),
         reply_markup=keyboard,
