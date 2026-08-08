@@ -3468,6 +3468,7 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     settings = read_settings()
 
     admin_panel_text = (
+        "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
         f"👥 Users       : {len(read_user_registry())}\n"
@@ -5788,19 +5789,19 @@ def build_adminvip_keyboard():
             callback_data="adminvip_packages"
         ),
         InlineKeyboardButton(
-            "💳 Pembayaran",
-            callback_data="adminvip_payment"
+            "📊 Statistik",
+            callback_data="adminvip_stats"
         )
     ])
 
     keyboard.append([
         InlineKeyboardButton(
-            "📊 Dashboard",
-            callback_data="adminvip_stats"
+            "💳 Pembayaran",
+            callback_data="adminvip_payment"
         ),
         InlineKeyboardButton(
-            "📢 Channel Post",
-            callback_data="adminvip_channel"
+            "🚫 Blacklist",
+            callback_data="adminvip_blacklist"
         )
     ])
 
@@ -5810,24 +5811,25 @@ def build_adminvip_keyboard():
             callback_data="filemgr_list"
         ),
         InlineKeyboardButton(
-            "🖥 Status Server",
-            callback_data="adminvip_server_status"
+            "📢 Channel Post",
+            callback_data="adminvip_channel"
         )
     ])
 
     keyboard.append([
         InlineKeyboardButton(
-            "🚫 Daftar Ban",
-            callback_data="adminvip_blacklist"
-        ),
-        InlineKeyboardButton(
             "⚙️ Pengaturan",
             callback_data="adminvip_settings"
+        ),
+        InlineKeyboardButton(
+            "🖥 Status Server",
+            callback_data="adminvip_server_status"
         )
     ])
 
     return InlineKeyboardMarkup(keyboard)
-    
+
+
 def build_payment_keyboard():
 
     keyboard = []
@@ -5871,6 +5873,7 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     admin_panel_text = (
+        "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
         f"👥 Users       : {len(read_user_registry())}\n"
