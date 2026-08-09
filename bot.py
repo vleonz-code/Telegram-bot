@@ -505,7 +505,7 @@ def build_media_group(file_ids):
     return media
 
 
-async def deliver_album(bot, chat_id: int, file_ids):
+async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
 
     """Send the progress message, album, then confirmation to chat_id."""
 
@@ -572,6 +572,7 @@ async def deliver_album(bot, chat_id: int, file_ids):
 
         if (
             chat_id != ADMIN_ID
+            and auto_delete
             and settings["preview_auto_delete"]
         ):
 
@@ -1031,8 +1032,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if payload == DEEP_LINK_A:
         selected_files = FILE_IDS_A
+        auto_delete = True
     elif payload == DEEP_LINK_B:
         selected_files = [("video", PREVIEW_VIDEO_B_FILE_ID)]
+        auto_delete = False
     else:
         return
 
@@ -1055,7 +1058,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ok = await deliver_album(
              context.bot,
              update.effective_chat.id,
-             selected_files
+             selected_files,
+             auto_delete
         )
         if ok:
             save_user_to_registry(user_id, full_name, username)
@@ -1214,7 +1218,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ok = await deliver_album(
              context.bot,
              update.effective_chat.id,
-             selected_files
+             selected_files,
+             auto_delete
         )
 
         if ok:
