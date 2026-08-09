@@ -1112,102 +1112,103 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         deeplink_spam_tracker[user_id] = recent_taps
 
-        old_message_id = admin_request_messages.get(user_id)
+        if settings["repeat_deeplink"]:
+            old_message_id = admin_request_messages.get(user_id)
 
-        if old_message_id:
-            try:
-                await context.bot.delete_message(
-                    chat_id=ADMIN_ID,
-                    message_id=old_message_id
-                )
-            except Exception:
-                pass
-
-        admin_msg = await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=(
-                "⚠️ Percobaan Deeplink Ulang\n\n"
-                f"👤 {full_name}\n"
-                f"🔁 <b>Percobaan: {admin_request_counts[user_id]}x</b>"
-            ),
-            parse_mode="HTML",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "♻️ Izinkan Lagi",
-                        callback_data=f"reset|{user_id}"
-                    ),
-                    InlineKeyboardButton(
-                        "🚫 Ban",
-                        callback_data=f"ban|{user_id}"
-                    ),
-                ],
-                [
-                    InlineKeyboardButton(
-                        "🔚 Tutup",
-                        callback_data=f"ignore|{user_id}"
-                    ),
-                ]
-            ])
-        )
-
-        admin_request_messages[user_id] = (
-            admin_msg.message_id
-        )
-        old_task = preview_delete_tasks.pop(
-            update.effective_chat.id,
-            None
-        )
-
-        if old_task:
-            old_task.cancel()
-
-        old_messages = last_delivered_messages.pop(
-            update.effective_chat.id,
-            None
-        )
-
-        if old_messages:
-            for message_id in old_messages:
+            if old_message_id:
                 try:
                     await context.bot.delete_message(
-                        chat_id=update.effective_chat.id,
-                        message_id=message_id
+                        chat_id=ADMIN_ID,
+                        message_id=old_message_id
                     )
                 except Exception:
                     pass
 
-        await clear_last_repeat(
-            update.effective_chat.id,
-            context.bot
-        )
+            admin_msg = await context.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=(
+                    "⚠️ Percobaan Deeplink Ulang\n\n"
+                    f"👤 {full_name}\n"
+                    f"🔁 <b>Percobaan: {admin_request_counts[user_id]}x</b>"
+                ),
+                parse_mode="HTML",
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "♻️ Izinkan Lagi",
+                            callback_data=f"reset|{user_id}"
+                        ),
+                        InlineKeyboardButton(
+                            "🚫 Ban",
+                            callback_data=f"ban|{user_id}"
+                        ),
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🔚 Tutup",
+                            callback_data=f"ignore|{user_id}"
+                        ),
+                    ]
+                ])
+            )
 
-        if settings["join_vip_enabled"]:
-            keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "👑 Gabung VIP",
-                        callback_data="vipmenu"
-                    )
-                ]
-            ])
-        else:
-            keyboard = None
+            admin_request_messages[user_id] = (
+                admin_msg.message_id
+            )
+            old_task = preview_delete_tasks.pop(
+                update.effective_chat.id,
+                None
+            )
 
-        msg = await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=(
-                "📍 Permintaan ulang belum tersedia.\n\n"
-                "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
-            ),
-            reply_markup=keyboard
-        )
+            if old_task:
+                old_task.cancel()
 
-        last_repeat_message[
-            update.effective_chat.id
-        ] = msg.message_id
+            old_messages = last_delivered_messages.pop(
+                update.effective_chat.id,
+                None
+            )
 
-        return
+            if old_messages:
+                for message_id in old_messages:
+                    try:
+                        await context.bot.delete_message(
+                            chat_id=update.effective_chat.id,
+                            message_id=message_id
+                        )
+                    except Exception:
+                        pass
+
+            await clear_last_repeat(
+                update.effective_chat.id,
+                context.bot
+            )
+
+            if settings["join_vip_enabled"]:
+                keyboard = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "👑 Gabung VIP",
+                            callback_data="vipmenu"
+                        )
+                    ]
+                ])
+            else:
+                keyboard = None
+
+            msg = await context.bot.send_message(
+                chat_id=update.effective_chat.id,
+                text=(
+                    "📍 Permintaan ulang belum tersedia.\n\n"
+                    "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
+                ),
+                reply_markup=keyboard
+            )
+
+            last_repeat_message[
+                update.effective_chat.id
+            ] = msg.message_id
+
+            return
 
     if not settings["preview_approval_enabled"]:
         ok = await deliver_album(
@@ -7483,6 +7484,11 @@ def main():
     CallbackQueryHandler(
         adminvip_toggle_livechat_callback,
         pattern=r"^adminvip_toggle_livechat$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_toggle_repeat_callback,
+        pattern=r"^adminvip_toggle_repeat$"
     ))
     app.add_handler(
     CallbackQueryHandler(
