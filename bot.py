@@ -3165,15 +3165,15 @@ def build_settings_keyboard(settings):
         ],
         [
             InlineKeyboardButton(
+                f"⏱️ {preview_time}",
+                callback_data="preview_timer"
+            ),
+            InlineKeyboardButton(
                 f"{'🟢' if settings['repeat_deeplink'] else '🔴'} Repeat {'ON' if settings['repeat_deeplink'] else 'OFF'}",
                 callback_data="adminvip_toggle_repeat"
             )
         ],
         [
-            InlineKeyboardButton(
-                f"⏱️ {preview_time}",
-                callback_data="preview_timer"
-            ),
             InlineKeyboardButton(
                 "🖼 Kelola Preview",
                 callback_data="adminvip_prv_list"
