@@ -639,18 +639,6 @@ def save_approved(approved: set):
 
     except Exception as e:
         logger.error(f"Approved write error: {e}")
-
-
-def approved_key(user_id: int, payload: str) -> str:
-    return f"{user_id}:{payload}"
-
-
-def discard_all_approved_for_user(approved: set, user_id: int) -> set:
-    prefix = f"{user_id}:"
-    return {
-        k for k in approved
-        if not (isinstance(k, str) and k.startswith(prefix))
-    }
 # ---------------------------------------------------------------------------
 # Blacklist
 # ---------------------------------------------------------------------------
@@ -1078,7 +1066,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     # Already approved
-    if approved_key(user_id, payload) in read_approved():
+    if user_id in read_approved():
 
         if user_id not in admin_request_counts:
             admin_request_counts[user_id] = 1
@@ -1104,10 +1092,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             bl[user_id] = {"full_name": full_name, "username": username}
             write_blacklist(bl)
 
-            approved = discard_all_approved_for_user(
-                read_approved(), user_id
-            )
-            save_approved(approved)
+            approved = read_approved()
+            if user_id in approved:
+                approved.discard(user_id)
+                save_approved(approved)
 
             await context.bot.send_message(
                 chat_id=ADMIN_ID,
@@ -1234,10 +1222,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await notify_admin(context.bot, full_name, username, user_id)
 
             approved = read_approved()
-            key = approved_key(user_id, payload)
 
-            if key not in approved:
-               approved.add(key)
+            if user_id not in approved:
+               approved.add(user_id)
                save_approved(approved)
 
         return
@@ -1335,6 +1322,11 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             pass
 
+        # Add to approved list
+        approved = read_approved()
+        approved.add(user_id)
+        save_approved(approved)
+
         if pending:
             chat_id = pending["chat_id"]
             # Delete waiting message
@@ -1343,17 +1335,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 pass
 
-            request_payload = pending.get("payload", DEEP_LINK_A)
-
-            # Add to approved list (scoped to this specific link)
-            approved = read_approved()
-            approved.add(approved_key(user_id, request_payload))
-            save_approved(approved)
-
-            if request_payload == DEEP_LINK_B:
-                selected_files = [("video", PREVIEW_VIDEO_B_FILE_ID)]
-            else:
-                selected_files = FILE_IDS_A
+            selected_files = FILE_IDS_A
 
             # Deliver album
             ok = await deliver_album(
@@ -1364,9 +1346,9 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif action == "reset":
 
-        approved = discard_all_approved_for_user(
-            read_approved(), user_id
-        )
+        approved = read_approved()
+
+        approved.discard(user_id)
 
         save_approved(approved)
 
@@ -1420,10 +1402,10 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         bl[user_id] = {"full_name": full_name, "username": username}
         write_blacklist(bl)
 
-        approved = discard_all_approved_for_user(
-            read_approved(), user_id
-        )
-        save_approved(approved)
+        approved = read_approved()
+        if user_id in approved:
+            approved.discard(user_id)
+            save_approved(approved)
 
         admin_request_messages.pop(
             user_id,
@@ -4942,10 +4924,10 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     write_blacklist(bl)
 
     # Also remove from approved list if present
-    approved = discard_all_approved_for_user(
-        read_approved(), target_id
-    )
-    save_approved(approved)
+    approved = read_approved()
+    if target_id in approved:
+        approved.discard(target_id)
+        save_approved(approved)
 
     await update.message.reply_text("✅ User banned.")
 
