@@ -3638,7 +3638,21 @@ async def adminvip_toggle_livechat_callback(update: Update, context: ContextType
         caption="⚙️ Pengaturan",
         reply_markup=build_settings_keyboard(settings)
     )
+    
+async def adminvip_toggle_repeat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
+    settings = read_settings()
+
+    settings["repeat_deeplink"] = not settings["repeat_deeplink"]
+
+    save_settings(settings)
+
+    await query.edit_message_caption(
+        caption="⚙️ Pengaturan",
+        reply_markup=build_settings_keyboard(settings)
+    )
 
 async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
