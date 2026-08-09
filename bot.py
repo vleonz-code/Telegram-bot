@@ -3174,6 +3174,12 @@ def build_settings_keyboard(settings):
         ],
         [
             InlineKeyboardButton(
+                f"{'🟢' if settings['repeat_deeplink'] else '🔴'} Repeat {'ON' if settings['repeat_deeplink'] else 'OFF'}",
+                callback_data="adminvip_toggle_repeat"
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🔙 Kembali",
                 callback_data="adminvip_back"
             )
