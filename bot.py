@@ -40,6 +40,8 @@ if not payment_trace_logger.handlers:
     payment_trace_logger.addHandler(_payment_trace_handler)
 
 DEEP_LINK_A = "UC3A6P"
+DEEP_LINK_B = "PREV2"
+PREVIEW_VIDEO_B_FILE_ID = "BAACAgUAAxkBAAJDlGp4Hmwz0OM4FdHxZdCjBifMqn_-AAJ8HgACmpvAV-mzh74iZtACPQQ"
 
 ADMIN_ID = 7602115007
 CHANNEL_ID = -1004363191859
@@ -522,17 +524,25 @@ async def deliver_album(bot, chat_id: int, file_ids):
             f"📦 Mengirim Batch 1/1 ({len(media)} media)...\nMohon tunggu..."
     )
 
-        media_messages = await bot.send_media_group(
-            chat_id,
-            media=media
-        )
+        if len(media) == 1:
+            single = media[0]
+            if isinstance(single, InputMediaVideo):
+                sent = await bot.send_video(chat_id, video=single.media)
+            else:
+                sent = await bot.send_photo(chat_id, photo=single.media)
+            media_messages = [sent]
+        else:
+            media_messages = await bot.send_media_group(
+                chat_id,
+                media=media
+            )
 
         _, success_msg = await asyncio.gather(
             progress.delete(),
             bot.send_message(
                 chat_id,
                 (
-                    "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
+                    "<b>📢 Bot Resmi milik @BocilVIP89</b>\n"
                     f"✅ Semua {len(media)} media terkirim!"
                 ),
                 parse_mode="HTML"
@@ -1019,10 +1029,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     payload = context.args[0]
 
-    if payload != DEEP_LINK_A:
+    if payload == DEEP_LINK_A:
+        selected_files = FILE_IDS_A
+    elif payload == DEEP_LINK_B:
+        selected_files = [("video", PREVIEW_VIDEO_B_FILE_ID)]
+    else:
         return
-
-    selected_files = FILE_IDS_A
 
     user = update.effective_user
     user_id = user.id
@@ -1186,7 +1198,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             chat_id=update.effective_chat.id,
             text=(
                 "📍 Permintaan ulang belum tersedia.\n\n"
-                "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
+                "⏳ Silahkan coba lagi nanti ya. ୨୧\n\n"
             ),
             reply_markup=keyboard
         )
@@ -3436,8 +3448,8 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "Video selengkapnya ada di grup VIP.\n\n"
-                    "Chat Admin: @BocilVIP511 👈"
+                    "Koleksi selengkapnya ada di grup VIP.\n\n"
+                    "Chat Admin: @BocilVIP89 👈"
                 ),
                 reply_markup=keyboard
             )
