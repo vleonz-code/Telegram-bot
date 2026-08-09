@@ -1214,7 +1214,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             return
 
-    if not settings["preview_approval_enabled"]:
+    if (
+        not settings["preview_approval_enabled"]
+        or payload == DEEP_LINK_B
+    ):
         ok = await deliver_album(
              context.bot,
              update.effective_chat.id,
