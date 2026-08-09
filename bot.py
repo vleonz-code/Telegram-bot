@@ -1116,7 +1116,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         deeplink_spam_tracker[user_id] = recent_taps
 
-        if settings["repeat_deeplink"]:
+        if settings["repeat_deeplink"] and payload == DEEP_LINK_A:
             old_message_id = admin_request_messages.get(user_id)
 
             if old_message_id:
