@@ -1116,7 +1116,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         deeplink_spam_tracker[user_id] = recent_taps
 
-        if settings["repeat_deeplink"] and payload == DEEP_LINK_A:
+        if payload == DEEP_LINK_A:
             old_message_id = admin_request_messages.get(user_id)
 
             if old_message_id:
@@ -3174,12 +3174,6 @@ def build_settings_keyboard(settings):
                 callback_data="preview_timer"
             ),
             InlineKeyboardButton(
-                f"{'🟢' if settings['repeat_deeplink'] else '🔴'} Repeat {'ON' if settings['repeat_deeplink'] else 'OFF'}",
-                callback_data="adminvip_toggle_repeat"
-            )
-        ],
-        [
-            InlineKeyboardButton(
                 "🖼 Kelola Preview",
                 callback_data="adminvip_prv_list"
             )
@@ -3640,21 +3634,6 @@ async def adminvip_toggle_livechat_callback(update: Update, context: ContextType
     save_settings(settings)
 
     # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
-    )
-    
-async def adminvip_toggle_repeat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    settings = read_settings()
-
-    settings["repeat_deeplink"] = not settings["repeat_deeplink"]
-
-    save_settings(settings)
-
     await query.edit_message_caption(
         caption="⚙️ Pengaturan",
         reply_markup=build_settings_keyboard(settings)
@@ -7490,11 +7469,7 @@ def main():
         adminvip_toggle_livechat_callback,
         pattern=r"^adminvip_toggle_livechat$"
     ))
-    app.add_handler(
-    CallbackQueryHandler(
-        adminvip_toggle_repeat_callback,
-        pattern=r"^adminvip_toggle_repeat$"
-    ))
+
     app.add_handler(
     CallbackQueryHandler(
         preview_toggle_callback,
