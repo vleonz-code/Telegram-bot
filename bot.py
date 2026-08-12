@@ -61,6 +61,7 @@ ORDER_HISTORY_FILE = os.path.join(DATA_DIR, "order_history.json")
 PENDING_ORDERS_FILE = os.path.join(DATA_DIR, "pending_orders.json")
 PAYMENT_LOCK_FILE = os.path.join(DATA_DIR, "payment_lock.json")
 VIP_ACTIVITY_FILE = os.path.join(DATA_DIR, "vip_activity.json")
+PENDING_PREVIEW_DELETIONS_FILE = os.path.join(DATA_DIR, "pending_preview_deletions.json")
 FILE_MANAGER_BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 DEFAULT_VIP_MENU_DESCRIPTION = (
     "✨ Pilih paket VIP yang kamu suka.\n"
@@ -570,6 +571,14 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
 
         settings = read_settings()
 
+        if chat_id != ADMIN_ID and auto_delete:
+            pending = read_pending_preview_deletions()
+            pending.append({
+                "chat_id": chat_id,
+                "message_ids": preview_messages,
+            })
+            save_pending_preview_deletions(pending)
+
         if (
             chat_id != ADMIN_ID
             and auto_delete
@@ -640,6 +649,29 @@ def save_approved(approved: set):
 
     except Exception as e:
         logger.error(f"Approved write error: {e}")
+
+
+def read_pending_preview_deletions() -> list:
+    try:
+        if not os.path.exists(PENDING_PREVIEW_DELETIONS_FILE):
+            return []
+        with open(PENDING_PREVIEW_DELETIONS_FILE, "r") as f:
+            return json.load(f).get("pending", [])
+    except Exception:
+        return []
+
+
+def save_pending_preview_deletions(pending: list):
+    try:
+        with open(PENDING_PREVIEW_DELETIONS_FILE, "w", encoding="utf-8") as f:
+            json.dump(
+                {"pending": pending},
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
+    except Exception as e:
+        logger.error(f"Pending preview deletions write error: {e}")
 # ---------------------------------------------------------------------------
 # Blacklist
 # ---------------------------------------------------------------------------
@@ -3434,6 +3466,19 @@ async def delete_messages_after_delay(
         )
 
         try:
+            pending = read_pending_preview_deletions()
+            pending = [
+                entry for entry in pending
+                if not (
+                    entry.get("chat_id") == chat_id
+                    and entry.get("message_ids") == message_ids
+                )
+            ]
+            save_pending_preview_deletions(pending)
+        except Exception:
+            pass
+
+        try:
             await clear_last_repeat(
                 chat_id,
                 bot
@@ -3479,6 +3524,37 @@ async def delete_messages_after_delay(
                 chat_id,
                 None
             )
+
+
+async def sweep_pending_preview_deletions(bot):
+    """Jadwalkan ulang penghapusan untuk semua pengiriman preview yang
+    belum sempat kena Auto Delete (terkirim saat toggle sedang OFF).
+    Dipanggil saat admin menyalakan toggle Auto Delete dari OFF -> ON.
+    Timer dihitung penuh dari sekarang (bukan dari waktu kirim asli)."""
+
+    settings = read_settings()
+    pending = read_pending_preview_deletions()
+
+    for entry in pending:
+        chat_id = entry.get("chat_id")
+        message_ids = entry.get("message_ids")
+
+        if not chat_id or not message_ids:
+            continue
+
+        if chat_id in preview_delete_tasks:
+            continue
+
+        task = asyncio.create_task(
+            delete_messages_after_delay(
+                chat_id,
+                message_ids,
+                bot,
+                settings["preview_delete_delay"]
+            )
+        )
+
+        preview_delete_tasks[chat_id] = task
 
 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3648,9 +3724,16 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
     settings = read_settings()
 
+    was_off = not settings["preview_auto_delete"]
+
     settings["preview_auto_delete"] = not settings["preview_auto_delete"]
 
     save_settings(settings)
+
+    if was_off and settings["preview_auto_delete"]:
+        asyncio.create_task(
+            sweep_pending_preview_deletions(context.bot)
+        )
 
     # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
     await query.edit_message_caption(
