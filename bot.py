@@ -3734,6 +3734,14 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
         asyncio.create_task(
             sweep_pending_preview_deletions(context.bot)
         )
+    elif not settings["preview_auto_delete"]:
+        # Baru saja dimatikan (ON -> OFF): batalkan semua timer yang
+        # sedang berjalan supaya pesan yang lagi dihitung mundur tidak
+        # tetap terhapus diam-diam. Catatan pending-nya TIDAK dihapus,
+        # jadi kalau nanti ON lagi, sweep akan mulai ulang dari 0.
+        for task in list(preview_delete_tasks.values()):
+            task.cancel()
+        preview_delete_tasks.clear()
 
     # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
     await query.edit_message_caption(
