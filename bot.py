@@ -1539,11 +1539,13 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     vip_menu_text = (
         "<blockquote>"
-        f"👋🏻 Halo {html.escape(display_name)}\n"
-        "🔰 GRUP MEMBER VIP OCIL\n\n"
+        "🔰 GRUP MEMBER VIP OCIL\n"
+        "━━━━━━━━━━━━━━\n\n"
+        f"👋🏻 Halo, {html.escape(display_name)}\n\n"
         f"{html.escape(menu_description)}\n\n"
+        "━━━━━━━━━━━━━━\n"
         f"👤 {html.escape(footer_identity)}\n"
-        f"🆔 {user.id}\n\n"
+        f"🆔 {user.id}\n"
         f"📅 {formatted_date}"
         "</blockquote>"
     )
@@ -1653,16 +1655,17 @@ async def send_qris_message(chat_id, context, package, package_id):
         photo=qris_file_id,
 
         caption=(
-            "<b>PEMBAYARAN GROUP BOCIL</b>\n\n"
-            "<b>Pilihan Paket</b>\n"
-            f"<b>{html.escape(package['nama'])}</b>\n"
+            "<b>💳 PEMBAYARAN GROUP BOCIL</b>\n"
+            "━━━━━━━━━━━━━━\n\n"
+            f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
-            "<blockquote>Scan kode QR di atas untuk melakukan pembayaran, "
+            "<blockquote>❝ Scan kode QR di atas untuk melakukan pembayaran, "
             "bayar sesuai nominal paket, lalu kirim screenshot/foto bukti "
-            "transfer di sini.</blockquote>\n\n"
-            "<b>Pembayaran via :</b>\n"
+            "transfer di sini. ❞</blockquote>\n\n"
+            "💠 <b>Pembayaran via :</b>\n"
             "🟣 OVO · 🔵 Dana · 🟠 ShopeePay\n"
-            "🟢 GoPay · 📱 TNG · 🏦 Maybank\n\n"
+            "🟢 GoPay · 📱 TNG · 🏦 Maybank\n"
+            "━━━━━━━━━━━━━━"
         ),
         parse_mode="HTML",
 
