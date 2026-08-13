@@ -1537,13 +1537,6 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
             )
         ])
 
-    keyboard.append([
-        InlineKeyboardButton(
-            "🆘 Bantuan",
-            url="https://t.me/BocilVIP511"
-        )
-    ])
-
     return InlineKeyboardMarkup(keyboard)
 
 
