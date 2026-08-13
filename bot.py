@@ -1501,21 +1501,10 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     packages_data = read_vip_packages()
     packages = packages_data["packages"]
 
-    package_buttons = []
-    for package in packages:
-        if not package.get("aktif", True):
-            continue
-
-        package_buttons.append(
-            InlineKeyboardButton(
-                package["nama"],
-                callback_data=f"vip_{package['id']}"
-            )
-        )
-
-    buttons = []
-    for index in range(0, len(package_buttons), 2):
-        buttons.append(package_buttons[index:index + 2])
+    active_packages = [
+        package for package in packages
+        if package.get("aktif", True)
+    ]
 
     menu_description = packages_data.get(
         "menu_description",
@@ -1537,7 +1526,8 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{now_wib.day} {date_months[now_wib.month - 1]} "
         f"{now_wib.year}"
     )
-    vip_menu_text = (
+
+    header_text = (
         "🔰 <b>GRUP MEMBER VIP OCIL</b>\n"
         "━━━━━━━━━━━━━━\n\n"
         f"👋🏻 Halo, {html.escape(display_name)}!\n\n"
@@ -1547,23 +1537,44 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📅 {formatted_date}"
     )
 
-    vip_menu_keyboard = InlineKeyboardMarkup([
-        *buttons,
-        [
-            InlineKeyboardButton(
-                "🆘 Bantuan",
-                url="https://t.me/BocilVIP511"
-            )
-        ]
-    ])
-
-    # Kirim sebagai pesan baru agar Telegram melakukan render penuh pada
-    # format <blockquote>. Pesan lama dihapus hanya setelah pengiriman berhasil.
     await context.bot.send_message(
         chat_id=query.message.chat_id,
-        text=vip_menu_text,
-        reply_markup=vip_menu_keyboard,
+        text=header_text,
         parse_mode="HTML",
+    )
+
+    for package in active_packages:
+        package_text = (
+            f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
+            f"💰 {html.escape(package['harga'])}\n\n"
+            f"{html.escape(package['deskripsi'])}"
+        )
+        package_keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    f"💸 Bayar {package['nama']}",
+                    callback_data=f"bayar_{package['id']}"
+                )
+            ]
+        ])
+        await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=package_text,
+            reply_markup=package_keyboard,
+            parse_mode="HTML",
+        )
+
+    await context.bot.send_message(
+        chat_id=query.message.chat_id,
+        text="Ada kendala? Hubungi admin lewat tombol di bawah.",
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "🆘 Bantuan",
+                    url="https://t.me/BocilVIP511"
+                )
+            ]
+        ]),
     )
 
     await notify_admin_vip_menu(
