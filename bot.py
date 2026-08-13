@@ -439,7 +439,6 @@ next_order_id = 1
 qris_loading_users = set()
 admin_edit_waiting = {}
 admin_add_waiting = {}
-admin_menu_description_waiting = {}
 admin_qris_waiting = set()
 admin_channel_waiting = set()
 admin_channel_interval_waiting = set()
@@ -1506,48 +1505,15 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if package.get("aktif", True)
     ]
 
-    menu_description = packages_data.get(
-        "menu_description",
-        DEFAULT_VIP_MENU_DESCRIPTION
-    ).strip()
     user = query.from_user
-    display_name = user.first_name or user.username or "Member"
-    footer_identity = (
-        f"@{user.username}"
-        if user.username
-        else (user.full_name or display_name)
-    )
-    date_months = [
-        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-        "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-    ]
-    now_wib = datetime.now(WIB)
-    formatted_date = (
-        f"{now_wib.day} {date_months[now_wib.month - 1]} "
-        f"{now_wib.year}"
-    )
-
-    header_text = (
-        "🔰 <b>GRUP MEMBER VIP OCIL</b>\n"
-        "━━━━━━━━━━━━━━\n\n"
-        f"👋🏻 Halo, {html.escape(display_name)}!\n\n"
-        f"{html.escape(menu_description)}\n\n"
-        "━━━━━━━━━━━━━━\n"
-        f"👤 {html.escape(footer_identity)}  |  🆔 {user.id}\n"
-        f"📅 {formatted_date}"
-    )
-
-    await context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text=header_text,
-        parse_mode="HTML",
-    )
 
     for package in active_packages:
         package_text = (
+            "<blockquote>"
             f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
             f"💰 {html.escape(package['harga'])}\n\n"
             f"{html.escape(package['deskripsi'])}"
+            "</blockquote>"
         )
         package_keyboard = InlineKeyboardMarkup([
             [
@@ -1566,7 +1532,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=query.message.chat_id,
-        text="Ada kendala? Hubungi admin lewat tombol di bawah.",
+        text="<blockquote>Ada kendala? Hubungi admin lewat tombol di bawah.</blockquote>",
         reply_markup=InlineKeyboardMarkup([
             [
                 InlineKeyboardButton(
@@ -1575,6 +1541,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             ]
         ]),
+        parse_mode="HTML",
     )
 
     await notify_admin_vip_menu(
@@ -2221,10 +2188,6 @@ def build_adminvip_packages_keyboard(packages):
         InlineKeyboardButton(
             "➕ Tambah Paket",
             callback_data="adminvip_add"
-        ),
-        InlineKeyboardButton(
-            "✏️ Edit Desc Menu",
-            callback_data="adminvip_menu_desc"
         )
     ])
 
@@ -2236,51 +2199,6 @@ def build_adminvip_packages_keyboard(packages):
     ])
 
     return InlineKeyboardMarkup(keyboard)
-
-
-async def adminvip_menu_description_callback(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    query = update.callback_query
-    await query.answer()
-
-    packages_data = read_vip_packages()
-    menu_description = packages_data.get('menu_description', DEFAULT_VIP_MENU_DESCRIPTION)
-    admin_menu_description_waiting[query.from_user.id] = {
-        "chat_id": query.message.chat_id,
-        "message_id": query.message.message_id,
-    }
-
-    await query.edit_message_caption(
-        caption=(
-            "📝 <b>Edit Deskripsi Menu Paket</b>\n\n"
-            "Deskripsi ini akan tampil di atas daftar tombol paket.\n\n"
-            "Silakan kirim teks baru. Baris baru dan emoji akan dipertahankan.\n\n"
-            "<b>Deskripsi saat ini:</b> (ketuk teks di bawah untuk menyalin)\n"
-            f"<blockquote><code>{html.escape(menu_description)}</code></blockquote>"
-        ),
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "❌ Batal",
-                    callback_data="adminvip_menu_desc_cancel"
-                )
-            ]
-        ]),
-        parse_mode="HTML",
-    )
-
-
-async def adminvip_menu_description_cancel_callback(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    admin_menu_description_waiting.pop(
-        update.callback_query.from_user.id,
-        None
-    )
-    await adminvip_packages_callback(update, context)
 
 
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4789,37 +4707,6 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
-
-    if user_id in admin_menu_description_waiting:
-        state = admin_menu_description_waiting.pop(user_id)
-        description = update.message.text.strip()
-
-        if not description:
-            await update.message.reply_text(
-                "❌ Deskripsi tidak boleh kosong."
-            )
-            admin_menu_description_waiting[user_id] = state
-            return
-
-        packages_data = read_vip_packages()
-        packages_data["menu_description"] = description
-        save_vip_packages(packages_data)
-
-        try:
-            await update.message.delete()
-        except Exception:
-            pass
-
-        await context.bot.edit_message_caption(
-            chat_id=state["chat_id"],
-            message_id=state["message_id"],
-            caption="✅ <b>Deskripsi menu paket berhasil diperbarui.</b>",
-            parse_mode="HTML",
-            reply_markup=build_adminvip_packages_keyboard(
-                read_vip_packages()["packages"]
-            ),
-        )
-        return
 
     if user_id in admin_edit_waiting:
         await admin_edit_receive(update, context)
@@ -7423,16 +7310,6 @@ def main():
     CallbackQueryHandler(
         adminvip_packages_back_callback,
         pattern=r"^adminvip_packages_back$"
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-        adminvip_menu_description_callback,
-        pattern=r"^adminvip_menu_desc$"
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-        adminvip_menu_description_cancel_callback,
-        pattern=r"^adminvip_menu_desc_cancel$"
     ))
     app.add_handler(
     CallbackQueryHandler(
