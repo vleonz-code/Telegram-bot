@@ -99,6 +99,15 @@ def save_vip_packages(data):
     _vip_packages_cache = copy.deepcopy(data)
 
 
+def get_vip_packages_cached():
+    global _vip_packages_cache
+
+    if _vip_packages_cache is None:
+        read_vip_packages()
+
+    return _vip_packages_cache
+
+
 def migrate_vip_menu_description():
     """Move the menu description from settings.json to vip_packages.json."""
     if not os.path.exists(VIP_PACKAGES_FILE):
@@ -740,12 +749,10 @@ def write_blacklist(bl: dict):
 
 def get_package(package_id: int):
 
-    data = read_vip_packages()
+    packages = get_vip_packages_cached()["packages"]
 
-    for pkg in data["packages"]:
-
+    for pkg in packages:
         if pkg["id"] == package_id:
-
             return pkg
 
     return None
@@ -1547,8 +1554,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    packages_data = read_vip_packages()
-    packages = packages_data["packages"]
+    packages = get_vip_packages_cached()["packages"]
 
     active_packages = [
         package for package in packages
@@ -1586,8 +1592,7 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     idx = int(query.data.split("_")[1])
 
-    packages_data = read_vip_packages()
-    packages = packages_data["packages"]
+    packages = get_vip_packages_cached()["packages"]
 
     active_packages = [
         package for package in packages
