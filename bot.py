@@ -1538,16 +1538,13 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{now_wib.year}"
     )
     vip_menu_text = (
-        "<blockquote>"
-        "🔰 GRUP MEMBER VIP OCIL\n"
+        "🔰 <b>GRUP MEMBER VIP OCIL</b>\n"
         "━━━━━━━━━━━━━━\n\n"
-        f"👋🏻 Halo, {html.escape(display_name)}\n\n"
+        f"👋🏻 Halo, {html.escape(display_name)}!\n\n"
         f"{html.escape(menu_description)}\n\n"
         "━━━━━━━━━━━━━━\n"
-        f"👤 {html.escape(footer_identity)}\n"
-        f"🆔 {user.id}\n"
+        f"👤 {html.escape(footer_identity)}  |  🆔 {user.id}\n"
         f"📅 {formatted_date}"
-        "</blockquote>"
     )
 
     vip_menu_keyboard = InlineKeyboardMarkup([
