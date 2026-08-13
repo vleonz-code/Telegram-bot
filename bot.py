@@ -1501,12 +1501,16 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def build_vip_package_text(package):
     return (
-        f"🎟️ <b>{html.escape(package['nama'])}</b>\n\n"
         "━━━━━━━━━━━━━━━\n"
+        f"🎟️ <b>{html.escape(package['nama'])}</b>\n\n"
         f"{html.escape(package['deskripsi'])}\n\n"
         "━━━━━━━━━━━━━━━\n"
         f"💰 {html.escape(package['harga'])}"
     )
+
+
+def get_vip_package_banner(package):
+    return package.get("banner_file_id") or os.environ["PACKAGE_BANNER_FILE_ID"]
 
 
 def build_vip_package_keyboard(idx: int, total: int, package_id):
@@ -1563,9 +1567,10 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total = len(active_packages)
         package = active_packages[0]
 
-        await context.bot.send_message(
+        await context.bot.send_photo(
             chat_id=query.message.chat_id,
-            text=build_vip_package_text(package),
+            photo=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
         )
@@ -1603,15 +1608,16 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    await asyncio.gather(
-        query.answer(),
-        query.edit_message_text(
-            text=build_vip_package_text(package),
-            reply_markup=build_vip_package_keyboard(
-                idx, total, package["id"]
-            ),
+    await query.answer()
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
             parse_mode="HTML",
-        )
+        ),
+        reply_markup=build_vip_package_keyboard(
+            idx, total, package["id"]
+        ),
     )
 
 
@@ -2186,6 +2192,12 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         InlineKeyboardButton(
             "🔗 Edit Link",
             callback_data=f"adminvip_link_{package_id}"
+        )
+    ],
+    [
+        InlineKeyboardButton(
+            "🖼 Edit Banner",
+            callback_data=f"adminvip_banner_{package_id}"
         )
     ],
     [
@@ -4505,6 +4517,40 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
     )
 
 
+async def adminvip_banner_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    package_id = int(query.data.split("_")[2])
+    package = get_package(package_id)
+
+    admin_edit_waiting[query.from_user.id] = {
+        "package_id": package_id,
+        "field": "banner",
+        "chat_id": query.message.chat.id,
+        "message_id": query.message.message_id
+    }
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data=f"adminvip_{package_id}"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "🖼 <b>Edit Banner Paket</b>\n\n"
+            f"Paket: {html.escape(package['nama'])}\n\n"
+            "Silakan kirim foto banner baru."
+        ),
+        reply_markup=keyboard,
+        parse_mode="HTML",
+    )
+
+
 async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -4587,6 +4633,9 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
             elif data["field"] == "vip_link":
                 p["vip_link"] = update.message.text.strip()
 
+            elif data["field"] == "banner":
+                return
+
             break
 
     save_vip_packages(packages)
@@ -4650,7 +4699,8 @@ async def show_add_preview(message, data):
         f"Nama       : {data['nama']}\n"
         f"Harga      : {data['harga']}\n"
         f"Deskripsi  : {data['deskripsi']}\n"
-        f"Link       : {data['vip_link']}"
+        f"Link       : {data['vip_link']}\n"
+        f"Banner     : {'✅ Ada' if data.get('banner_file_id') else '❌ Belum ada'}"
         "</pre>\n\n"
         "Silakan periksa data sebelum disimpan."
     )
@@ -4682,6 +4732,13 @@ async def show_add_preview(message, data):
             InlineKeyboardButton(
                 "🔗 Edit Link",
                 callback_data="adminaddedit_vip_link"
+            )
+        ],
+
+        [
+            InlineKeyboardButton(
+                "🖼 Edit Banner",
+                callback_data="adminaddedit_banner"
             )
         ],
 
@@ -4761,10 +4818,115 @@ async def admin_add_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data["step"] == "vip_link":
         data["vip_link"] = text
+        data["step"] = "banner"
+
+        await update.message.reply_text(
+            "🖼 Kirim banner untuk paket ini.\n\n"
+            "Banner wajib berupa foto."
+        )
+        return
+
+
+async def admin_vip_banner_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if not update.message.photo:
+        return
+
+    file_id = update.message.photo[-1].file_id
+
+    if user_id in admin_add_waiting:
+        data = admin_add_waiting[user_id]
+        if data.get("step") != "banner" and data.get("editing") != "banner":
+            return
+
+        data.pop("editing", None)
+        data["banner_file_id"] = file_id
         data["step"] = "preview"
+
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
 
         await show_add_preview(update.message, data)
         return
+
+    if user_id in admin_edit_waiting:
+        data = admin_edit_waiting.get(user_id)
+        if data.get("field") != "banner":
+            return
+
+        admin_edit_waiting.pop(user_id, None)
+        packages = read_vip_packages()
+
+        package = None
+        for p in packages["packages"]:
+            if p["id"] == data["package_id"]:
+                p["banner_file_id"] = file_id
+                package = p
+                break
+
+        if package is None:
+            return
+
+        save_vip_packages(packages)
+
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "📝 Edit Nama",
+                    callback_data=f"adminvip_name_{package['id']}"
+                ),
+                InlineKeyboardButton(
+                    "💰 Edit Harga",
+                    callback_data=f"adminvip_price_{package['id']}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "📄 Edit Deskripsi",
+                    callback_data=f"adminvip_desc_{package['id']}"
+                ),
+                InlineKeyboardButton(
+                    "🔗 Edit Link",
+                    callback_data=f"adminvip_link_{package['id']}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🖼 Edit Banner",
+                    callback_data=f"adminvip_banner_{package['id']}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🗑️ Hapus Paket",
+                    callback_data=f"adminvip_delete_{package['id']}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "🔙 Kembali",
+                    callback_data="adminvip_packages_back"
+                )
+            ]
+        ])
+
+        await context.bot.edit_message_caption(
+            chat_id=data["chat_id"],
+            message_id=data["message_id"],
+            caption=(
+                f"{package['nama']}\n\n"
+                f"💰 {package['harga']}"
+            ),
+            reply_markup=keyboard,
+        )
 
 
 async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4911,12 +5073,21 @@ async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_T
     if packages["packages"]:
         new_id = max(p["id"] for p in packages["packages"]) + 1
 
+    if not data.get("banner_file_id"):
+        await query.answer(
+            "🖼 Banner wajib di-upload terlebih dahulu.",
+            show_alert=True
+        )
+        admin_add_waiting[user_id] = data
+        return
+
     packages["packages"].append({
         "id": new_id,
         "nama": data["nama"],
         "harga": data["harga"],
         "deskripsi": data["deskripsi"],
-        "vip_link": data["vip_link"]
+        "vip_link": data["vip_link"],
+        "banner_file_id": data["banner_file_id"]
     })
 
     save_vip_packages(packages)
@@ -4945,7 +5116,8 @@ async def adminadd_edit_callback(update: Update, context: ContextTypes.DEFAULT_T
         "nama": "📝 Kirim nama paket baru.",
         "harga": "💰 Kirim harga baru.",
         "deskripsi": "📄 Kirim deskripsi baru.",
-        "vip_link": "🔗 Kirim link VIP baru."
+        "vip_link": "🔗 Kirim link VIP baru.",
+        "banner": "🖼 Kirim banner baru (foto)."
     }
 
     await query.edit_message_text(
@@ -6096,6 +6268,17 @@ async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await file_manager_restore_receive(update, context)
 
         return
+
+    if user_id in admin_add_waiting or user_id in admin_edit_waiting:
+
+        data = admin_add_waiting.get(user_id) or admin_edit_waiting.get(user_id)
+        if (
+            data.get("step") == "banner"
+            or data.get("editing") == "banner"
+            or data.get("field") == "banner"
+        ):
+            await admin_vip_banner_receive(update, context)
+            return
 
     if user_id in preview_edit_waiting or user_id in preview_add_waiting:
 
@@ -7420,10 +7603,15 @@ def main():
         pattern=r"^adminvip_link_\d+$"
     ))
     app.add_handler(
-    CallbackQueryHandler(
-        adminvip_delete_callback,
-        pattern=r"^adminvip_delete_\d+$"
-    ))
+     CallbackQueryHandler(
+         adminvip_banner_callback,
+         pattern=r"^adminvip_banner_\d+$"
+     ))
+    app.add_handler(
+     CallbackQueryHandler(
+         adminvip_delete_callback,
+         pattern=r"^adminvip_delete_\d+$"
+     ))
     app.add_handler(
     CallbackQueryHandler(
         adminadd_save_callback,
