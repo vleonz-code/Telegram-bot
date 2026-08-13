@@ -1493,6 +1493,54 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
 
+def build_vip_package_text(package):
+    return (
+        "<blockquote>"
+        f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
+        f"💰 {html.escape(package['harga'])}\n\n"
+        f"{html.escape(package['deskripsi'])}"
+        "</blockquote>"
+    )
+
+
+def build_vip_package_keyboard(idx: int, total: int, package_id):
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "💸 Bayar",
+                callback_data=f"bayar_{package_id}"
+            )
+        ]
+    ]
+
+    if total > 1:
+        prev_idx = (idx - 1) % total
+        next_idx = (idx + 1) % total
+        keyboard.append([
+            InlineKeyboardButton(
+                "⬅️",
+                callback_data=f"vipnav_{prev_idx}"
+            ),
+            InlineKeyboardButton(
+                f"{idx + 1}/{total}",
+                callback_data="vipnav_noop"
+            ),
+            InlineKeyboardButton(
+                "➡️",
+                callback_data=f"vipnav_{next_idx}"
+            )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🆘 Bantuan",
+            url="https://t.me/BocilVIP511"
+        )
+    ])
+
+    return InlineKeyboardMarkup(keyboard)
+
+
 async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1507,42 +1555,21 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user = query.from_user
 
-    for package in active_packages:
-        package_text = (
-            "<blockquote>"
-            f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
-            f"💰 {html.escape(package['harga'])}\n\n"
-            f"{html.escape(package['deskripsi'])}"
-            "</blockquote>"
-        )
-        package_keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    f"💸 Bayar {package['nama']}",
-                    callback_data=f"bayar_{package['id']}"
-                )
-            ]
-        ])
+    if not active_packages:
         await context.bot.send_message(
             chat_id=query.message.chat_id,
-            text=package_text,
-            reply_markup=package_keyboard,
+            text="Belum ada paket VIP yang tersedia saat ini.",
+        )
+    else:
+        total = len(active_packages)
+        package = active_packages[0]
+
+        await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=build_vip_package_text(package),
+            reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
         )
-
-    await context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text="<blockquote>Ada kendala? Hubungi admin lewat tombol di bawah.</blockquote>",
-        reply_markup=InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton(
-                    "🆘 Bantuan",
-                    url="https://t.me/BocilVIP511"
-                )
-            ]
-        ]),
-        parse_mode="HTML",
-    )
 
     await notify_admin_vip_menu(
         context.bot,
@@ -1555,6 +1582,43 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.delete()
     except Exception:
         pass
+
+
+async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    idx = int(query.data.split("_")[1])
+
+    packages_data = read_vip_packages()
+    packages = packages_data["packages"]
+
+    active_packages = [
+        package for package in packages
+        if package.get("aktif", True)
+    ]
+
+    if not active_packages:
+        await query.answer()
+        return
+
+    total = len(active_packages)
+    idx = idx % total
+    package = active_packages[idx]
+
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_text(
+            text=build_vip_package_text(package),
+            reply_markup=build_vip_package_keyboard(
+                idx, total, package["id"]
+            ),
+            parse_mode="HTML",
+        )
+    )
+
+
+async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+
 
 
 async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -7190,6 +7254,16 @@ def main():
     CallbackQueryHandler(
         vipmenu_callback,
         pattern=r"^vipmenu$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        vipnav_callback,
+        pattern=r"^vipnav_\d+$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        vipnav_noop_callback,
+        pattern=r"^vipnav_noop$"
     ))
     app.add_handler(
     CallbackQueryHandler(
