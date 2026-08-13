@@ -1222,8 +1222,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "👑 Gabung VIP",
+                            "📚 Lihat VVIP",
                             callback_data="vipmenu"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🆘 Bantuan",
+                            url="https://t.me/BocilVIP511"
                         )
                     ]
                 ])
