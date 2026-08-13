@@ -2196,11 +2196,9 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
     ],
     [
         InlineKeyboardButton(
-            "🖼 Edit Banner",
+            "🖼 Ganti Banner",
             callback_data=f"adminvip_banner_{package_id}"
-        )
-    ],
-    [
+        ),
         InlineKeyboardButton(
             "🗑️ Hapus Paket",
             callback_data=f"adminvip_delete_{package_id}"
@@ -4535,7 +4533,7 @@ async def adminvip_banner_callback(update: Update, context: ContextTypes.DEFAULT
         [
             InlineKeyboardButton(
                 "❌ Batal",
-                callback_data=f"adminvip_{package_id}"
+                callback_data=f"adminvip_banner_cancel_{package_id}"
             )
         ]
     ])
@@ -4548,6 +4546,68 @@ async def adminvip_banner_callback(update: Update, context: ContextTypes.DEFAULT
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    )
+
+
+async def adminvip_banner_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+    package_id = int(query.data.split("_")[3])
+
+    # Batalkan mode upload banner sepenuhnya.
+    admin_edit_waiting.pop(user_id, None)
+
+    package = get_package(package_id)
+    if not package:
+        return
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "📝 Edit Nama",
+                callback_data=f"adminvip_name_{package_id}"
+            ),
+            InlineKeyboardButton(
+                "💰 Edit Harga",
+                callback_data=f"adminvip_price_{package_id}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📄 Edit Deskripsi",
+                callback_data=f"adminvip_desc_{package_id}"
+            ),
+            InlineKeyboardButton(
+                "🔗 Edit Link",
+                callback_data=f"adminvip_link_{package_id}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🖼 Ganti Banner",
+                callback_data=f"adminvip_banner_{package_id}"
+            ),
+            InlineKeyboardButton(
+                "🗑️ Hapus Paket",
+                callback_data=f"adminvip_delete_{package_id}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔙 Kembali",
+                callback_data="adminvip_packages_back"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            f"{package['nama']}\\n\\n"
+            f"💰 {package['harga']}"
+        ),
+        reply_markup=keyboard
     )
 
 
@@ -4900,11 +4960,9 @@ async def admin_vip_banner_receive(update: Update, context: ContextTypes.DEFAULT
             ],
             [
                 InlineKeyboardButton(
-                    "🖼 Edit Banner",
+                    "🖼 Ganti Banner",
                     callback_data=f"adminvip_banner_{package['id']}"
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
                     "🗑️ Hapus Paket",
                     callback_data=f"adminvip_delete_{package['id']}"
@@ -7602,6 +7660,11 @@ def main():
         adminvip_link_callback,
         pattern=r"^adminvip_link_\d+$"
     ))
+    app.add_handler(
+     CallbackQueryHandler(
+         adminvip_banner_cancel_callback,
+         pattern=r"^adminvip_banner_cancel_\d+$"
+     ))
     app.add_handler(
      CallbackQueryHandler(
          adminvip_banner_callback,
