@@ -1501,8 +1501,8 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def build_vip_package_text(package):
     return (
-        "━━━━━━━━━━━━━━━\n"
         f"🎟️ <b>{html.escape(package['nama'])}</b>\n\n"
+        "━━━━━━━━━━━━━━━\n"
         f"{html.escape(package['deskripsi'])}\n\n"
         "━━━━━━━━━━━━━━━\n"
         f"💰 {html.escape(package['harga'])}"
