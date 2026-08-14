@@ -2320,6 +2320,7 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
 
     await query.edit_message_media(
         media=InputMediaPhoto(
@@ -2330,7 +2331,6 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
         reply_markup=build_payment_keyboard(),
     )
 
-    await query.answer()
 
 
 INCOMING_VIP_PAGE_SIZE = 10
@@ -2758,6 +2758,7 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     settings = read_settings()
     settings["channel_auto_post"] = not settings["channel_auto_post"]
     save_settings(settings)
@@ -2839,6 +2840,7 @@ async def channel_set_interval_callback(update: Update, context: ContextTypes.DE
 
 async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
 
     settings = read_settings()
 
@@ -3344,6 +3346,7 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
 
 async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -3368,11 +3371,11 @@ async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         reply_markup=keyboard
     )
 
-    await query.answer()
 
 
 async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -3400,7 +3403,6 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         reply_markup=keyboard
     )
 
-    await query.answer()
 
 
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3695,6 +3697,7 @@ async def sweep_pending_preview_deletions(bot):
 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
 
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
@@ -3726,7 +3729,6 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup=keyboard,
     )
 
-    await query.answer()
 
     await clear_last_stats(
         query.message.chat_id,
@@ -3809,6 +3811,7 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
 
 async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     settings = read_settings()
     settings["join_vip_enabled"] = not settings["join_vip_enabled"]
     save_settings(settings)
@@ -3823,6 +3826,7 @@ async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DE
 
 async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     settings = read_settings()
     settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
     save_settings(settings)
@@ -3837,6 +3841,7 @@ async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes
 
 async def adminvip_toggle_livechat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     settings = read_settings()
     settings["live_chat_enabled"] = not settings["live_chat_enabled"]
     save_settings(settings)
@@ -4206,6 +4211,7 @@ async def adminvip_prv_noop_callback(update: Update, context: ContextTypes.DEFAU
 
 async def adminvip_prv_nav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     idx = int(query.data.split("_")[3])
 
     # Jawab callback dan mulai update media secara bersamaan. Sebelumnya
@@ -4713,8 +4719,8 @@ async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT
 async def adminvip_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
-
     await query.answer()
+
 
     package_id = int(query.data.split("_")[3])
 
@@ -5549,9 +5555,9 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
 
     if query.from_user.id != ADMIN_ID:
-        await query.answer()
         return
 
     text, keyboard = build_blacklist_view(1)
