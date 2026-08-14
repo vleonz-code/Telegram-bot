@@ -2151,6 +2151,18 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 except Exception:
                     pass
 
+            # Also remove the pre-upload warning shown before
+            # "📤 Sudah Transfer" was pressed.
+            for notice_msg_id in data.get("pre_upload_notice_msg_ids", []):
+                try:
+                    await context.bot.delete_message(
+                        chat_id=query.message.chat_id,
+                        message_id=notice_msg_id
+                    )
+                except Exception:
+                    pass
+
+            data["pre_upload_notice_msg_ids"] = []
             upload_waiting.pop(order_id)
 
     await query.message.reply_text(
