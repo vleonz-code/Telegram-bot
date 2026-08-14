@@ -879,6 +879,11 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
     except Exception as e:
         logger.error(f"Failed to notify admin: {e}")
 
+# In-memory cache for VIP admin activity.
+# Keeps the existing workflow and persistent JSON storage intact.
+_vip_activity_cache = None
+
+
 async def update_vip_activity(
     bot,
     full_name: str,
@@ -891,7 +896,11 @@ async def update_vip_activity(
     if user_id == ADMIN_ID:
         return
 
-    activities = read_vip_activity()
+    global _vip_activity_cache
+    if _vip_activity_cache is None:
+        _vip_activity_cache = read_vip_activity()
+
+    activities = _vip_activity_cache
     key = str(user_id)
     activity = activities.get(key, {})
 
@@ -1631,39 +1640,27 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    caption = build_vip_package_text(package)
-    reply_markup = build_vip_package_keyboard(
-        idx, total, package["id"]
+    await query.answer()
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
+            parse_mode="HTML",
+        ),
+        reply_markup=build_vip_package_keyboard(
+            idx, total, package["id"]
+        ),
     )
-    target_banner = get_vip_package_banner(package)
 
-    # If the banner is already the same, avoid the heavier media replacement.
-    current_banner = None
-    if query.message and query.message.photo:
-        current_banner = query.message.photo[-1].file_id
-
-    if current_banner == target_banner:
-        await asyncio.gather(
-            query.answer(),
-            query.edit_message_caption(
-                caption=caption,
-                parse_mode="HTML",
-                reply_markup=reply_markup,
-            ),
-        )
-    else:
-        await asyncio.gather(
-            query.answer(),
-            query.edit_message_media(
-                media=InputMediaPhoto(
-                    media=target_banner,
-                    caption=caption,
-                    parse_mode="HTML",
-                ),
-                reply_markup=reply_markup,
-            ),
-        )
-
+    # Keep Buyer Details synchronized with the package currently shown.
+    user = query.from_user
+    await notify_admin_vip_package(
+        context.bot,
+        user.full_name or "-",
+        f"@{user.username}" if user.username else "-",
+        user.id,
+        package["nama"],
+    )
 
 
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
