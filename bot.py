@@ -5282,11 +5282,13 @@ async def livechat_start_callback(update: Update, context: ContextTypes.DEFAULT_
     # to the current payment-success message.
     if message_text.startswith("🎉 PEMBAYARAN BERHASIL!"):
         source = "purchase"
+        vip_button_text = None
         if query.message.reply_markup:
             for row in query.message.reply_markup.inline_keyboard:
                 for button in row:
                     if button.url:
                         vip_link = button.url
+                        vip_button_text = button.text
                         break
                 if vip_link:
                     break
@@ -5296,6 +5298,7 @@ async def livechat_start_callback(update: Update, context: ContextTypes.DEFAULT_
         "source": source,
         "return_text": message_text,
         "vip_link": vip_link or previous.get("vip_link"),
+        "vip_button_text": vip_button_text if source == "purchase" else previous.get("vip_button_text"),
     }
 
     await query.answer()
@@ -5329,7 +5332,7 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🔗 VIP LINK",
+                        session.get("vip_button_text", "🔗 Open VIP"),
                         url=session["vip_link"]
                     )
                 ],
