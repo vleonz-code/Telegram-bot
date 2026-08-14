@@ -3647,11 +3647,22 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "Silahkan coba lagi.\n\n"
-                    "Koleksi selengkapnya ada di grup VIP.\n\n"
-                    "Chat Admin: @BocilVIP511 👈"
+                    "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
                 ),
-                reply_markup=keyboard
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "📚 Lihat VVIP",
+                            callback_data="vipmenu"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🆘 Bantuan",
+                            url="https://t.me/BocilVIP511"
+                        )
+                    ]
+                ])
             )
 
             last_repeat_message[
