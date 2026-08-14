@@ -6066,8 +6066,8 @@ def build_adminvip_keyboard():
             callback_data="adminvip_stats"
         ),
         InlineKeyboardButton(
-            "📢 Channel Post",
-            callback_data="adminvip_channel"
+            "🖥 Status Server",
+            callback_data="adminvip_server_status"
         )
     ])
 
@@ -6077,8 +6077,8 @@ def build_adminvip_keyboard():
             callback_data="filemgr_list"
         ),
         InlineKeyboardButton(
-            "🖥 Status Server",
-            callback_data="adminvip_server_status"
+            "📢 Channel Post",
+            callback_data="adminvip_channel"
         )
     ])
 
