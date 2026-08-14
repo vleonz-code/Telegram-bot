@@ -2763,16 +2763,49 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
     settings = read_settings()
-
     settings["channel_auto_post"] = not settings["channel_auto_post"]
-
     save_settings(settings)
 
-    await adminvip_channel_callback(update, context)
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📝 Edit Pesan", callback_data="channel_edit"),
+            InlineKeyboardButton("⏱ Edit Interval", callback_data="channel_interval")
+        ],
+        [
+            InlineKeyboardButton(
+                f"{'🟢' if settings['channel_auto_post'] else '🔴'} Auto Post",
+                callback_data="channel_toggle"
+            ),
+            InlineKeyboardButton("📤 Kirim", callback_data="channel_send")
+        ],
+        [
+            InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")
+        ]
+    ])
 
+    # Render langsung; tidak memanggil adminvip_channel_callback lagi,
+    # sehingga tidak ada answer/read_settings kedua kalinya.
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_media(
+            media=InputMediaPhoto(
+                media=os.environ["CHANNEL_POST_BANNER_FILE_ID"],
+                caption=(
+                    "📢 Channel Post\n\n"
+                    f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
+                    f"Interval : {settings['channel_interval']} menit\n\n"
+                    "<pre>"
+                    "Pesan\n"
+                    "────────────────────\n"
+                    f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
+                    "</pre>"
+                ),
+                parse_mode="HTML",
+            ),
+            reply_markup=keyboard
+        )
+    )
 
 async def channel_interval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3777,56 +3810,48 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
 
 async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
     settings = read_settings()
-
     settings["join_vip_enabled"] = not settings["join_vip_enabled"]
-
     save_settings(settings)
 
-    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=build_settings_keyboard(settings)
+        )
     )
-
 
 async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
     settings = read_settings()
     settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
     save_settings(settings)
 
-    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=build_settings_keyboard(settings)
+        )
     )
-
 
 async def adminvip_toggle_livechat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
     settings = read_settings()
-
     settings["live_chat_enabled"] = not settings["live_chat_enabled"]
-
     save_settings(settings)
 
-    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=build_settings_keyboard(settings)
+        )
     )
 
 async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
     settings = read_settings()
 
     was_off = not settings["preview_auto_delete"]
@@ -3849,9 +3874,12 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
         preview_delete_tasks.clear()
 
     # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=build_settings_keyboard(settings)
+        )
     )
 
 
@@ -5360,16 +5388,31 @@ async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def banned_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     if query.from_user.id != ADMIN_ID:
+        await query.answer()
         return
+
     page = int(query.data.replace("banned_page_", ""))
     text, keyboard = build_blacklist_view(page)
-    try:
-        await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
-    except Exception:
-        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
 
+    async def render_page():
+        try:
+            await query.edit_message_caption(
+                caption=text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        except Exception:
+            await query.edit_message_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+
+    await asyncio.gather(
+        query.answer(),
+        render_page()
+    )
 
 async def banned_reset_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
