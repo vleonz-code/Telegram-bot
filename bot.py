@@ -1622,17 +1622,19 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    await query.answer()
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=get_vip_package_banner(package),
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-        ),
-        reply_markup=build_vip_package_keyboard(
-            idx, total, package["id"]
-        ),
-    )
+    try:
+        await query.edit_message_media(
+            media=InputMediaPhoto(
+                media=get_vip_package_banner(package),
+                caption=build_vip_package_text(package),
+                parse_mode="HTML",
+            ),
+            reply_markup=build_vip_package_keyboard(
+                idx, total, package["id"]
+            ),
+        )
+    finally:
+        await query.answer()
 
 
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1892,11 +1894,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         qris_loading_users.add(query.from_user.id)
         try:
-            await show_qris_loading_message(
-                query.message.chat_id,
-                context
-            )
-
             qris_created = await send_qris_message(
                 query.message.chat_id,
                 context,
@@ -1967,11 +1964,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     qris_loading_users.add(query.from_user.id)
     try:
-        await show_qris_loading_message(
-            query.message.chat_id,
-            context
-        )
-
         qris_created = await send_qris_message(
             query.message.chat_id,
             context,
