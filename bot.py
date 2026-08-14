@@ -1610,15 +1610,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user.id,
     )
 
-    # VIP Menu now opens directly on the first package slide.
-    if active_packages:
-        await notify_admin_vip_package(
-            context.bot,
-            user.full_name or "-",
-            f"@{user.username}" if user.username else "-",
-            user.id,
-            active_packages[0]["nama"],
-        )
 
 
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1652,15 +1643,6 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
     )
 
-    # Keep Buyer Details synchronized with the package currently shown.
-    user = query.from_user
-    await notify_admin_vip_package(
-        context.bot,
-        user.full_name or "-",
-        f"@{user.username}" if user.username else "-",
-        user.id,
-        package["nama"],
-    )
 
 
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1680,15 +1662,6 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 show_alert=True
             )
             return
-
-        user = query.from_user
-        await notify_admin_vip_package(
-            context.bot,
-            user.full_name or "-",
-            f"@{user.username}" if user.username else "-",
-            user.id,
-            package["nama"],
-        )
 
         keyboard = InlineKeyboardMarkup([
     [
@@ -1991,6 +1964,15 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     save_pending_orders(pending)
 
     lock_payment(query.from_user.id, package_id)
+
+    user = query.from_user
+    await notify_admin_vip_package(
+        context.bot,
+        user.full_name or "-",
+        f"@{user.username}" if user.username else "-",
+        user.id,
+        package["nama"],
+    )
 
     qris_loading_users.add(query.from_user.id)
     try:
