@@ -1941,14 +1941,12 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             if qris_created:
                 user = query.from_user
-                asyncio.create_task(
-                    notify_admin_vip_qris(
-                        context.bot,
-                        user.full_name or "-",
-                        f"@{user.username}" if user.username else "-",
-                        user.id,
-                        package["nama"],
-                    )
+                await notify_admin_vip_qris(
+                    context.bot,
+                    user.full_name or "-",
+                    f"@{user.username}" if user.username else "-",
+                    user.id,
+                    package["nama"],
                 )
         finally:
             qris_loading_users.discard(query.from_user.id)
@@ -2037,14 +2035,12 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 upload_waiting[order_id]["expires_at"]
             )
             user = query.from_user
-            asyncio.create_task(
-                notify_admin_vip_qris(
-                    context.bot,
-                    user.full_name or "-",
-                    f"@{user.username}" if user.username else "-",
-                    user.id,
-                    package["nama"],
-                )
+            await notify_admin_vip_qris(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+                package["nama"],
             )
     except Exception:
         cleanup_failed_qris_order(
