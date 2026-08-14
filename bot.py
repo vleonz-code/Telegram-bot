@@ -1894,6 +1894,11 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         qris_loading_users.add(query.from_user.id)
         try:
+            await show_qris_loading_message(
+                query.message.chat_id,
+                context
+            )
+
             qris_created = await send_qris_message(
                 query.message.chat_id,
                 context,
@@ -1964,6 +1969,11 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     qris_loading_users.add(query.from_user.id)
     try:
+        await show_qris_loading_message(
+            query.message.chat_id,
+            context
+        )
+
         qris_created = await send_qris_message(
             query.message.chat_id,
             context,
