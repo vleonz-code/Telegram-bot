@@ -1605,7 +1605,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     # VIP Menu now opens directly on the first package slide.
-    # Record that currently displayed package immediately.
     if active_packages:
         await notify_admin_vip_package(
             context.bot,
