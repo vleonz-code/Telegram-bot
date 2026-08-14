@@ -918,13 +918,13 @@ async def update_vip_activity(
         activity.setdefault("packages", [])
 
         if stage == "package":
-            if package_name:
-                activity["packages"] = [package_name]
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
         elif stage == "qris":
-            if package_name:
-                activity["packages"] = [package_name]
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
             if "qris" not in activity["steps"]:
@@ -1604,16 +1604,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user.id,
     )
 
-    # VIP Menu now opens directly on the first package slide.
-    if active_packages:
-        await notify_admin_vip_package(
-            context.bot,
-            user.full_name or "-",
-            f"@{user.username}" if user.username else "-",
-            user.id,
-            active_packages[0]["nama"],
-        )
-
 
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1644,16 +1634,6 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=build_vip_package_keyboard(
             idx, total, package["id"]
         ),
-    )
-
-    # Keep Buyer Details synchronized with the package currently shown.
-    user = query.from_user
-    await notify_admin_vip_package(
-        context.bot,
-        user.full_name or "-",
-        f"@{user.username}" if user.username else "-",
-        user.id,
-        package["nama"],
     )
 
 
