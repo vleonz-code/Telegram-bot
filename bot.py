@@ -879,11 +879,6 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
     except Exception as e:
         logger.error(f"Failed to notify admin: {e}")
 
-# In-memory cache for VIP admin activity.
-# Keeps the existing workflow and persistent JSON storage intact.
-_vip_activity_cache = None
-
-
 async def update_vip_activity(
     bot,
     full_name: str,
@@ -896,11 +891,7 @@ async def update_vip_activity(
     if user_id == ADMIN_ID:
         return
 
-    global _vip_activity_cache
-    if _vip_activity_cache is None:
-        _vip_activity_cache = read_vip_activity()
-
-    activities = _vip_activity_cache
+    activities = read_vip_activity()
     key = str(user_id)
     activity = activities.get(key, {})
 
@@ -927,13 +918,13 @@ async def update_vip_activity(
         activity.setdefault("packages", [])
 
         if stage == "package":
-            if package_name:
-                activity["packages"] = [package_name]
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
         elif stage == "qris":
-            if package_name:
-                activity["packages"] = [package_name]
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
             if "qris" not in activity["steps"]:
@@ -1611,7 +1602,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     idx = int(query.data.split("_")[1])
@@ -1644,7 +1634,6 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
@@ -1662,6 +1651,15 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 show_alert=True
             )
             return
+
+        user = query.from_user
+        await notify_admin_vip_package(
+            context.bot,
+            user.full_name or "-",
+            f"@{user.username}" if user.username else "-",
+            user.id,
+            package["nama"],
+        )
 
         keyboard = InlineKeyboardMarkup([
     [
@@ -1714,7 +1712,7 @@ async def send_qris_message(chat_id, context, package, package_id):
         photo=qris_file_id,
 
         caption=(
-            "<b>💳 PEMBAYARAN GROUP BOCIL</b>\n"
+            "<b>✅ QRIS telah dibuat</b>\n"
             "━━━━━━━━━━━━━━\n\n"
             f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
@@ -1965,15 +1963,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     lock_payment(query.from_user.id, package_id)
 
-    user = query.from_user
-    await notify_admin_vip_package(
-        context.bot,
-        user.full_name or "-",
-        f"@{user.username}" if user.username else "-",
-        user.id,
-        package["nama"],
-    )
-
     qris_loading_users.add(query.from_user.id)
     try:
         await show_qris_loading_message(
@@ -2142,18 +2131,6 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 except Exception:
                     pass
 
-            # Also remove the pre-upload warning shown before
-            # "📤 Sudah Transfer" was pressed.
-            for notice_msg_id in data.get("pre_upload_notice_msg_ids", []):
-                try:
-                    await context.bot.delete_message(
-                        chat_id=query.message.chat_id,
-                        message_id=notice_msg_id
-                    )
-                except Exception:
-                    pass
-
-            data["pre_upload_notice_msg_ids"] = []
             upload_waiting.pop(order_id)
 
     await query.message.reply_text(
@@ -3530,14 +3507,8 @@ async def delete_messages_after_delay(
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "📚 Lihat VVIP",
+                            "✨ Gabung VIP",
                             callback_data="vipmenu"
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
                         )
                     ]
                 ])
@@ -3548,7 +3519,8 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
+                    "Koleksi selengkapnya ada di grup VIP.\n\n"
+                    "Chat Admin: @BocilVIP511 👈"
                 ),
                 reply_markup=keyboard
             )
@@ -6066,8 +6038,8 @@ def build_adminvip_keyboard():
             callback_data="adminvip_stats"
         ),
         InlineKeyboardButton(
-            "🖥 Status Server",
-            callback_data="adminvip_server_status"
+            "📢 Channel Post",
+            callback_data="adminvip_channel"
         )
     ])
 
@@ -6077,8 +6049,8 @@ def build_adminvip_keyboard():
             callback_data="filemgr_list"
         ),
         InlineKeyboardButton(
-            "📢 Channel Post",
-            callback_data="adminvip_channel"
+            "🖥 Status Server",
+            callback_data="adminvip_server_status"
         )
     ])
 
@@ -6388,10 +6360,9 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "pre_upload_notice_msg_ids"
                 ):
                     notice_msg = await update.message.reply_text(
-                        "<i>⚠️ Kamu masih berada di halaman pembayaran.</i>\n\n"
-                        "Tekan tombol 📤 <b>Sudah Transfer</b> terlebih dahulu "
-                        "agar area upload bukti transfer dibuka.",
-                        parse_mode="HTML",
+                        "⚠️ Kamu masih berada di halaman pembayaran.\n\n"
+                        "Tekan tombol 📤 Sudah Transfer terlebih dahulu "
+                        "agar area upload bukti transfer dibuka."
                     )
                     upload_waiting[order_id].setdefault(
                         "pre_upload_notice_msg_ids",
