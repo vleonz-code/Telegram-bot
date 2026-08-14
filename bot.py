@@ -918,13 +918,13 @@ async def update_vip_activity(
         activity.setdefault("packages", [])
 
         if stage == "package":
-            if package_name and package_name not in activity["packages"]:
-                activity["packages"].append(package_name)
+            if package_name:
+                activity["packages"] = [package_name]
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
         elif stage == "qris":
-            if package_name and package_name not in activity["packages"]:
-                activity["packages"].append(package_name)
+            if package_name:
+                activity["packages"] = [package_name]
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
             if "qris" not in activity["steps"]:
@@ -1520,39 +1520,42 @@ def get_vip_package_banner(package):
 
 
 def build_vip_package_keyboard(idx: int, total: int, package_id):
-    keyboard = []
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "💸 Bayar",
+                callback_data=f"bayar_{package_id}"
+            )
+        ]
+    ]
 
     if total > 1:
-        # Keep the same three-button layout on every page.
-        # Boundary arrows remain visible but become no-op buttons.
-        prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
-        )
-        next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
-        )
+        nav = []
 
-        keyboard.append([
-            InlineKeyboardButton(
-                "‹",
-                callback_data=prev_callback
-            ),
+        if idx > 0:
+            nav.append(
+                InlineKeyboardButton(
+                    "⬅️",
+                    callback_data=f"vipnav_{idx - 1}"
+                )
+            )
+
+        nav.append(
             InlineKeyboardButton(
                 f"{idx + 1}/{total}",
                 callback_data="vipnav_noop"
-            ),
-            InlineKeyboardButton(
-                "›",
-                callback_data=next_callback
             )
-        ])
-
-    keyboard.append([
-        InlineKeyboardButton(
-            "💸 Bayar Sekarang",
-            callback_data=f"bayar_{package_id}"
         )
-    ])
+
+        if idx < total - 1:
+            nav.append(
+                InlineKeyboardButton(
+                    "➡️",
+                    callback_data=f"vipnav_{idx + 1}"
+                )
+            )
+
+        keyboard.append(nav)
 
     return InlineKeyboardMarkup(keyboard)
 
@@ -1601,6 +1604,17 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user.id,
     )
 
+    # VIP Menu now opens directly on the first package slide.
+    # Record that currently displayed package immediately.
+    if active_packages:
+        await notify_admin_vip_package(
+            context.bot,
+            user.full_name or "-",
+            f"@{user.username}" if user.username else "-",
+            user.id,
+            active_packages[0]["nama"],
+        )
+
 
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1631,6 +1645,16 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=build_vip_package_keyboard(
             idx, total, package["id"]
         ),
+    )
+
+    # Keep Buyer Details synchronized with the package currently shown.
+    user = query.from_user
+    await notify_admin_vip_package(
+        context.bot,
+        user.full_name or "-",
+        f"@{user.username}" if user.username else "-",
+        user.id,
+        package["nama"],
     )
 
 
