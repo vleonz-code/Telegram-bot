@@ -1530,32 +1530,32 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
     ]
 
     if total > 1:
-        prev_idx = (idx - 1) % total
+        nav = []
 
-        # Keep the current ⬅️ / ➡️ icons and fixed 3-slot layout.
-        # At the last page, ➡️ is still shown but disabled as navigation.
-        if idx < total - 1:
-            next_button = InlineKeyboardButton(
-                "➡️",
-                callback_data=f"vipnav_{idx + 1}"
-            )
-        else:
-            next_button = InlineKeyboardButton(
-                "➡️",
-                callback_data="vipnav_noop"
+        if idx > 0:
+            nav.append(
+                InlineKeyboardButton(
+                    "⬅️",
+                    callback_data=f"vipnav_{idx - 1}"
+                )
             )
 
-        keyboard.append([
-            InlineKeyboardButton(
-                "⬅️",
-                callback_data=f"vipnav_{prev_idx}"
-            ),
+        nav.append(
             InlineKeyboardButton(
                 f"{idx + 1}/{total}",
                 callback_data="vipnav_noop"
-            ),
-            next_button
-        ])
+            )
+        )
+
+        if idx < total - 1:
+            nav.append(
+                InlineKeyboardButton(
+                    "➡️",
+                    callback_data=f"vipnav_{idx + 1}"
+                )
+            )
+
+        keyboard.append(nav)
 
     return InlineKeyboardMarkup(keyboard)
 
