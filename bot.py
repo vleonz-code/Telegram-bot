@@ -7,7 +7,7 @@ import time
 import copy
 import html
 import psutil
-psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan pertama - BOT STABLE
+psutil.cpu_percent(interval=None)  # github priming baseline, hindari 0.0% di pembacaan pertama - BOT STABLE
 import sys
 import telegram
 from datetime import datetime, timezone, timedelta
