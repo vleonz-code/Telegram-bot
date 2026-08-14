@@ -5245,7 +5245,7 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     waktu = datetime.now(WIB).strftime("%d %b %Y • %H:%M WIB")
 
     purchase_tag = (
-        "🛒 Status: Sudah berhasil membeli"
+        "🛒 Status: Lunas"
         if livechat_sessions.get(user_id, {}).get("source") == "purchase"
         else ""
     )
@@ -5329,6 +5329,11 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     user_id = query.from_user.id
     session = livechat_sessions.pop(user_id, None)
+
+    # Invalidate any outstanding admin reply action for this user.
+    for admin_id, pending_user_id in list(admin_reply_waiting.items()):
+        if pending_user_id == user_id:
+            admin_reply_waiting.pop(admin_id, None)
 
     await query.answer()
 
@@ -7485,6 +7490,10 @@ async def livechat_reply_callback(update: Update, context: ContextTypes.DEFAULT_
     await query.answer()
 
     user_id = int(query.data.split("|")[1])
+
+    if user_id not in livechat_sessions:
+        await query.answer("⚠️ Chat sudah diakhiri oleh user.", show_alert=True)
+        return
 
     admin_reply_waiting[query.from_user.id] = user_id
 
