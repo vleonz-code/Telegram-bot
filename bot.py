@@ -1519,35 +1519,33 @@ def get_vip_package_banner(package):
     return package.get("banner_file_id") or os.environ["PACKAGE_BANNER_FILE_ID"]
 
 
-def build_vip_package_keyboard(idx: int, total: int, package_id):
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "💸 Bayar",
-                callback_data=f"bayar_{package_id}"
-            )
-        ]
-    ]
+def build_vip_package_keyboard(idx, total, package_id):
+    buttons = []
 
-    if total > 1:
-        prev_idx = (idx - 1) % total
-        next_idx = (idx + 1) % total
-        keyboard.append([
-            InlineKeyboardButton(
-                "⬅️",
-                callback_data=f"vipnav_{prev_idx}"
-            ),
-            InlineKeyboardButton(
-                f"{idx + 1}/{total}",
-                callback_data="vipnav_noop"
-            ),
-            InlineKeyboardButton(
-                "➡️",
-                callback_data=f"vipnav_{next_idx}"
-            )
-        ])
+    nav = []
+    if idx > 0:
+        nav.append(InlineKeyboardButton("‹", callback_data=f"vipnav_{idx - 1}"))
 
-    return InlineKeyboardMarkup(keyboard)
+    nav.append(
+        InlineKeyboardButton(
+            f"{idx + 1}/{total}",
+            callback_data=f"vipnoop_{idx}"
+        )
+    )
+
+    if idx < total - 1:
+        nav.append(InlineKeyboardButton("›", callback_data=f"vipnav_{idx + 1}"))
+
+    buttons.append(nav)
+    buttons.append([
+        InlineKeyboardButton(
+            "💸 Bayar",
+            callback_data=f"bayar_{package_id}"
+        )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
+
 
 
 async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
