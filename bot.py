@@ -5550,110 +5550,24 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+
     if query.from_user.id != ADMIN_ID:
+        await query.answer()
         return
+
     text, keyboard = build_blacklist_view(1)
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["BLACKLIST_BANNER_FILE_ID"],
+
+    # /adminvip selalu berupa photo message.
+    # Ubah caption + keyboard pada message yang sedang ditekan,
+    # bukan mengganti/membuat message baru.
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_caption(
             caption=text,
             parse_mode="HTML",
-        ),
-        reply_markup=keyboard
+            reply_markup=keyboard,
+        )
     )
-
-    await query.answer()
-
-# ==================================================
-# FILE MANAGER
-# ==================================================
-# (icon, display filename, absolute path on the Railway Volume)
-FILE_MANAGER_FILES = [
-    ("📦", "vip_packages.json", VIP_PACKAGES_FILE),
-    ("⚙️", "settings.json", SETTINGS_FILE),
-    ("👥", "users.json", USERS_FILE),
-    ("✅", "approved.json", APPROVED_FILE),
-    ("🚫", "blacklist.json", BLACKLIST_FILE),
-    ("📊", "counter.json", COUNTER_FILE),
-    ("📜", "order_history.json", ORDER_HISTORY_FILE),
-    ("⏳", "pending_orders.json", PENDING_ORDERS_FILE),
-    ("🔒", "payment_lock.json", PAYMENT_LOCK_FILE),
-]
-
-
-def split_text_into_chunks(text: str, limit: int = 3500):
-    chunks = []
-    current = ""
-    for line in text.split("\n"):
-        candidate = f"{current}\n{line}" if current else line
-        if len(candidate) > limit:
-            if current:
-                chunks.append(current)
-            current = line
-        else:
-            current = candidate
-    if current:
-        chunks.append(current)
-    return chunks
-
-
-def create_file_manager_backup(name: str, path: str):
-    if not os.path.exists(path):
-        return None
-    os.makedirs(FILE_MANAGER_BACKUP_DIR, exist_ok=True)
-    timestamp = datetime.now(WIB).strftime("%Y%m%d_%H%M%S")
-    backup_path = os.path.join(FILE_MANAGER_BACKUP_DIR, f"{name}.{timestamp}.bak")
-    shutil.copy2(path, backup_path)
-    return backup_path
-
-
-def build_filemgr_list_view():
-    available = [
-        (idx, icon, name)
-        for idx, (icon, name, path) in enumerate(FILE_MANAGER_FILES)
-        if os.path.exists(path)
-    ]
-
-    keyboard_rows = []
-
-    if not available:
-        text = "🗂 File Manager\n\nTidak ada file yang ditemukan."
-    else:
-        text = "🗂 File Manager\n\nPilih file JSON untuk dikelola."
-        buttons = [
-            InlineKeyboardButton(
-                f"{icon} {name.replace('.json', '').replace('_', ' ').title()}",
-                callback_data=f"filemgr_open_{idx}"
-            )
-            for idx, icon, name in available
-        ]
-        for i in range(0, len(buttons), 2):
-            keyboard_rows.append(buttons[i:i + 2])
-
-    keyboard_rows.append([InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")])
-
-    keyboard = InlineKeyboardMarkup(keyboard_rows)
-    return text, keyboard
-
-
-def build_filemgr_detail_view(idx, icon, name, note=None):
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}"),
-            InlineKeyboardButton("📥 Download", callback_data=f"filemgr_backup_{idx}")
-        ],
-        [
-            InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}"),
-            InlineKeyboardButton("📤 Restore", callback_data=f"filemgr_restore_ask_{idx}")
-        ],
-        [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
-    ])
-    caption = f"{icon} {name}\n\nPilih tindakan."
-    if note:
-        caption = f"{note}\n\n{caption}"
-    return caption, keyboard
-
-
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     if query.from_user.id != ADMIN_ID:
