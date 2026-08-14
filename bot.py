@@ -1519,32 +1519,45 @@ def get_vip_package_banner(package):
     return package.get("banner_file_id") or os.environ["PACKAGE_BANNER_FILE_ID"]
 
 
-def build_vip_package_keyboard(idx, total, package_id):
-    buttons = []
+def build_vip_package_keyboard(idx: int, total: int, package_id):
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "💸 Bayar",
+                callback_data=f"bayar_{package_id}"
+            )
+        ]
+    ]
 
-    nav = []
-    if idx > 0:
-        nav.append(InlineKeyboardButton("‹", callback_data=f"vipnav_{idx - 1}"))
+    if total > 1:
+        prev_idx = (idx - 1) % total
 
-    nav.append(
-        InlineKeyboardButton(
-            f"{idx + 1}/{total}",
-            callback_data="vipnav_noop"
-        )
-    )
+        # Keep the current ⬅️ / ➡️ icons and fixed 3-slot layout.
+        # At the last page, ➡️ is still shown but disabled as navigation.
+        if idx < total - 1:
+            next_button = InlineKeyboardButton(
+                "➡️",
+                callback_data=f"vipnav_{idx + 1}"
+            )
+        else:
+            next_button = InlineKeyboardButton(
+                "➡️",
+                callback_data="vipnav_noop"
+            )
 
-    if idx < total - 1:
-        nav.append(InlineKeyboardButton("›", callback_data=f"vipnav_{idx + 1}"))
+        keyboard.append([
+            InlineKeyboardButton(
+                "⬅️",
+                callback_data=f"vipnav_{prev_idx}"
+            ),
+            InlineKeyboardButton(
+                f"{idx + 1}/{total}",
+                callback_data="vipnav_noop"
+            ),
+            next_button
+        ])
 
-    buttons.append(nav)
-    buttons.append([
-        InlineKeyboardButton(
-            "💸 Bayar",
-            callback_data=f"bayar_{package_id}"
-        )
-    ])
-
-    return InlineKeyboardMarkup(buttons)
+    return InlineKeyboardMarkup(keyboard)
 
 
 
