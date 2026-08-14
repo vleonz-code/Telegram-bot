@@ -1918,16 +1918,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         qris_loading_users.add(query.from_user.id)
         try:
-            if active_order is not None and active_order.get("qris_msg_id"):
-                try:
-                    await context.bot.delete_message(
-                        chat_id=query.message.chat_id,
-                        message_id=active_order["qris_msg_id"]
-                    )
-                except Exception:
-                    pass
-                active_order["qris_msg_id"] = None
-
             await show_qris_loading_message(
                 query.message.chat_id,
                 context
