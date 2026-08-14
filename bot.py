@@ -1573,12 +1573,15 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 
 async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
-    # Clear the stale deeplink-repeat notice before showing VIP Menu.
-    await clear_last_repeat(
-        query.message.chat_id,
-        context.bot
+    # Match AdminVIP fast callback pattern: acknowledge the tap while
+    # clearing the stale deeplink notice instead of serializing both awaits.
+    await asyncio.gather(
+        query.answer(),
+        clear_last_repeat(
+            query.message.chat_id,
+            context.bot
+        )
     )
 
     packages = get_vip_packages_cached()["packages"]
@@ -1599,13 +1602,22 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total = len(active_packages)
         package = active_packages[0]
 
-        await context.bot.send_photo(
-            chat_id=query.message.chat_id,
-            photo=get_vip_package_banner(package),
-            caption=build_vip_package_text(package),
-            reply_markup=build_vip_package_keyboard(0, total, package["id"]),
-            parse_mode="HTML",
+        await asyncio.gather(
+            context.bot.send_photo(
+                chat_id=query.message.chat_id,
+                photo=get_vip_package_banner(package),
+                caption=build_vip_package_text(package),
+                reply_markup=build_vip_package_keyboard(0, total, package["id"]),
+                parse_mode="HTML",
+            ),
+            notify_admin_vip_menu(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+            )
         )
+        return
 
     await notify_admin_vip_menu(
         context.bot,
@@ -1617,7 +1629,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     idx = int(query.data.split("_")[1])
 
@@ -1634,15 +1645,20 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=get_vip_package_banner(package),
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-        ),
-        reply_markup=build_vip_package_keyboard(
-            idx, total, package["id"]
-        ),
+    # Match AdminVIP navigation: callback acknowledgement and media update
+    # run together so Telegram's button spinner is cleared immediately.
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_media(
+            media=InputMediaPhoto(
+                media=get_vip_package_banner(package),
+                caption=build_vip_package_text(package),
+                parse_mode="HTML",
+            ),
+            reply_markup=build_vip_package_keyboard(
+                idx, total, package["id"]
+            ),
+        )
     )
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -1651,7 +1667,6 @@ async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
-        await query.answer()
 
         package_id = int(query.data.split("_")[1])
         package = get_package(package_id)
@@ -1663,14 +1678,6 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         user = query.from_user
-        await notify_admin_vip_package(
-            context.bot,
-            user.full_name or "-",
-            f"@{user.username}" if user.username else "-",
-            user.id,
-            package["nama"],
-        )
-
         keyboard = InlineKeyboardMarkup([
     [
         InlineKeyboardButton(
@@ -1686,14 +1693,24 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 ])
 
-        await query.edit_message_text(
-            f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
-            f"━━━━━━━━━━━━━━\n\n"
-            f"<blockquote>❝ {html.escape(package['deskripsi'])} ❞</blockquote>\n\n"
-            f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n"
-            f"━━━━━━━━━━━━━━",
-            reply_markup=keyboard,
-            parse_mode="HTML"
+        await asyncio.gather(
+            query.answer(),
+            query.edit_message_text(
+                f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
+                f"━━━━━━━━━━━━━━\n\n"
+                f"<blockquote>❝ {html.escape(package['deskripsi'])} ❞</blockquote>\n\n"
+                f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n"
+                f"━━━━━━━━━━━━━━",
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            ),
+            notify_admin_vip_package(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+                package["nama"],
+            )
         )
 
 
