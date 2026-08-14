@@ -1554,6 +1554,12 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
+    # Clear the stale deeplink-repeat notice before showing VIP Menu.
+    await clear_last_repeat(
+        query.message.chat_id,
+        context.bot
+    )
+
     packages = get_vip_packages_cached()["packages"]
 
     active_packages = [
