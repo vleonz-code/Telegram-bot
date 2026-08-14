@@ -1604,38 +1604,33 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
+
     idx = int(query.data.split("_")[1])
 
     packages = get_vip_packages_cached()["packages"]
-
     active_packages = [
         package for package in packages
         if package.get("aktif", True)
     ]
 
     if not active_packages:
-        await query.answer()
         return
 
     total = len(active_packages)
     idx = idx % total
     package = active_packages[idx]
 
-    try:
-        await query.edit_message_media(
-            media=InputMediaPhoto(
-                media=get_vip_package_banner(package),
-                caption=build_vip_package_text(package),
-                parse_mode="HTML",
-            ),
-            reply_markup=build_vip_package_keyboard(
-                idx, total, package["id"]
-            ),
-        )
-    finally:
-        await query.answer()
-
-
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
+            parse_mode="HTML",
+        ),
+        reply_markup=build_vip_package_keyboard(
+            idx, total, package["id"]
+        ),
+    )
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
 
@@ -2256,6 +2251,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
@@ -2273,7 +2269,6 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
         reply_markup=build_adminvip_packages_keyboard(packages),
     )
 
-    await query.answer()
 
 
 def build_adminvip_packages_keyboard(packages):
@@ -2689,6 +2684,7 @@ async def incoming_vip_detail_callback(
 
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
 
     admin_channel_waiting.discard(query.from_user.id)
 
@@ -2741,7 +2737,6 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
         reply_markup=keyboard
     )
 
-    await query.answer()
 
 
 async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3296,6 +3291,7 @@ def build_settings_keyboard(settings):
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
 
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
@@ -3310,11 +3306,11 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         reply_markup=keyboard
     )
 
-    await query.answer()
 
 
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -3344,7 +3340,6 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         reply_markup=keyboard
     )
 
-    await query.answer()
 
 
 async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5388,8 +5383,8 @@ async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def banned_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
-        await query.answer()
         return
 
     page = int(query.data.replace("banned_page_", ""))
@@ -5570,6 +5565,7 @@ async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFA
     )
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
 
@@ -5596,10 +5592,10 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception:
             pass
 
-    await query.answer()
 
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
 
@@ -5637,7 +5633,6 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
     ])
     await query.edit_message_caption(caption=f"{icon} {name}\n\nPilih tindakan.", reply_markup=keyboard)
 
-    await query.answer()
 
 
 async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
