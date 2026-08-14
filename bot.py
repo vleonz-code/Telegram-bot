@@ -2231,9 +2231,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         InlineKeyboardButton(
             "🖼 Edit Banner",
             callback_data=f"adminvip_banner_{package_id}"
-        )
-    ],
-    [
+        ),
         InlineKeyboardButton(
             "🗑️ Hapus Paket",
             callback_data=f"adminvip_delete_{package_id}"
