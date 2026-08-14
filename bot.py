@@ -5257,6 +5257,10 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
+    await update.message.reply_text(
+        "✅ Pesan terkirim ke admin."
+    )
+
 
 async def livechat_start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -5272,16 +5276,26 @@ async def livechat_start_callback(update: Update, context: ContextTypes.DEFAULT_
 
     message_text = query.message.text or query.message.caption or ""
     source = "deeplink"
+    vip_link = None
 
-    # Payment-success Help must return to the exact VIP link received.
+    # Payment-success Help must return to the exact VIP link attached
+    # to the current payment-success message.
     if message_text.startswith("🎉 PEMBAYARAN BERHASIL!"):
         source = "purchase"
+        if query.message.reply_markup:
+            for row in query.message.reply_markup.inline_keyboard:
+                for button in row:
+                    if button.url:
+                        vip_link = button.url
+                        break
+                if vip_link:
+                    break
 
     previous = livechat_sessions.get(user_id, {})
     livechat_sessions[user_id] = {
         "source": source,
         "return_text": message_text,
-        "vip_link": previous.get("vip_link"),
+        "vip_link": vip_link or previous.get("vip_link"),
     }
 
     await query.answer()
@@ -5310,16 +5324,12 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     if session and session.get("source") == "purchase" and session.get("vip_link"):
         await query.edit_message_text(
-            "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
-            "Pembayaran kamu telah diverifikasi.\n\n"
-            "✨ Akses VIP kamu sudah siap.\n\n"
-            "Tekan tombol di bawah untuk bergabung.\n"
-            "⚠️ Mohon jangan bagikan akses ini.",
+            session.get("return_text", ""),
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🔗 Buka VIP",
+                        "🔗 VIP LINK",
                         url=session["vip_link"]
                     )
                 ],
