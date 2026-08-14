@@ -3530,8 +3530,14 @@ async def delete_messages_after_delay(
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "✨ Gabung VIP",
+                            "📚 Lihat VVIP",
                             callback_data="vipmenu"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🆘 Bantuan",
+                            url="https://t.me/BocilVIP511"
                         )
                     ]
                 ])
@@ -3542,8 +3548,7 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "Koleksi selengkapnya ada di grup VIP.\n\n"
-                    "Chat Admin: @BocilVIP511 👈"
+                    "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
                 ),
                 reply_markup=keyboard
             )
