@@ -2311,7 +2311,6 @@ def build_adminvip_packages_keyboard(packages):
 
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     await query.edit_message_media(
         media=InputMediaPhoto(
@@ -2321,11 +2320,12 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
         ),
         reply_markup=build_payment_keyboard(),
     )
+
+    await query.answer()
 
 
 async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     await query.edit_message_media(
         media=InputMediaPhoto(
@@ -2335,6 +2335,8 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
         ),
         reply_markup=build_payment_keyboard(),
     )
+
+    await query.answer()
 
 
 INCOMING_VIP_PAGE_SIZE = 10
@@ -2688,7 +2690,6 @@ async def incoming_vip_detail_callback(
 
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     admin_channel_waiting.discard(query.from_user.id)
 
@@ -2740,6 +2741,8 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
         ),
         reply_markup=keyboard
     )
+
+    await query.answer()
 
 
 async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3261,7 +3264,6 @@ def build_settings_keyboard(settings):
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
@@ -3276,10 +3278,11 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
         reply_markup=keyboard
     )
 
+    await query.answer()
+
 
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -3309,10 +3312,11 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         reply_markup=keyboard
     )
 
+    await query.answer()
+
 
 async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -3337,10 +3341,11 @@ async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         reply_markup=keyboard
     )
 
+    await query.answer()
+
 
 async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -3367,6 +3372,8 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         caption="✅ Statistik berhasil direset!",
         reply_markup=keyboard
     )
+
+    await query.answer()
 
 
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3657,15 +3664,9 @@ async def sweep_pending_preview_deletions(bot):
 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
-
-    await clear_last_stats(
-        query.message.chat_id,
-        context.bot
-    )
 
     settings = read_settings()
 
@@ -3673,8 +3674,8 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
-        f"👥 Users       : {len(read_user_registry())}\n"
-        f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
+        f"👥 Users       : {len(_users_cache if _users_cache is not None else read_user_registry())}\n"
+        f"📦 Packages    : {len(get_vip_packages_cached()['packages'])}\n"
         f"📥 Incoming    : {len(get_incoming_vip_orders())}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
@@ -3692,6 +3693,13 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
             parse_mode="HTML",
         ),
         reply_markup=keyboard,
+    )
+
+    await query.answer()
+
+    await clear_last_stats(
+        query.message.chat_id,
+        context.bot
     )
 
 
@@ -5500,7 +5508,6 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
     text, keyboard = build_blacklist_view(1)
@@ -5512,6 +5519,8 @@ async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFA
         ),
         reply_markup=keyboard
     )
+
+    await query.answer()
 
 # ==================================================
 # FILE MANAGER
@@ -5605,7 +5614,6 @@ def build_filemgr_detail_view(idx, icon, name, note=None):
 
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
 
@@ -5632,10 +5640,10 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception:
             pass
 
+    await query.answer()
 
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
 
@@ -5672,6 +5680,8 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
     ])
     await query.edit_message_caption(caption=f"{icon} {name}\n\nPilih tindakan.", reply_markup=keyboard)
+
+    await query.answer()
 
 
 async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -6192,8 +6202,8 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
-        f"👥 Users       : {len(read_user_registry())}\n"
-        f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
+        f"👥 Users       : {len(_users_cache if _users_cache is not None else read_user_registry())}\n"
+        f"📦 Packages    : {len(get_vip_packages_cached()['packages'])}\n"
         f"📥 Incoming    : {len(get_incoming_vip_orders())}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
