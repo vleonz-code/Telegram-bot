@@ -5244,10 +5244,17 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     waktu = datetime.now(WIB).strftime("%d %b %Y • %H:%M WIB")
 
+    purchase_tag = (
+        "🛒 Status: Sudah berhasil membeli"
+        if livechat_sessions.get(user_id, {}).get("source") == "purchase"
+        else ""
+    )
+
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
             "📩 Pesan Live Support\n\n"
+            f"{purchase_tag + chr(10) if purchase_tag else ''}"
             f"👤 {update.effective_user.full_name}\n"
             f"🔗 @{update.effective_user.username if update.effective_user.username else '-'}\n"
             f"🆔 {user_id}\n"
