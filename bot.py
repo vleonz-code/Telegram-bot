@@ -6380,9 +6380,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "pre_upload_notice_msg_ids"
                 ):
                     notice_msg = await update.message.reply_text(
-                        "⚠️ Kamu masih berada di halaman pembayaran.\n\n"
-                        "Tekan tombol 📤 Sudah Transfer terlebih dahulu "
-                        "agar area upload bukti transfer dibuka."
+                        "<i>⚠️ Kamu masih berada di halaman pembayaran.</i>\n\n"
+                        "Tekan tombol 📤 <b>Sudah Transfer</b> terlebih dahulu "
+                        "agar area upload bukti transfer dibuka.",
+                        parse_mode="HTML",
                     )
                     upload_waiting[order_id].setdefault(
                         "pre_upload_notice_msg_ids",
