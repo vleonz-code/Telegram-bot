@@ -2261,7 +2261,7 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
 
-    packages = read_vip_packages()["packages"]
+    packages = get_vip_packages_cached()["packages"]
 
     await query.edit_message_media(
         media=InputMediaPhoto(
