@@ -458,7 +458,6 @@ admin_request_counts = {}     # user_id -> jumlah percobaan
 
 last_delivered_messages = {}
 preview_delete_tasks = {}
-qris_expiry_tasks = {}
 admin_reply_waiting = {}
 blocked_notified = set()
 file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
@@ -880,6 +879,11 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
     except Exception as e:
         logger.error(f"Failed to notify admin: {e}")
 
+# In-memory cache for VIP admin activity.
+# Keeps the existing workflow and persistent JSON storage intact.
+_vip_activity_cache = None
+
+
 async def update_vip_activity(
     bot,
     full_name: str,
@@ -892,7 +896,11 @@ async def update_vip_activity(
     if user_id == ADMIN_ID:
         return
 
-    activities = read_vip_activity()
+    global _vip_activity_cache
+    if _vip_activity_cache is None:
+        _vip_activity_cache = read_vip_activity()
+
+    activities = _vip_activity_cache
     key = str(user_id)
     activity = activities.get(key, {})
 
@@ -919,13 +927,13 @@ async def update_vip_activity(
         activity.setdefault("packages", [])
 
         if stage == "package":
-            if package_name and package_name not in activity["packages"]:
-                activity["packages"].append(package_name)
+            if package_name:
+                activity["packages"] = [package_name]
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
         elif stage == "qris":
-            if package_name and package_name not in activity["packages"]:
-                activity["packages"].append(package_name)
+            if package_name:
+                activity["packages"] = [package_name]
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
             if "qris" not in activity["steps"]:
@@ -1602,6 +1610,16 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user.id,
     )
 
+    # VIP Menu now opens directly on the first package slide.
+    if active_packages:
+        await notify_admin_vip_package(
+            context.bot,
+            user.full_name or "-",
+            f"@{user.username}" if user.username else "-",
+            user.id,
+            active_packages[0]["nama"],
+        )
+
 
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -1622,19 +1640,27 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    try:
-        await query.edit_message_media(
-            media=InputMediaPhoto(
-                media=get_vip_package_banner(package),
-                caption=build_vip_package_text(package),
-                parse_mode="HTML",
-            ),
-            reply_markup=build_vip_package_keyboard(
-                idx, total, package["id"]
-            ),
-        )
-    finally:
-        await query.answer()
+    await query.answer()
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
+            parse_mode="HTML",
+        ),
+        reply_markup=build_vip_package_keyboard(
+            idx, total, package["id"]
+        ),
+    )
+
+    # Keep Buyer Details synchronized with the package currently shown.
+    user = query.from_user
+    await notify_admin_vip_package(
+        context.bot,
+        user.full_name or "-",
+        f"@{user.username}" if user.username else "-",
+        user.id,
+        package["nama"],
+    )
 
 
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1715,8 +1741,7 @@ async def send_qris_message(chat_id, context, package, package_id):
         photo=qris_file_id,
 
         caption=(
-            "<b>✅ QRIS telah dibuat</b>\n"
-            "⏳ 20 menit\n"
+            "<b>💳 PEMBAYARAN GROUP BOCIL</b>\n"
             "━━━━━━━━━━━━━━\n\n"
             f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
@@ -1986,20 +2011,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 query.from_user.id
             )
         else:
-            upload_waiting[order_id]["expires_at"] = time.time() + (20 * 60)
-
-            pending = read_pending_orders()
-            for i, order in enumerate(pending["orders"]):
-                if order["order_id"] == order_id:
-                    pending["orders"][i] = upload_waiting[order_id].copy()
-                    break
-            save_pending_orders(pending)
-
-            schedule_qris_expiry(
-                context,
-                order_id,
-                upload_waiting[order_id]["expires_at"]
-            )
             user = query.from_user
             await notify_admin_vip_qris(
                 context.bot,
@@ -2131,10 +2142,6 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
         if data["user_id"] == user_id:
 
-            task = qris_expiry_tasks.pop(order_id, None)
-            if task and not task.done():
-                task.cancel()
-
             if data.get("upload_msg_id"):
                 try:
                     await context.bot.delete_message(
@@ -2153,6 +2160,18 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 except Exception:
                     pass
 
+            # Also remove the pre-upload warning shown before
+            # "📤 Sudah Transfer" was pressed.
+            for notice_msg_id in data.get("pre_upload_notice_msg_ids", []):
+                try:
+                    await context.bot.delete_message(
+                        chat_id=query.message.chat_id,
+                        message_id=notice_msg_id
+                    )
+                except Exception:
+                    pass
+
+            data["pre_upload_notice_msg_ids"] = []
             upload_waiting.pop(order_id)
 
     await query.message.reply_text(
@@ -2233,7 +2252,9 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         InlineKeyboardButton(
             "🖼 Edit Banner",
             callback_data=f"adminvip_banner_{package_id}"
-        ),
+        )
+    ],
+    [
         InlineKeyboardButton(
             "🗑️ Hapus Paket",
             callback_data=f"adminvip_delete_{package_id}"
@@ -2257,7 +2278,6 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
@@ -2275,6 +2295,8 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
         ),
         reply_markup=build_adminvip_packages_keyboard(packages),
     )
+
+    await query.answer()
 
 
 def build_adminvip_packages_keyboard(packages):
@@ -3475,67 +3497,6 @@ async def clear_last_repeat(chat_id: int, bot):
             )
         except Exception:
             pass
-
-
-async def expire_qris_order_after_delay(context, order_id: int, expires_at: float):
-    try:
-        delay = max(0, expires_at - time.time())
-        await asyncio.sleep(delay)
-
-        data = upload_waiting.get(order_id)
-        if not data:
-            return
-
-        if data.get("photo_uploaded") or data.get("processing"):
-            return
-
-        user_id = data.get("user_id")
-        qris_msg_id = data.get("qris_msg_id")
-
-        if qris_msg_id and user_id:
-            try:
-                await context.bot.delete_message(
-                    chat_id=user_id,
-                    message_id=qris_msg_id
-                )
-            except Exception:
-                pass
-
-        unlock_payment(user_id)
-        upload_waiting.pop(order_id, None)
-
-        pending = read_pending_orders()
-        pending["orders"] = [
-            order
-            for order in pending["orders"]
-            if order.get("order_id") != order_id
-        ]
-        save_pending_orders(pending)
-
-        await context.bot.send_message(
-            chat_id=user_id,
-            text="⚠️ Pembayaran expired. Silakan buat ulang pembayaran."
-        )
-
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:
-        logger.error(
-            f"QRIS expiry task failed for order_id={order_id}: {e}",
-            exc_info=True
-        )
-    finally:
-        qris_expiry_tasks.pop(order_id, None)
-
-
-def schedule_qris_expiry(context, order_id: int, expires_at: float):
-    old_task = qris_expiry_tasks.get(order_id)
-    if old_task and not old_task.done():
-        old_task.cancel()
-
-    qris_expiry_tasks[order_id] = asyncio.create_task(
-        expire_qris_order_after_delay(context, order_id, expires_at)
-    )
 
 
 async def delete_messages_after_delay(
@@ -6441,9 +6402,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "pre_upload_notice_msg_ids"
                 ):
                     notice_msg = await update.message.reply_text(
-                        "⚠️ Kamu masih berada di halaman pembayaran.\n\n"
-                        "Tekan tombol 📤 Sudah Transfer terlebih dahulu "
-                        "agar area upload bukti transfer dibuka."
+                        "<i>⚠️ Kamu masih berada di halaman pembayaran.</i>\n\n"
+                        "Tekan tombol 📤 <b>Sudah Transfer</b> terlebih dahulu "
+                        "agar area upload bukti transfer dibuka.",
+                        parse_mode="HTML",
                     )
                     upload_waiting[order_id].setdefault(
                         "pre_upload_notice_msg_ids",
@@ -7010,10 +6972,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 f"order_id={order_id}"
             )
 
-        task = qris_expiry_tasks.pop(order_id, None)
-        if task and not task.done():
-            task.cancel()
-
         upload_waiting.pop(order_id, None)
         payment_trace_logger.info(
             "PAY_OK_PENDING_REMOVE_START "
@@ -7162,10 +7120,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         }
 
         write_blacklist(blacklist)
-
-        task = qris_expiry_tasks.pop(order_id, None)
-        if task and not task.done():
-            task.cancel()
 
         upload_waiting.pop(order_id, None)
         unlock_payment(user_id)
@@ -7363,16 +7317,6 @@ def main():
     restore_pending_orders()
 
     app = ApplicationBuilder().token(token).build()
-
-    for _order_id, _order in upload_waiting.items():
-        _expires_at = _order.get("expires_at")
-        if (
-            _expires_at
-            and _order.get("qris_msg_id")
-            and not _order.get("photo_uploaded")
-            and not _order.get("processing")
-        ):
-            schedule_qris_expiry(app, _order_id, float(_expires_at))
 
     async def start_background(app):
         await set_admin_commands(app)
