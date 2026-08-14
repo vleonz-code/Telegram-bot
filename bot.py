@@ -7,7 +7,7 @@ import time
 import copy
 import html
 import psutil
-psutil.cpu_percent(interval=None)  # update X priming baseline, hindari 0.0% di pembacaan pertama - BOT STABLE
+psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan pertama - BOT STABLE
 import sys
 import telegram
 from datetime import datetime, timezone, timedelta
@@ -460,6 +460,8 @@ last_delivered_messages = {}
 preview_delete_tasks = {}
 qris_expiry_tasks = {}
 admin_reply_waiting = {}
+# Active Live Support sessions: user_id -> return context.
+livechat_sessions = {}
 blocked_notified = set()
 file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
 file_manager_restore_waiting = {}  # user_id -> FILE_MANAGER_FILES index
@@ -1249,7 +1251,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [
                         InlineKeyboardButton(
                             "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
+                            callback_data="livechat_start"
                         )
                     ]
                 ])
@@ -3701,7 +3703,7 @@ async def delete_messages_after_delay(
                     [
                         InlineKeyboardButton(
                             "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
+                            callback_data="livechat_start"
                         )
                     ]
                 ])
@@ -5223,11 +5225,19 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
 
+    # Do not forward ordinary user messages unless Live Support was opened.
+    if user_id not in livechat_sessions:
+        return
+
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
                 "💬 Balas",
-                callback_data=f"reply|{update.effective_user.id}"
+                callback_data=f"reply|{user_id}"
+            ),
+            InlineKeyboardButton(
+                "🙈 Abaikan",
+                callback_data=f"livechat_ignore|{user_id}"
             )
         ]
     ])
@@ -5237,15 +5247,145 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
-            "📩 Pesan Baru\n\n"
+            "📩 Pesan Live Support\n\n"
             f"👤 {update.effective_user.full_name}\n"
             f"🔗 @{update.effective_user.username if update.effective_user.username else '-'}\n"
-            f"🆔 {update.effective_user.id}\n"
+            f"🆔 {user_id}\n"
             f"🕒 {waktu}\n\n"
             f"💬 {update.message.text}"
         ),
         reply_markup=keyboard
     )
+
+
+async def livechat_start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+    settings = read_settings()
+
+    if not settings["live_chat_enabled"]:
+        await query.answer(
+            "⚠️ Live Support sedang tidak tersedia.",
+            show_alert=True
+        )
+        return
+
+    message_text = query.message.text or query.message.caption or ""
+    source = "deeplink"
+
+    # Payment-success Help must return to the exact VIP link received.
+    if message_text.startswith("🎉 PEMBAYARAN BERHASIL!"):
+        source = "purchase"
+
+    previous = livechat_sessions.get(user_id, {})
+    livechat_sessions[user_id] = {
+        "source": source,
+        "return_text": message_text,
+        "vip_link": previous.get("vip_link"),
+    }
+
+    await query.answer()
+
+    await query.edit_message_text(
+        "🟢 Live Support Aktif\n\n"
+        "📝 Silakan kirim pesan Anda.\n"
+        "Admin akan membalas pesan Anda di sini.",
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "❌ Akhiri Chat",
+                    callback_data="livechat_end"
+                )
+            ]
+        ])
+    )
+
+
+async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+    session = livechat_sessions.pop(user_id, None)
+
+    await query.answer()
+
+    if session and session.get("source") == "purchase" and session.get("vip_link"):
+        await query.edit_message_text(
+            "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
+            "Pembayaran kamu telah diverifikasi.\n\n"
+            "✨ Akses VIP kamu sudah siap.\n\n"
+            "Tekan tombol di bawah untuk bergabung.\n"
+            "⚠️ Mohon jangan bagikan akses ini.",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "🔗 Buka VIP",
+                        url=session["vip_link"]
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🆘 Bantuan",
+                        callback_data="livechat_start"
+                    )
+                ]
+            ])
+        )
+    else:
+        await query.edit_message_text(
+            session.get(
+                "return_text",
+                "📍 Permintaan ulang belum tersedia.\n\n"
+                "⏳ Silahkan coba lagi nanti. ୨୧"
+            ),
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "📚 Lihat VVIP",
+                        callback_data="vipmenu"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🆘 Bantuan",
+                        callback_data="livechat_start"
+                    )
+                ]
+            ])
+        )
+
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=(
+            "🔴 Live Support Diakhiri\n\n"
+            f"👤 {query.from_user.full_name}\n"
+            f"🆔 {user_id}\n\n"
+            "User telah mengakhiri chat."
+        )
+    )
+
+
+async def livechat_ignore_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    if query.from_user.id != ADMIN_ID:
+        await query.answer()
+        return
+
+    try:
+        user_id = int(query.data.split("|", 1)[1])
+    except (ValueError, IndexError):
+        await query.answer()
+        return
+
+    await query.answer("Diabaikan.")
+
+    try:
+        await query.edit_message_text(
+            "🙈 Pesan Live Support diabaikan."
+        )
+    except Exception:
+        pass
 
 
 async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -7061,6 +7201,11 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             f"user_id={user_id}"
         )
         try:
+            livechat_sessions[user_id] = {
+                "source": "purchase",
+                "vip_link": vip_link,
+            }
+
             success_msg = await context.bot.send_message(
                 chat_id=user_id,
                 text=(
@@ -7082,7 +7227,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                     [
                         InlineKeyboardButton(
                             "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
+                            callback_data="livechat_start"
                         )
                     ]
                 ])
@@ -7557,6 +7702,24 @@ def main():
         CallbackQueryHandler(
             livechat_reply_callback,
             pattern=r"^reply\|"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            livechat_start_callback,
+            pattern=r"^livechat_start$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            livechat_end_callback,
+            pattern=r"^livechat_end$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            livechat_ignore_callback,
+            pattern=r"^livechat_ignore\|"
         )
     )
     app.add_handler(
