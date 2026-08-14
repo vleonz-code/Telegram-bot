@@ -3410,7 +3410,9 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
     if query.from_user.id != ADMIN_ID:
         return
 
-    cpu_percent = await asyncio.to_thread(psutil.cpu_percent, 0.4)
+    cpu_task = asyncio.create_task(
+        asyncio.to_thread(psutil.cpu_percent, 0.4)
+    )
     mem = psutil.virtual_memory()
     disk = psutil.disk_usage("/")
 
@@ -3450,6 +3452,8 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
     tanggal_str = f"{now.day:02d} {bulan_id[now.month]} {now.year}"
     jam_str = now.strftime("%H:%M:%S")
     py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+    cpu_percent = await cpu_task
 
     caption = (
         "<b>🖥 STATUS SERVER</b>\n"
