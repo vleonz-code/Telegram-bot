@@ -458,6 +458,7 @@ admin_request_counts = {}     # user_id -> jumlah percobaan
 
 last_delivered_messages = {}
 preview_delete_tasks = {}
+qris_expiry_tasks = {}
 admin_reply_waiting = {}
 blocked_notified = set()
 file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
@@ -1713,6 +1714,7 @@ async def send_qris_message(chat_id, context, package, package_id):
 
         caption=(
             "<b>✅ QRIS telah dibuat</b>\n"
+            "⏳ 20 menit\n"
             "━━━━━━━━━━━━━━\n\n"
             f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
@@ -1982,6 +1984,20 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 query.from_user.id
             )
         else:
+            upload_waiting[order_id]["expires_at"] = time.time() + (20 * 60)
+
+            pending = read_pending_orders()
+            for i, order in enumerate(pending["orders"]):
+                if order["order_id"] == order_id:
+                    pending["orders"][i] = upload_waiting[order_id].copy()
+                    break
+            save_pending_orders(pending)
+
+            schedule_qris_expiry(
+                context,
+                order_id,
+                upload_waiting[order_id]["expires_at"]
+            )
             user = query.from_user
             await notify_admin_vip_qris(
                 context.bot,
@@ -2112,6 +2128,10 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
     for order_id, data in list(upload_waiting.items()):
 
         if data["user_id"] == user_id:
+
+            task = qris_expiry_tasks.pop(order_id, None)
+            if task and not task.done():
+                task.cancel()
 
             if data.get("upload_msg_id"):
                 try:
@@ -3455,6 +3475,67 @@ async def clear_last_repeat(chat_id: int, bot):
             )
         except Exception:
             pass
+
+
+async def expire_qris_order_after_delay(context, order_id: int, expires_at: float):
+    try:
+        delay = max(0, expires_at - time.time())
+        await asyncio.sleep(delay)
+
+        data = upload_waiting.get(order_id)
+        if not data:
+            return
+
+        if data.get("photo_uploaded") or data.get("processing"):
+            return
+
+        user_id = data.get("user_id")
+        qris_msg_id = data.get("qris_msg_id")
+
+        if qris_msg_id and user_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=user_id,
+                    message_id=qris_msg_id
+                )
+            except Exception:
+                pass
+
+        unlock_payment(user_id)
+        upload_waiting.pop(order_id, None)
+
+        pending = read_pending_orders()
+        pending["orders"] = [
+            order
+            for order in pending["orders"]
+            if order.get("order_id") != order_id
+        ]
+        save_pending_orders(pending)
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="⚠️ Pembayaran expired. Silakan buat ulang pembayaran."
+        )
+
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.error(
+            f"QRIS expiry task failed for order_id={order_id}: {e}",
+            exc_info=True
+        )
+    finally:
+        qris_expiry_tasks.pop(order_id, None)
+
+
+def schedule_qris_expiry(context, order_id: int, expires_at: float):
+    old_task = qris_expiry_tasks.get(order_id)
+    if old_task and not old_task.done():
+        old_task.cancel()
+
+    qris_expiry_tasks[order_id] = asyncio.create_task(
+        expire_qris_order_after_delay(context, order_id, expires_at)
+    )
 
 
 async def delete_messages_after_delay(
@@ -6929,6 +7010,10 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 f"order_id={order_id}"
             )
 
+        task = qris_expiry_tasks.pop(order_id, None)
+        if task and not task.done():
+            task.cancel()
+
         upload_waiting.pop(order_id, None)
         payment_trace_logger.info(
             "PAY_OK_PENDING_REMOVE_START "
@@ -7077,6 +7162,10 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         }
 
         write_blacklist(blacklist)
+
+        task = qris_expiry_tasks.pop(order_id, None)
+        if task and not task.done():
+            task.cancel()
 
         upload_waiting.pop(order_id, None)
         unlock_payment(user_id)
@@ -7274,6 +7363,16 @@ def main():
     restore_pending_orders()
 
     app = ApplicationBuilder().token(token).build()
+
+    for _order_id, _order in upload_waiting.items():
+        _expires_at = _order.get("expires_at")
+        if (
+            _expires_at
+            and _order.get("qris_msg_id")
+            and not _order.get("photo_uploaded")
+            and not _order.get("processing")
+        ):
+            schedule_qris_expiry(app, _order_id, float(_expires_at))
 
     async def start_background(app):
         await set_admin_commands(app)
