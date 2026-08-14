@@ -1247,7 +1247,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg = await context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=(
-                    "📍 Permintaan ulang belum tersedia.\n\n"
                     "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
                 ),
                 reply_markup=keyboard
@@ -6127,8 +6126,8 @@ def build_adminvip_keyboard():
             callback_data="adminvip_stats"
         ),
         InlineKeyboardButton(
-            "📢 Channel Post",
-            callback_data="adminvip_channel"
+            "🖥 Status Server",
+            callback_data="adminvip_server_status"
         )
     ])
 
@@ -6138,8 +6137,8 @@ def build_adminvip_keyboard():
             callback_data="filemgr_list"
         ),
         InlineKeyboardButton(
-            "🖥 Status Server",
-            callback_data="adminvip_server_status"
+            "📢 Channel Post",
+            callback_data="adminvip_channel"
         )
     ])
 
