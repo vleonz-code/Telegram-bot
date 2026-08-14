@@ -1520,42 +1520,39 @@ def get_vip_package_banner(package):
 
 
 def build_vip_package_keyboard(idx: int, total: int, package_id):
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "💸 Bayar",
-                callback_data=f"bayar_{package_id}"
-            )
-        ]
-    ]
+    keyboard = []
 
     if total > 1:
-        nav = []
+        # Keep the same three-button layout on every page.
+        # Boundary arrows remain visible but become no-op buttons.
+        prev_callback = (
+            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
+        )
+        next_callback = (
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
+        )
 
-        if idx > 0:
-            nav.append(
-                InlineKeyboardButton(
-                    "⬅️",
-                    callback_data=f"vipnav_{idx - 1}"
-                )
-            )
-
-        nav.append(
+        keyboard.append([
+            InlineKeyboardButton(
+                "‹",
+                callback_data=prev_callback
+            ),
             InlineKeyboardButton(
                 f"{idx + 1}/{total}",
                 callback_data="vipnav_noop"
+            ),
+            InlineKeyboardButton(
+                "›",
+                callback_data=next_callback
             )
+        ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "💸 Bayar Sekarang",
+            callback_data=f"bayar_{package_id}"
         )
-
-        if idx < total - 1:
-            nav.append(
-                InlineKeyboardButton(
-                    "➡️",
-                    callback_data=f"vipnav_{idx + 1}"
-                )
-            )
-
-        keyboard.append(nav)
+    ])
 
     return InlineKeyboardMarkup(keyboard)
 
