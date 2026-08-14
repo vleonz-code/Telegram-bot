@@ -7466,17 +7466,17 @@ def main():
 
     app = ApplicationBuilder().token(token).build()
 
-    for _order_id, _order in upload_waiting.items():
-        _expires_at = _order.get("expires_at")
-        if (
-            _expires_at
-            and _order.get("qris_msg_id")
-            and not _order.get("photo_uploaded")
-            and not _order.get("processing")
-        ):
-            schedule_qris_expiry(app, _order_id, float(_expires_at))
-
     async def start_background(app):
+        for _order_id, _order in upload_waiting.items():
+            _expires_at = _order.get("expires_at")
+            if (
+                _expires_at
+                and _order.get("qris_msg_id")
+                and not _order.get("photo_uploaded")
+                and not _order.get("processing")
+            ):
+                schedule_qris_expiry(app, _order_id, float(_expires_at))
+
         await set_admin_commands(app)
         app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
         app.bot_data["pre_upload_cleanup_tasks"] = [
