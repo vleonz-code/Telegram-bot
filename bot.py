@@ -2976,7 +2976,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
             continue
 
         harga = (
-            package["harga"]
+            package["harga"].split("|", 1)[0]
             .replace("Rp", "")
             .replace(".", "")
             .replace(",", "")
