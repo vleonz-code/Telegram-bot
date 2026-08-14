@@ -1575,11 +1575,9 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    # Clear the stale deeplink-repeat notice before showing VIP Menu.
-    await clear_last_repeat(
-        query.message.chat_id,
-        context.bot
-    )
+    # Keep the deeplink message visible until the new VIP Menu is ready.
+    chat_id = query.message.chat_id
+    old_repeat_message_id = last_repeat_message.get(chat_id)
 
     packages = get_vip_packages_cached()["packages"]
 
@@ -1606,6 +1604,18 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
         )
+
+        # Only after the VIP Menu has successfully appeared, remove the
+        # deeplink notice so the user never sees a blank/deleted transition.
+        if old_repeat_message_id == query.message.message_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=old_repeat_message_id,
+                )
+            except Exception:
+                pass
+            last_repeat_message.pop(chat_id, None)
 
     await notify_admin_vip_menu(
         context.bot,
