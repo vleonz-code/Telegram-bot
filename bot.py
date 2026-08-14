@@ -1918,6 +1918,12 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         qris_loading_users.add(query.from_user.id)
         try:
+            old_qris_msg_id = (
+                active_order.get("qris_msg_id")
+                if active_order is not None
+                else None
+            )
+
             await show_qris_loading_message(
                 query.message.chat_id,
                 context
@@ -1930,6 +1936,15 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 package_id
             )
             if qris_created:
+                if old_qris_msg_id:
+                    try:
+                        await context.bot.delete_message(
+                            chat_id=query.message.chat_id,
+                            message_id=old_qris_msg_id
+                        )
+                    except Exception:
+                        pass
+
                 user = query.from_user
                 await notify_admin_vip_qris(
                     context.bot,
