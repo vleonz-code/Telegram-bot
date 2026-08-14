@@ -515,6 +515,18 @@ def build_media_group(file_ids):
     return media
 
 
+def _reset_counter_file_sync(path):
+    with open(path, "w") as f:
+        json.dump({"count": 0}, f)
+
+def _read_os_release_sync(path):
+    with open(path) as f:
+        return dict(
+            line.strip().split("=", 1)
+            for line in f if "=" in line
+        )
+
+
 async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
 
     """Send the progress message, album, then confirmation to chat_id."""
@@ -3382,8 +3394,7 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     global _counter_cache
     try:
-        with open(COUNTER_FILE, "w") as f:
-            json.dump({"count": 0}, f)
+        await asyncio.to_thread(_reset_counter_file_sync, COUNTER_FILE)
         _counter_cache = 0
     except Exception as e:
         logger.error(f"Failed to reset counter: {e}")
@@ -3402,8 +3413,6 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         caption="✅ Statistik berhasil direset!",
         reply_markup=keyboard
     )
-
-
 
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3437,11 +3446,9 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         uptime_str = f"{minutes} menit"
 
     try:
-        with open("/etc/os-release") as f:
-            os_release = dict(
-                line.strip().split("=", 1)
-                for line in f if "=" in line
-            )
+        os_release = await asyncio.to_thread(
+            _read_os_release_sync, "/etc/os-release"
+        )
         os_name = os_release.get("PRETTY_NAME", "Unknown").strip('"')
     except Exception:
         os_name = "Unknown"
@@ -3485,7 +3492,6 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         parse_mode="HTML",
         reply_markup=keyboard
     )
-
 
 async def adminvip_packages_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await adminvip_packages_callback(update, context)
@@ -5573,6 +5579,66 @@ async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFA
             reply_markup=keyboard,
         )
     )
+FILE_MANAGER_FILES = [
+    ("📦", "vip_packages.json", VIP_PACKAGES_FILE),
+    ("⚙️", "settings.json", SETTINGS_FILE),
+    ("👥", "users.json", USERS_FILE),
+    ("✅", "approved.json", APPROVED_FILE),
+    ("🚫", "blacklist.json", BLACKLIST_FILE),
+    ("📊", "counter.json", COUNTER_FILE),
+    ("📜", "order_history.json", ORDER_HISTORY_FILE),
+    ("⏳", "pending_orders.json", PENDING_ORDERS_FILE),
+    ("🔒", "payment_lock.json", PAYMENT_LOCK_FILE),
+]
+
+
+def build_filemgr_list_view():
+    available = [
+        (idx, icon, name)
+        for idx, (icon, name, path) in enumerate(FILE_MANAGER_FILES)
+        if os.path.exists(path)
+    ]
+
+    keyboard_rows = []
+
+    if not available:
+        text = "🗂 File Manager\n\nTidak ada file yang ditemukan."
+    else:
+        text = "🗂 File Manager\n\nPilih file JSON untuk dikelola."
+        buttons = [
+            InlineKeyboardButton(
+                f"{icon} {name.replace('.json', '').replace('_', ' ').title()}",
+                callback_data=f"filemgr_open_{idx}"
+            )
+            for idx, icon, name in available
+        ]
+        for i in range(0, len(buttons), 2):
+            keyboard_rows.append(buttons[i:i + 2])
+
+    keyboard_rows.append([InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")])
+
+    keyboard = InlineKeyboardMarkup(keyboard_rows)
+    return text, keyboard
+
+
+def build_filemgr_detail_view(idx, icon, name, note=None):
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("👁 View", callback_data=f"filemgr_view_{idx}"),
+            InlineKeyboardButton("📥 Download", callback_data=f"filemgr_backup_{idx}")
+        ],
+        [
+            InlineKeyboardButton("✏️ Edit", callback_data=f"filemgr_edit_ask_{idx}"),
+            InlineKeyboardButton("📤 Restore", callback_data=f"filemgr_restore_ask_{idx}")
+        ],
+        [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
+    ])
+    caption = f"{icon} {name}\n\nPilih tindakan."
+    if note:
+        caption = f"{note}\n\n{caption}"
+    return caption, keyboard
+
+
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
