@@ -1631,27 +1631,39 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    await query.answer()
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=get_vip_package_banner(package),
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-        ),
-        reply_markup=build_vip_package_keyboard(
-            idx, total, package["id"]
-        ),
+    caption = build_vip_package_text(package)
+    reply_markup = build_vip_package_keyboard(
+        idx, total, package["id"]
     )
+    target_banner = get_vip_package_banner(package)
 
-    # Keep Buyer Details synchronized with the package currently shown.
-    user = query.from_user
-    await notify_admin_vip_package(
-        context.bot,
-        user.full_name or "-",
-        f"@{user.username}" if user.username else "-",
-        user.id,
-        package["nama"],
-    )
+    # If the banner is already the same, avoid the heavier media replacement.
+    current_banner = None
+    if query.message and query.message.photo:
+        current_banner = query.message.photo[-1].file_id
+
+    if current_banner == target_banner:
+        await asyncio.gather(
+            query.answer(),
+            query.edit_message_caption(
+                caption=caption,
+                parse_mode="HTML",
+                reply_markup=reply_markup,
+            ),
+        )
+    else:
+        await asyncio.gather(
+            query.answer(),
+            query.edit_message_media(
+                media=InputMediaPhoto(
+                    media=target_banner,
+                    caption=caption,
+                    parse_mode="HTML",
+                ),
+                reply_markup=reply_markup,
+            ),
+        )
+
 
 
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -7797,3 +7809,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
