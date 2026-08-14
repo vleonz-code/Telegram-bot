@@ -1259,6 +1259,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg = await context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text=(
+                    "📍 Permintaan ulang belum tersedia.\n\n"
                     "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
                 ),
                 reply_markup=keyboard
@@ -3646,6 +3647,7 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
+                    "Silahkan coba lagi.\n\n"
                     "Koleksi selengkapnya ada di grup VIP.\n\n"
                     "Chat Admin: @BocilVIP511 👈"
                 ),
@@ -6501,8 +6503,8 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "pre_upload_notice_msg_ids"
                 ):
                     notice_msg = await update.message.reply_text(
-                        "⚠️ Kamu masih berada di halaman pembayaran.\n\n"
-                        "Tekan tombol 📤 Sudah Transfer terlebih dahulu "
+                        "<i>⚠️ Kamu masih berada di halaman pembayaran.</i>\n\n"
+                        "Tekan tombol 📤 <b>Sudah Transfer</b> terlebih dahulu "
                         "agar area upload bukti transfer dibuka."
                     )
                     upload_waiting[order_id].setdefault(
