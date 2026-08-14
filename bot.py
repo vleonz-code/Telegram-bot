@@ -5580,28 +5580,41 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
-    if dl_msg_id:
+    text, keyboard = build_filemgr_list_view()
+
+    async def cleanup_download():
+        if not dl_msg_id:
+            return
         try:
-            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
+            await context.bot.delete_message(
+                chat_id=query.message.chat_id,
+                message_id=dl_msg_id
+            )
         except Exception:
             pass
 
-    text, keyboard = build_filemgr_list_view()
-    try:
-        await query.edit_message_media(
-            media=InputMediaPhoto(
-                media=os.environ["FILE_MANAGER_BANNER_FILE_ID"],
+    async def render():
+        try:
+            await query.edit_message_media(
+                media=InputMediaPhoto(
+                    media=os.environ["FILE_MANAGER_BANNER_FILE_ID"],
+                    caption=text,
+                    parse_mode="HTML",
+                ),
+                reply_markup=keyboard
+            )
+        except Exception:
+            await query.edit_message_caption(
                 caption=text,
                 parse_mode="HTML",
-            ),
-            reply_markup=keyboard
-        )
-    except Exception:
-        try:
-            await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception:
-            pass
+                reply_markup=keyboard
+            )
 
+    await asyncio.gather(
+        query.answer(),
+        render(),
+        cleanup_download(),
+    )
 
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -5612,11 +5625,6 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
     file_manager_restore_waiting.pop(query.from_user.id, None)
 
     dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
-    if dl_msg_id:
-        try:
-            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
-        except Exception:
-            pass
 
     idx = int(query.data.replace("filemgr_open_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
@@ -5641,7 +5649,24 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
         ],
         [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
     ])
-    await query.edit_message_caption(caption=f"{icon} {name}\n\nPilih tindakan.", reply_markup=keyboard)
+    async def cleanup_download():
+        if not dl_msg_id:
+            return
+        try:
+            await context.bot.delete_message(
+                chat_id=query.message.chat_id,
+                message_id=dl_msg_id
+            )
+        except Exception:
+            pass
+
+    await asyncio.gather(
+        query.edit_message_caption(
+            caption=f"{icon} {name}\n\nPilih tindakan.",
+            reply_markup=keyboard
+        ),
+        cleanup_download(),
+    )
 
 
 
