@@ -1529,7 +1529,7 @@ def build_vip_package_keyboard(idx, total, package_id):
     nav.append(
         InlineKeyboardButton(
             f"{idx + 1}/{total}",
-            callback_data=f"vipnoop_{idx}"
+            callback_data="vipnav_noop"
         )
     )
 
