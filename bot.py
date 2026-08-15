@@ -3104,7 +3104,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         harga = (
             package["harga"]
             .split("|", 1)[0]
-            .replace("Rp", "")
+            .replace("Rp", "").replace("RM", "")
             .replace(".", "")
             .replace(",", "")
             .strip()
@@ -3261,7 +3261,7 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
         harga = (
             package["harga"]
             .split("|", 1)[0]
-            .replace("Rp", "")
+            .replace("Rp", "").replace("RM", "")
             .replace(".", "")
             .replace(",", "")
             .strip()
@@ -3351,7 +3351,7 @@ async def payment_history_delete_callback(update: Update, context: ContextTypes.
         harga = (
             package["harga"]
             .split("|", 1)[0]
-            .replace("Rp", "")
+            .replace("Rp", "").replace("RM", "")
             .replace(".", "")
             .replace(",", "")
             .strip()
