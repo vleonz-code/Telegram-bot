@@ -3620,7 +3620,8 @@ async def delete_messages_after_delay(
     chat_id,
     message_ids,
     bot,
-    delay=6
+    delay=6,
+    pending_message_groups=None
 ):
     try:
         current_task = asyncio.current_task()
@@ -3643,11 +3644,13 @@ async def delete_messages_after_delay(
 
         try:
             pending = read_pending_preview_deletions()
+            groups = pending_message_groups or [message_ids]
+            group_keys = {tuple(group) for group in groups}
             pending = [
                 entry for entry in pending
                 if not (
                     entry.get("chat_id") == chat_id
-                    and entry.get("message_ids") == message_ids
+                    and tuple(entry.get("message_ids") or []) in group_keys
                 )
             ]
             save_pending_preview_deletions(pending)
@@ -3723,22 +3726,31 @@ async def sweep_pending_preview_deletions(bot):
     settings = read_settings()
     pending = read_pending_preview_deletions()
 
+    # A chat can have multiple preview albums pending while Auto Delete is OFF.
+    # Group them into one timer per chat, while retaining every album's message IDs.
+    grouped = {}
     for entry in pending:
         chat_id = entry.get("chat_id")
         message_ids = entry.get("message_ids")
-
         if not chat_id or not message_ids:
             continue
+        grouped.setdefault(chat_id, []).append(message_ids)
 
+    for chat_id, groups in grouped.items():
         if chat_id in preview_delete_tasks:
             continue
+
+        combined_message_ids = []
+        for group in groups:
+            combined_message_ids.extend(group)
 
         task = asyncio.create_task(
             delete_messages_after_delay(
                 chat_id,
-                message_ids,
+                combined_message_ids,
                 bot,
-                settings["preview_delete_delay"]
+                settings["preview_delete_delay"],
+                pending_message_groups=groups
             )
         )
 
