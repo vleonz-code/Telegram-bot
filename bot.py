@@ -1516,7 +1516,7 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def build_vip_package_text(package):
-    # UI-only formatter: Kelola Paket tetap menyimpan deskripsi mentah apa adanya.
+    # UI-only formatter. Kelola Paket tetap menyimpan deskripsi mentah apa adanya.
     raw_description = str(package.get("deskripsi") or "").strip()
     lines = [line.strip() for line in raw_description.splitlines() if line.strip()]
 
@@ -1530,22 +1530,24 @@ def build_vip_package_text(package):
     ]
 
     if intro:
+        # Keep the admin's wording/emoji intact; only give it a clean visual header.
         parts.extend([
             "",
-            "╭─────────────────────╮",
-            f"│ 🎬 {html.escape(intro.lstrip('🎬 '))}",
-            "╰─────────────────────╯",
+            f"╭─ {html.escape(intro)}",
+            "╰────────────────────",
         ])
 
     if benefits:
         parts.extend([
             "",
-            "       ✦ <b>KEUNGGULAN</b> ✦",
+            "✦ <b>KEUNGGULAN</b> ✦",
             "",
         ])
         for line in benefits:
+            # Remove only list markers. Do not inject or duplicate checkmarks/emojis
+            # that were already entered by the admin in Kelola Paket.
             clean = line.lstrip("-• ").strip()
-            parts.append(f"  ✅ {html.escape(clean)}")
+            parts.append(f"• {html.escape(clean)}")
 
     parts.extend(["", "━━━━━━━━━━━━━━━━"])
     return "\n".join(parts)
