@@ -495,6 +495,19 @@ FILE_IDS_A = load_preview_media()
 # ---------------------------------------------------------------------------
 
 
+def _reset_counter_file_sync(path):
+    with open(path, "w") as f:
+        json.dump({"count": 0}, f)
+
+
+def _read_os_release_sync(path):
+    with open(path) as f:
+        return dict(
+            line.strip().split("=", 1)
+            for line in f if "=" in line
+        )
+
+
 def build_media_group(file_ids):
 
     media = []
@@ -6472,8 +6485,8 @@ def build_adminvip_keyboard():
             callback_data="adminvip_stats"
         ),
         InlineKeyboardButton(
-            "📢 Channel Post",
-            callback_data="adminvip_channel"
+            "🖥 Status Server",
+            callback_data="adminvip_server_status"
         )
     ])
 
@@ -6483,8 +6496,8 @@ def build_adminvip_keyboard():
             callback_data="filemgr_list"
         ),
         InlineKeyboardButton(
-            "🖥 Status Server",
-            callback_data="adminvip_server_status"
+            "📢 Channel Post",
+            callback_data="adminvip_channel"
         )
     ])
 
