@@ -929,13 +929,13 @@ async def update_vip_activity(
         activity.setdefault("packages", [])
 
         if stage == "package":
-            if package_name:
-                activity["packages"] = [package_name]
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
         elif stage == "qris":
-            if package_name:
-                activity["packages"] = [package_name]
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
             if "qris" not in activity["steps"]:
@@ -1247,7 +1247,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     [
                         InlineKeyboardButton(
                             "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
+                            callback_data="livechat_start"
                         )
                     ]
                 ])
@@ -2346,12 +2346,11 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
 
-    packages = read_vip_packages()["packages"]
+    packages = get_vip_packages_cached()["packages"]
 
     await query.edit_message_media(
         media=InputMediaPhoto(
@@ -3474,8 +3473,7 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     global _counter_cache
     try:
-        with open(COUNTER_FILE, "w") as f:
-            json.dump({"count": 0}, f)
+        await asyncio.to_thread(_reset_counter_file_sync, COUNTER_FILE)
         _counter_cache = 0
     except Exception as e:
         logger.error(f"Failed to reset counter: {e}")
@@ -3503,7 +3501,9 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
     if query.from_user.id != ADMIN_ID:
         return
 
-    cpu_percent = await asyncio.to_thread(psutil.cpu_percent, 0.4)
+    cpu_task = asyncio.create_task(
+        asyncio.to_thread(psutil.cpu_percent, 0.4)
+    )
     mem = psutil.virtual_memory()
     disk = psutil.disk_usage("/")
 
@@ -3526,11 +3526,9 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         uptime_str = f"{minutes} menit"
 
     try:
-        with open("/etc/os-release") as f:
-            os_release = dict(
-                line.strip().split("=", 1)
-                for line in f if "=" in line
-            )
+        os_release = await asyncio.to_thread(
+            _read_os_release_sync, "/etc/os-release"
+        )
         os_name = os_release.get("PRETTY_NAME", "Unknown").strip('"')
     except Exception:
         os_name = "Unknown"
@@ -3543,6 +3541,8 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
     tanggal_str = f"{now.day:02d} {bulan_id[now.month]} {now.year}"
     jam_str = now.strftime("%H:%M:%S")
     py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+    cpu_percent = await cpu_task
 
     caption = (
         "<b>🖥 STATUS SERVER</b>\n"
@@ -3678,7 +3678,7 @@ async def delete_messages_after_delay(
                     [
                         InlineKeyboardButton(
                             "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
+                            callback_data="livechat_start"
                         )
                     ]
                 ])
@@ -3740,19 +3740,14 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
 
-    await clear_last_stats(
-        query.message.chat_id,
-        context.bot
-    )
-
     settings = read_settings()
 
     admin_panel_text = (
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
-        f"👥 Users       : {len(read_user_registry())}\n"
-        f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
+        f"👥 Users       : {len(_users_cache if _users_cache is not None else read_user_registry())}\n"
+        f"📦 Packages    : {len(get_vip_packages_cached()['packages'])}\n"
         f"📥 Incoming    : {len(get_incoming_vip_orders())}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
@@ -3770,6 +3765,12 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
             parse_mode="HTML",
         ),
         reply_markup=keyboard,
+    )
+
+
+    await clear_last_stats(
+        query.message.chat_id,
+        context.bot
     )
 
 
@@ -6546,8 +6547,8 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
-        f"👥 Users       : {len(read_user_registry())}\n"
-        f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
+        f"👥 Users       : {len(_users_cache if _users_cache is not None else read_user_registry())}\n"
+        f"📦 Packages    : {len(get_vip_packages_cached()['packages'])}\n"
         f"📥 Incoming    : {len(get_incoming_vip_orders())}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
@@ -7298,6 +7299,11 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             f"user_id={user_id}"
         )
         try:
+            livechat_sessions[user_id] = {
+                "source": "purchase",
+                "vip_link": vip_link,
+            }
+
             success_msg = await context.bot.send_message(
                 chat_id=user_id,
                 text=(
@@ -7319,7 +7325,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                     [
                         InlineKeyboardButton(
                             "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
+                            callback_data="livechat_start"
                         )
                     ]
                 ])
@@ -7362,6 +7368,10 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 "PAY_OK_HISTORY_SAVE_SKIPPED "
                 f"order_id={order_id}"
             )
+
+        task = qris_expiry_tasks.pop(order_id, None)
+        if task and not task.done():
+            task.cancel()
 
         upload_waiting.pop(order_id, None)
         payment_trace_logger.info(
@@ -7512,6 +7522,10 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
 
         write_blacklist(blacklist)
 
+        task = qris_expiry_tasks.pop(order_id, None)
+        if task and not task.done():
+            task.cancel()
+
         upload_waiting.pop(order_id, None)
         unlock_payment(user_id)
 
@@ -7549,6 +7563,10 @@ async def livechat_reply_callback(update: Update, context: ContextTypes.DEFAULT_
     await query.answer()
 
     user_id = int(query.data.split("|")[1])
+
+    if user_id not in livechat_sessions:
+        await query.answer("⚠️ Chat sudah diakhiri oleh user.", show_alert=True)
+        return
 
     admin_reply_waiting[query.from_user.id] = user_id
 
