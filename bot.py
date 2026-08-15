@@ -1550,6 +1550,11 @@ def build_vip_package_text(package):
             # Preserve admin wording, emoji, and bullet marker exactly as entered.
             parts.append(f"  {html.escape(line)}")
 
+        parts.extend([
+            "",
+            "━━━━━━━━━━━━━━━━━━━━",
+        ])
+
     return "\n".join(parts)
 def get_vip_package_banner(package):
     return package.get("banner_file_id") or os.environ["PACKAGE_BANNER_FILE_ID"]
