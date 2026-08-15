@@ -1535,7 +1535,7 @@ def build_vip_package_text(package):
         parts.extend([
             "",
             "╭" + "─" * box_width + "╮",
-            "<b>  " + intro_safe + "  </b>",
+            "<b>      " + intro_safe + "      </b>",
             "╰" + "─" * box_width + "╯",
         ])
 
