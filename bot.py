@@ -1521,12 +1521,62 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 pass
 
 
+def format_vip_package_description(description):
+    """Format Kelola Paket text for the customer-facing VIP card.
+
+    Only presentation is normalized. The wording entered by the admin is kept
+    intact; list markers and spacing are made consistent across package pages.
+    """
+    raw_lines = [
+        line.strip()
+        for line in str(description or "").replace("\r\n", "\n").split("\n")
+    ]
+
+    while raw_lines and not raw_lines[0]:
+        raw_lines.pop(0)
+    while raw_lines and not raw_lines[-1]:
+        raw_lines.pop()
+
+    if not raw_lines:
+        return ""
+
+    # Keep admin-entered wording unchanged, but normalize the visual list style.
+    intro = []
+    benefits = []
+    in_benefits = False
+
+    for line in raw_lines:
+        is_list = line.startswith(("- ", "• ", "– ", "— "))
+        if is_list:
+            in_benefits = True
+            benefits.append("• " + line[2:].strip())
+        elif in_benefits:
+            # Preserve a continuation line as part of the benefit block.
+            benefits.append(line)
+        else:
+            intro.append(line)
+
+    result = []
+    result.extend(intro)
+
+    if intro and benefits:
+        result.extend(["", "━━━━━━━━━━━━━━━", ""])
+
+    result.extend(benefits)
+
+    if benefits:
+        result.extend(["", "━━━━━━━━━━━━━━━"])
+
+    return "\n".join(result).strip()
+
+
 def build_vip_package_text(package):
+    description = format_vip_package_description(package.get("deskripsi", ""))
     return (
         f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
         f"💰 {html.escape(package['harga'])}\n"
-        "━━━━━━━━━━━━━━━\n"
-        f"{html.escape(package['deskripsi'])}"
+        "━━━━━━━━━━━━━━━\n\n"
+        f"{html.escape(description)}"
     )
 
 
