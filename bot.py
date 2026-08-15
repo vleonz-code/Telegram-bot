@@ -7045,6 +7045,20 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not update.message.photo:
 
+        # Invalid uploads are removed immediately via the existing bounded
+        # cleanup queue, keeping the payment chat clean without blocking the
+        # user-facing warning.
+        try:
+            pre_upload_cleanup_queue.put_nowait(
+                (update.message.chat_id, update.message.message_id)
+            )
+        except asyncio.QueueFull:
+            logger.warning(
+                "Invalid payment upload cleanup queue full; leaving message in chat "
+                f"(chat_id={update.message.chat_id}, "
+                f"message_id={update.message.message_id}, order_id={order_id})"
+            )
+
         warning_text = "⚠️ Silakan kirim bukti transfer dalam bentuk foto."
         existing_notice_id = upload_waiting[order_id].get(
             "payment_format_notice_msg_id"
