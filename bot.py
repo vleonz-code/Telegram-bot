@@ -1535,7 +1535,7 @@ def build_vip_package_text(package):
         parts.extend([
             "",
             "╭" + "─" * box_width + "╮",
-            "│ " + intro_safe + " │",
+            "<b>" + intro_safe + "</b>",
             "╰" + "─" * box_width + "╯",
         ])
 
@@ -1543,7 +1543,7 @@ def build_vip_package_text(package):
         # Keep the heading centered and leave a small space underneath it.
         parts.extend([
             "",
-            "       ✦ <b>KEUNGGULAN</b> ✦",
+            "          ✦ <b>KEUNGGULAN</b> ✦",
             "",
         ])
         for line in benefits:
