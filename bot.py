@@ -3708,17 +3708,18 @@ async def delete_messages_after_delay(
             else:
                 keyboard = None
 
-            preview_keyboard = [[
-                InlineKeyboardButton(
-                    "🆘 Bantuan",
-                    callback_data="livechat_start"
-                )
-            ]]
+            preview_keyboard = []
             if settings["join_vip_enabled"]:
-                preview_keyboard.insert(0, [
+                preview_keyboard.append([
                     InlineKeyboardButton(
                         "📚 Lihat VVIP",
                         callback_data="vipmenu"
+                    )
+                ])
+                preview_keyboard.append([
+                    InlineKeyboardButton(
+                        "🆘 Bantuan",
+                        callback_data="livechat_start"
                     )
                 ])
 
