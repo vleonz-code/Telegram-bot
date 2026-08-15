@@ -1863,14 +1863,18 @@ async def show_qris_loading_message(chat_id, context):
         chat_id=chat_id,
         text="⏳ Membuat QRIS..."
     )
-    await asyncio.sleep(1)
-    try:
-        await context.bot.delete_message(
-            chat_id=chat_id,
-            message_id=loading_msg.message_id
-        )
-    except Exception:
-        pass
+
+    async def _remove_loading():
+        await asyncio.sleep(1)
+        try:
+            await context.bot.delete_message(
+                chat_id=chat_id,
+                message_id=loading_msg.message_id
+            )
+        except Exception:
+            pass
+
+    return asyncio.create_task(_remove_loading())
 
 
 def cleanup_failed_qris_order(order_id, user_id):
@@ -2004,7 +2008,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else None
             )
 
-            await show_qris_loading_message(
+            loading_task = await show_qris_loading_message(
                 query.message.chat_id,
                 context
             )
@@ -2025,6 +2029,9 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     except Exception:
                         pass
 
+                if not loading_task.done():
+                    await loading_task
+
                 user = query.from_user
                 await notify_admin_vip_qris(
                     context.bot,
@@ -2034,6 +2041,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     package["nama"],
                 )
         finally:
+            if 'loading_task' in locals() and not loading_task.done():
+                await loading_task
             qris_loading_users.discard(query.from_user.id)
 
         return
@@ -2088,7 +2097,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     qris_loading_users.add(query.from_user.id)
     try:
-        await show_qris_loading_message(
+        loading_task = await show_qris_loading_message(
             query.message.chat_id,
             context
         )
@@ -2099,6 +2108,9 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             package,
             package_id
         )
+        if not loading_task.done():
+            await loading_task
+
         if not qris_created:
             cleanup_failed_qris_order(
                 order_id,
@@ -2128,6 +2140,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 package["nama"],
             )
     except Exception:
+        if 'loading_task' in locals() and not loading_task.done():
+            await loading_task
         cleanup_failed_qris_order(
             order_id,
             query.from_user.id
@@ -2279,22 +2293,31 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception:
             pass
 
+    cleanup_task = None
     if messages_to_delete:
-        await asyncio.gather(
+        cleanup_task = asyncio.gather(
             *(_safe_delete_cancel_message(message_id)
               for message_id in messages_to_delete)
         )
 
-    await query.message.reply_text(
-        "❌ Order berhasil dibatalkan.\n\n"
+    user = query.from_user
+    user_cancel_task = asyncio.create_task(
+        query.message.reply_text(
+            "❌ Order berhasil dibatalkan.\n\n"
+        )
+    )
+    admin_cancel_task = asyncio.create_task(
+        notify_admin_vip_cancelled(
+            context.bot,
+            user.full_name or "-",
+            f"@{user.username}" if user.username else "-",
+            user.id,
+        )
     )
 
-    user = query.from_user
-    await notify_admin_vip_cancelled(
-        context.bot,
-        user.full_name or "-",
-        f"@{user.username}" if user.username else "-",
-        user.id,
+    await user_cancel_task
+    await asyncio.gather(
+        *(task for task in (cleanup_task, admin_cancel_task) if task is not None)
     )
 
 # ---------------------------------------------------------------------------
@@ -7045,13 +7068,12 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     order_time = datetime.now(WIB).strftime("%d/%m/%Y %I:%M %p")
 
     try:
-        await context.bot.send_photo(
+        admin_proof_task = asyncio.create_task(
+            context.bot.send_photo(
+                chat_id=ADMIN_ID,
+                photo=upload_waiting[order_id]["photo_file_id"],
 
-            chat_id=ADMIN_ID,
-
-            photo=upload_waiting[order_id]["photo_file_id"],
-
-            caption=(
+                caption=(
                 "📥 <b>BUKTI TRANSFER BARU</b>\n\n"
                 f"🧾 <b>Order ID</b> : #{order_id}\n"
                 f"👤 <b>Nama</b> : {html.escape(user.full_name)}\n"
@@ -7062,9 +7084,9 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"💰 <b>Harga</b> : "
                 f"{html.escape(str(upload_waiting[order_id]['harga']))}\n"
                 f"🕒 <b>Waktu</b> : {order_time}"
-            ),
-            parse_mode="HTML"
-
+                ),
+                parse_mode="HTML"
+            )
         )
     except Exception as e:
         logger.error(
@@ -7076,6 +7098,47 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             exc_info=True
         )
         raise
+    # User-facing status can be sent while the proof photo is being delivered to admin.
+    status_msg = None
+    reupload_prompt_msg_id = None
+    if not upload_waiting[order_id].get("reupload"):
+        status_msg = await update.message.reply_text(
+            "✅ Pembayaran kamu sedang diproses.\n"
+            "⏳ Estimasi waktu: 1–3 menit...\n\n"
+        )
+        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
+    else:
+        reupload_prompt_msg_id = upload_waiting[order_id].get(
+            "reupload_prompt_msg_id"
+        )
+        if reupload_prompt_msg_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.message.chat_id,
+                    message_id=reupload_prompt_msg_id
+                )
+            except Exception:
+                pass
+        status_msg = await update.message.reply_text(
+            "✅ Bukti transfer pengganti telah diterima.\n"
+            "⏳ Estimasi waktu: 1–3 menit...\n\n"
+        )
+        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
+        upload_waiting[order_id]["reupload"] = False
+
+    try:
+        await admin_proof_task
+    except Exception as e:
+        logger.error(
+            "PAYMENT_SEND_ADMIN_ERROR "
+            f"order_id={order_id} "
+            f"exception={repr(e)} "
+            f"update_id={update.update_id} "
+            f"photo_message_id={update.message.message_id}",
+            exc_info=True
+        )
+        raise
+
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -7105,41 +7168,6 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
-        if not upload_waiting[order_id].get("reupload"):
-
-            status_msg = await update.message.reply_text(
-                "✅ Pembayaran kamu sedang diproses.\n"
-                "⏳ Estimasi waktu: 1–3 menit...\n\n"
-            )
-
-            upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
-
-        else:
-
-            reupload_prompt_msg_id = upload_waiting[order_id].get(
-                "reupload_prompt_msg_id"
-            )
-
-            if reupload_prompt_msg_id:
-                try:
-                    await context.bot.delete_message(
-                        chat_id=update.message.chat_id,
-                        message_id=reupload_prompt_msg_id
-                    )
-                except Exception:
-                    pass
-
-            status_msg = await update.message.reply_text(
-                "✅ Bukti transfer pengganti telah diterima.\n"
-                "⏳ Estimasi waktu: 1–3 menit...\n\n"
-            )
-
-            upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
-            upload_waiting[order_id]["reupload"] = False
-    finally:
-        await admin_verification_task
-
-    try:
         await update.message.delete()
         logger.info(
             f"Foto bukti transfer berhasil dihapus (chat_id={update.message.chat_id}, "
@@ -7149,6 +7177,16 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.warning(
             f"Gagal hapus foto bukti transfer (chat_id={update.message.chat_id}, "
             f"message_id={update.message.message_id}, order_id={order_id}): {e}"
+        )
+
+    try:
+        await admin_verification_task
+    except Exception as e:
+        logger.error(
+            "PAYMENT_VERIFICATION_MESSAGE_ERROR "
+            f"order_id={order_id} "
+            f"exception={repr(e)}",
+            exc_info=True
         )
 
 
@@ -7587,6 +7625,11 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             except Exception:
                 pass
 
+        admin_reupload_edit_task = asyncio.create_task(
+            query.edit_message_text(
+                "❌ Pembayaran ditolak."
+            )
+        )
         reupload_prompt = await context.bot.send_message(
             chat_id=user_id,
             text=(
@@ -7612,9 +7655,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
 
         save_pending_orders(pending)
 
-        await query.edit_message_text(
-            "❌ Pembayaran ditolak."
-        )
+        await admin_reupload_edit_task
 
         if data.get("incoming_admin_menu_message_id"):
             await delete_incoming_vip_admin_messages(context, data)
