@@ -1617,6 +1617,13 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
+    if not read_settings()["join_vip_enabled"]:
+        await query.answer(
+            "⚠️ Order VIP sedang OFF.",
+            show_alert=True
+        )
+        return
+
     # Match AdminVIP fast callback pattern: acknowledge the tap while
     # clearing the stale deeplink notice instead of serializing both awaits.
     await asyncio.gather(
@@ -1674,6 +1681,13 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
+    if not read_settings()["join_vip_enabled"]:
+        await query.answer(
+            "⚠️ Order VIP sedang OFF.",
+            show_alert=True
+        )
+        return
+
     idx = int(query.data.split("_")[1])
 
     packages = get_vip_packages_cached()["packages"]
@@ -1714,6 +1728,13 @@ async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
+
+        if not read_settings()["join_vip_enabled"]:
+            await query.answer(
+                "⚠️ Order VIP sedang OFF.",
+                show_alert=True
+            )
+            return
 
         package_id = int(query.data.split("_")[1])
         package = get_package(package_id)
@@ -1867,6 +1888,16 @@ def cleanup_failed_qris_order(order_id, user_id):
 
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+
+    if (
+        not read_settings()["join_vip_enabled"]
+        and not get_payment_lock(query.from_user.id)
+    ):
+        await query.answer(
+            "⚠️ Order VIP sedang OFF.",
+            show_alert=True
+        )
+        return
 
     if get_payment_lock(query.from_user.id):
         await query.answer(
@@ -3677,26 +3708,27 @@ async def delete_messages_after_delay(
             else:
                 keyboard = None
 
+            preview_keyboard = [[
+                InlineKeyboardButton(
+                    "🆘 Bantuan",
+                    callback_data="livechat_start"
+                )
+            ]]
+            if settings["join_vip_enabled"]:
+                preview_keyboard.insert(0, [
+                    InlineKeyboardButton(
+                        "📚 Lihat VVIP",
+                        callback_data="vipmenu"
+                    )
+                ])
+
             msg = await bot.send_message(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
                     "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
                 ),
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            "📚 Lihat VVIP",
-                            callback_data="vipmenu"
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            "🆘 Bantuan",
-                            callback_data="livechat_start"
-                        )
-                    ]
-                ])
+                reply_markup=InlineKeyboardMarkup(preview_keyboard)
             )
 
             last_repeat_message[
@@ -5621,26 +5653,28 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
             ])
         )
     else:
+        settings = read_settings()
+        livechat_return_keyboard = [[
+            InlineKeyboardButton(
+                "🆘 Bantuan",
+                callback_data="livechat_start"
+            )
+        ]]
+        if settings["join_vip_enabled"]:
+            livechat_return_keyboard.insert(0, [
+                InlineKeyboardButton(
+                    "📚 Lihat VVIP",
+                    callback_data="vipmenu"
+                )
+            ])
+
         await query.edit_message_text(
             session.get(
                 "return_text",
                 "📍 Permintaan ulang belum tersedia.\n\n"
                 "⏳ Silahkan coba lagi nanti. ୨୧"
             ),
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "📚 Lihat VVIP",
-                        callback_data="vipmenu"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "🆘 Bantuan",
-                        callback_data="livechat_start"
-                    )
-                ]
-            ])
+            reply_markup=InlineKeyboardMarkup(livechat_return_keyboard)
         )
 
     await context.bot.send_message(
