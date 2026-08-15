@@ -2282,6 +2282,9 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
             if data.get("qris_msg_id"):
                 messages_to_delete.add(data["qris_msg_id"])
 
+            if data.get("payment_format_notice_msg_id"):
+                messages_to_delete.add(data["payment_format_notice_msg_id"])
+
             upload_waiting.pop(order_id)
 
     async def _safe_delete_cancel_message(message_id):
@@ -5638,6 +5641,16 @@ async def expire_qris_order_after_delay(context, order_id: int, expires_at: floa
             except Exception:
                 pass
 
+        format_notice_id = data.get("payment_format_notice_msg_id")
+        if format_notice_id and user_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=user_id,
+                    message_id=format_notice_id
+                )
+            except Exception:
+                pass
+
         unlock_payment(user_id)
         upload_waiting.pop(order_id, None)
 
@@ -7032,17 +7045,35 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not update.message.photo:
 
-        notice_msg = await update.message.reply_text(
-
-            "⚠️ Silakan kirim bukti transfer dalam bentuk foto."
-
+        warning_text = "⚠️ Silakan kirim bukti transfer dalam bentuk foto."
+        existing_notice_id = upload_waiting[order_id].get(
+            "payment_format_notice_msg_id"
         )
-        upload_waiting[order_id].setdefault(
-            "payment_notice_msg_ids",
-            []
-        ).append(notice_msg.message_id)
+
+        if existing_notice_id:
+            # Keep a single format warning visible. Repeated invalid uploads
+            # do not create a new notification on top of the existing one.
+            return
+
+        notice_msg = await update.message.reply_text(warning_text)
+        upload_waiting[order_id][
+            "payment_format_notice_msg_id"
+        ] = notice_msg.message_id
 
         return
+
+    format_notice_id = upload_waiting[order_id].pop(
+        "payment_format_notice_msg_id",
+        None,
+    )
+    if format_notice_id:
+        try:
+            await context.bot.delete_message(
+                chat_id=update.message.chat_id,
+                message_id=format_notice_id,
+            )
+        except Exception:
+            pass
 
     upload_waiting[order_id]["processing"] = True
 
@@ -7396,6 +7427,8 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         payment_message_ids.update(
             data.get("payment_notice_msg_ids", [])
         )
+        if data.get("payment_format_notice_msg_id"):
+            payment_message_ids.add(data["payment_format_notice_msg_id"])
         payment_message_ids.discard(None)
 
         if not data.get("processing_msg_id"):
