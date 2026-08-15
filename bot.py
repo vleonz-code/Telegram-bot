@@ -1925,34 +1925,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     uploaded_order = data
                 break
 
-        # Sinkronkan ulang notifikasi VIP untuk user yang masih terkena
-        # payment lock. Cabang ini sebelumnya bisa keluar lebih awal sebelum
-        # status Paket/QRIS masuk ke pesan aktivitas admin.
-        if package is not None:
-            user = query.from_user
-            await notify_admin_vip_menu(
-                context.bot,
-                user.full_name or "-",
-                f"@{user.username}" if user.username else "-",
-                user.id,
-            )
-            if active_order is not None and active_order.get("qris_msg_id"):
-                await notify_admin_vip_qris(
-                    context.bot,
-                    user.full_name or "-",
-                    f"@{user.username}" if user.username else "-",
-                    user.id,
-                    package["nama"],
-                )
-            else:
-                await notify_admin_vip_package(
-                    context.bot,
-                    user.full_name or "-",
-                    f"@{user.username}" if user.username else "-",
-                    user.id,
-                    package["nama"],
-                )
-
         if uploaded_order is not None:
             previous_notice_msg_id = uploaded_order.get(
                 "payment_received_notice_msg_id"
@@ -1978,6 +1950,34 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "payment_notice_msg_ids",
                 []
             ).append(notice_msg.message_id)
+
+            # Keep the user-facing response independent from the admin
+            # activity refresh so the user does not wait for that update.
+            if package is not None:
+                user = query.from_user
+                await notify_admin_vip_menu(
+                    context.bot,
+                    user.full_name or "-",
+                    f"@{user.username}" if user.username else "-",
+                    user.id,
+                )
+                if active_order is not None and active_order.get("qris_msg_id"):
+                    await notify_admin_vip_qris(
+                        context.bot,
+                        user.full_name or "-",
+                        f"@{user.username}" if user.username else "-",
+                        user.id,
+                        package["nama"],
+                    )
+                else:
+                    await notify_admin_vip_package(
+                        context.bot,
+                        user.full_name or "-",
+                        f"@{user.username}" if user.username else "-",
+                        user.id,
+                        package["nama"],
+                    )
+
             return
 
         if package is None:
@@ -2247,6 +2247,8 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     save_pending_orders(pending)
 
+    messages_to_delete = set()
+
     for order_id, data in list(upload_waiting.items()):
 
         if data["user_id"] == user_id:
@@ -2256,35 +2258,32 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 task.cancel()
 
             if data.get("upload_msg_id"):
-                try:
-                    await context.bot.delete_message(
-                        chat_id=query.message.chat_id,
-                        message_id=data["upload_msg_id"]
-                    )
-                except Exception:
-                    pass
+                messages_to_delete.add(data["upload_msg_id"])
 
-            for notice_msg_id in data.get("pre_upload_notice_msg_ids", []):
-                try:
-                    await context.bot.delete_message(
-                        chat_id=query.message.chat_id,
-                        message_id=notice_msg_id
-                    )
-                except Exception:
-                    pass
-
+            messages_to_delete.update(
+                data.get("pre_upload_notice_msg_ids", [])
+            )
             data["pre_upload_notice_msg_ids"] = []
 
             if data.get("qris_msg_id"):
-                try:
-                    await context.bot.delete_message(
-                        chat_id=query.message.chat_id,
-                        message_id=data["qris_msg_id"]
-                    )
-                except Exception:
-                    pass
+                messages_to_delete.add(data["qris_msg_id"])
 
             upload_waiting.pop(order_id)
+
+    async def _safe_delete_cancel_message(message_id):
+        try:
+            await context.bot.delete_message(
+                chat_id=query.message.chat_id,
+                message_id=message_id
+            )
+        except Exception:
+            pass
+
+    if messages_to_delete:
+        await asyncio.gather(
+            *(_safe_delete_cancel_message(message_id)
+              for message_id in messages_to_delete)
+        )
 
     await query.message.reply_text(
         "❌ Order berhasil dibatalkan.\n\n"
@@ -7095,45 +7094,50 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         ]
     ])
-    await context.bot.send_message(
-        chat_id=ADMIN_ID,
-        text=(
-            "📋 Verifikasi Pembayaran"
-        ),
-        reply_markup=keyboard
+    admin_verification_task = asyncio.create_task(
+        context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "📋 Verifikasi Pembayaran"
+            ),
+            reply_markup=keyboard
+        )
     )
 
-    if not upload_waiting[order_id].get("reupload"):
+    try:
+        if not upload_waiting[order_id].get("reupload"):
 
-        status_msg = await update.message.reply_text(
-            "✅ Pembayaran kamu sedang diproses.\n"
-            "⏳ Estimasi waktu: 1–3 menit...\n\n"
-        )
+            status_msg = await update.message.reply_text(
+                "✅ Pembayaran kamu sedang diproses.\n"
+                "⏳ Estimasi waktu: 1–3 menit...\n\n"
+            )
 
-        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
+            upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
 
-    else:
+        else:
 
-        reupload_prompt_msg_id = upload_waiting[order_id].get(
-            "reupload_prompt_msg_id"
-        )
+            reupload_prompt_msg_id = upload_waiting[order_id].get(
+                "reupload_prompt_msg_id"
+            )
 
-        if reupload_prompt_msg_id:
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.message.chat_id,
-                    message_id=reupload_prompt_msg_id
-                )
-            except Exception:
-                pass
+            if reupload_prompt_msg_id:
+                try:
+                    await context.bot.delete_message(
+                        chat_id=update.message.chat_id,
+                        message_id=reupload_prompt_msg_id
+                    )
+                except Exception:
+                    pass
 
-        status_msg = await update.message.reply_text(
-            "✅ Bukti transfer pengganti telah diterima.\n"
-            "⏳ Estimasi waktu: 1–3 menit...\n\n"
-        )
+            status_msg = await update.message.reply_text(
+                "✅ Bukti transfer pengganti telah diterima.\n"
+                "⏳ Estimasi waktu: 1–3 menit...\n\n"
+            )
 
-        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
-        upload_waiting[order_id]["reupload"] = False
+            upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
+            upload_waiting[order_id]["reupload"] = False
+    finally:
+        await admin_verification_task
 
     try:
         await update.message.delete()
@@ -7356,89 +7360,81 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         )
         payment_message_ids.discard(None)
 
-        for payment_message_id in payment_message_ids:
+        if not data.get("processing_msg_id"):
+            payment_trace_logger.info(
+                "PAY_OK_DELETE_PROCESSING_SKIPPED "
+                f"order_id={order_id}"
+            )
+
+        async def _safe_delete_payment_message(payment_message_id):
+            is_status = payment_message_id == data.get("status_msg_id")
+            is_processing = payment_message_id == data.get("processing_msg_id")
+
+            if is_status:
+                payment_trace_logger.info(
+                    "PAY_OK_DELETE_STATUS_START "
+                    f"order_id={order_id} "
+                    f"message_id={payment_message_id}"
+                )
+            elif is_processing:
+                payment_trace_logger.info(
+                    "PAY_OK_DELETE_PROCESSING_START "
+                    f"order_id={order_id} "
+                    f"message_id={payment_message_id}"
+                )
+
             try:
                 await context.bot.delete_message(
                     chat_id=user_id,
                     message_id=payment_message_id
                 )
+                if is_status:
+                    payment_trace_logger.info(
+                        "PAY_OK_DELETE_STATUS_SUCCESS "
+                        f"order_id={order_id}"
+                    )
+                elif is_processing:
+                    payment_trace_logger.info(
+                        "PAY_OK_DELETE_PROCESSING_SUCCESS "
+                        f"order_id={order_id}"
+                    )
             except Exception as e:
-                payment_trace_logger.warning(
-                    "PAY_OK_PAYMENT_AREA_CLEANUP_FAILED "
-                    f"order_id={order_id} "
-                    f"message_id={payment_message_id} "
-                    f"exception={repr(e)}"
-                )
+                if is_status:
+                    payment_trace_logger.warning(
+                        "PAY_OK_DELETE_STATUS_FAILED "
+                        f"order_id={order_id} "
+                        f"exception={repr(e)}"
+                    )
+                elif is_processing:
+                    payment_trace_logger.warning(
+                        "PAY_OK_DELETE_PROCESSING_FAILED "
+                        f"order_id={order_id} "
+                        f"exception={repr(e)}"
+                    )
+                else:
+                    payment_trace_logger.warning(
+                        "PAY_OK_PAYMENT_AREA_CLEANUP_FAILED "
+                        f"order_id={order_id} "
+                        f"message_id={payment_message_id} "
+                        f"exception={repr(e)}"
+                    )
 
-        payment_trace_logger.info(
-            "PAY_OK_DELETE_STATUS_START "
-            f"order_id={order_id} "
-            f"message_id={data.get('status_msg_id')}"
+        final_edit_task = asyncio.create_task(
+            query.edit_message_text(
+                "✅ Pembayaran telah disetujui."
+            )
         )
-        try:
-            await context.bot.delete_message(
-                chat_id=user_id,
-                message_id=data["status_msg_id"]
-            )
-            payment_trace_logger.info(
-                "PAY_OK_DELETE_STATUS_SUCCESS "
-                f"order_id={order_id}"
-            )
-        except Exception as e:
-            payment_trace_logger.warning(
-                "PAY_OK_DELETE_STATUS_FAILED "
-                f"order_id={order_id} "
-                f"exception={repr(e)}"
-            )
-            pass
 
-        payment_trace_logger.info(
-            "PAY_OK_DELETE_PROCESSING_START "
-            f"order_id={order_id} "
-            f"message_id={data.get('processing_msg_id')}"
-        )
-        try:
-            if data.get("processing_msg_id"):
-                await context.bot.delete_message(
-                    chat_id=user_id,
-                    message_id=data["processing_msg_id"]
-                )
-                payment_trace_logger.info(
-                    "PAY_OK_DELETE_PROCESSING_SUCCESS "
-                    f"order_id={order_id}"
-                )
-            else:
-                payment_trace_logger.info(
-                    "PAY_OK_DELETE_PROCESSING_SKIPPED "
-                    f"order_id={order_id}"
-                )
-        except Exception as e:
-            payment_trace_logger.warning(
-                "PAY_OK_DELETE_PROCESSING_FAILED "
-                f"order_id={order_id} "
-                f"exception={repr(e)}"
+        if payment_message_ids:
+            await asyncio.gather(
+                *(_safe_delete_payment_message(message_id)
+                  for message_id in payment_message_ids)
             )
-            pass
 
         payment_trace_logger.info(
             "PAY_OK_FINAL_EDIT_START "
             f"order_id={order_id}"
         )
-        try:
-            await query.edit_message_text(
-                "✅ Pembayaran telah disetujui."
-            )
-            payment_trace_logger.info(
-                "PAY_OK_FINAL_EDIT_SUCCESS "
-                f"order_id={order_id}"
-            )
-        except Exception as e:
-            logger.error(f"Edit admin message error: {e}")
-            payment_trace_logger.error(
-                "PAY_OK_FINAL_EDIT_FAILED "
-                f"order_id={order_id} "
-                f"exception={repr(e)}"
-            )
 
         payment_trace_logger.info(
             "PAY_OK_USER_NOTICE_START "
@@ -7488,6 +7484,20 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 f"exception={repr(e)}"
             )
             raise
+
+        try:
+            await final_edit_task
+            payment_trace_logger.info(
+                "PAY_OK_FINAL_EDIT_SUCCESS "
+                f"order_id={order_id}"
+            )
+        except Exception as e:
+            logger.error(f"Edit admin message error: {e}")
+            payment_trace_logger.error(
+                "PAY_OK_FINAL_EDIT_FAILED "
+                f"order_id={order_id} "
+                f"exception={repr(e)}"
+            )
 
         if user_id not in ORDER_HISTORY_EXCLUDED:
             payment_trace_logger.info(
@@ -7686,19 +7696,24 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
 
         save_pending_orders(pending)
 
-        try:
-            await context.bot.send_message(
+        user_ban_notice_task = asyncio.create_task(
+            context.bot.send_message(
                 chat_id=user_id,
                 text=(
                     "🚫 Akses Anda telah dibatasi."
                 )
             )
-        except Exception:
-            pass
-
-        await query.edit_message_text(
-            "✅ User berhasil dibatasi."
         )
+
+        try:
+            await query.edit_message_text(
+                "✅ User berhasil dibatasi."
+            )
+        finally:
+            try:
+                await user_ban_notice_task
+            except Exception:
+                pass
 
         if data.get("incoming_admin_menu_message_id"):
             await delete_incoming_vip_admin_messages(context, data)
