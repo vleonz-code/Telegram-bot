@@ -1526,30 +1526,31 @@ def build_vip_package_text(package):
     parts = [
         f"🎟️ <b>{html.escape(package['nama'])}</b>",
         f"💰 {html.escape(package['harga'])}",
-        "━━━━━━━━━━━━━━━━",
     ]
 
-    # Keep the package description visually simple: no extra box/ornaments
-    # around the intro, so the content stays clean and consistent between pages.
     if intro:
+        # Box width follows the actual intro text so the border never truncates it.
+        intro_safe = html.escape(intro)
+        box_width = max(19, len(intro) + 2)
         parts.extend([
             "",
-            html.escape(intro),
-            "",
+            "╭" + "─" * box_width + "╮",
+            "│ " + intro_safe + " │",
+            "╰" + "─" * box_width + "╯",
         ])
 
     if benefits:
+        # Keep the heading centered and leave a small space underneath it.
         parts.extend([
-            "✦ <b>KEUNGGULAN</b> ✦",
+            "",
+            "       ✦ <b>KEUNGGULAN</b> ✦",
             "",
         ])
         for line in benefits:
-            # Remove only list markers. Do not inject or duplicate checkmarks/emojis
-            # that were already entered by the admin in Kelola Paket.
+            # Keep admin wording/emoji intact; only normalize the existing list marker.
             clean = line.lstrip("-• ").strip()
-            parts.append(f"• {html.escape(clean)}")
+            parts.append(f"  {html.escape(clean)}")
 
-    parts.extend(["", "━━━━━━━━━━━━━━━━"])
     return "\n".join(parts)
 def get_vip_package_banner(package):
     return package.get("banner_file_id") or os.environ["PACKAGE_BANNER_FILE_ID"]
