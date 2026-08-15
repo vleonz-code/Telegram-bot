@@ -5336,6 +5336,24 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_id not in livechat_sessions:
         return
 
+    # Anti-spam: allow normal chat, but limit bursts forwarded to admin.
+    now = time.monotonic()
+    livechat_rate = context.application.bot_data.setdefault("livechat_rate_limit", {})
+    state = livechat_rate.setdefault(user_id, {"timestamps": [], "warned_until": 0.0})
+    timestamps = [ts for ts in state["timestamps"] if now - ts < 5.0]
+
+    if len(timestamps) >= 5:
+        state["timestamps"] = timestamps
+        if now >= state["warned_until"]:
+            state["warned_until"] = now + 5.0
+            await update.message.reply_text(
+                "⚠️ Pesan terlalu cepat. Mohon tunggu sebentar sebelum mengirim lagi."
+            )
+        return
+
+    timestamps.append(now)
+    state["timestamps"] = timestamps
+
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
