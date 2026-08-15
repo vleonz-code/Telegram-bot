@@ -1605,7 +1605,7 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 
     keyboard.append([
         InlineKeyboardButton(
-            "💸 Bayar Sekarang",
+            "💸 Bayar",
             callback_data=f"bayar_{package_id}"
         )
     ])
@@ -1749,7 +1749,7 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = InlineKeyboardMarkup([
     [
         InlineKeyboardButton(
-            "💸 Bayar Sekarang",
+            "💸 Bayar",
             callback_data=f"bayar_{package_id}"
         )
     ],
