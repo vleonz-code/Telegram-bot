@@ -2861,7 +2861,9 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
+
     settings = read_settings()
     settings["channel_auto_post"] = not settings["channel_auto_post"]
     save_settings(settings)
@@ -2883,10 +2885,8 @@ async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    # Render langsung; tidak memanggil adminvip_channel_callback lagi,
-    # sehingga tidak ada answer/read_settings kedua kalinya.
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         query.edit_message_media(
             media=InputMediaPhoto(
                 media=os.environ["CHANNEL_POST_BANNER_FILE_ID"],
@@ -2905,7 +2905,6 @@ async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
             reply_markup=keyboard
         )
     )
-
 
 
 async def channel_interval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3862,13 +3861,15 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
 
 async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
+
     settings = read_settings()
     settings["join_vip_enabled"] = not settings["join_vip_enabled"]
     save_settings(settings)
 
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         query.edit_message_caption(
             caption="⚙️ Pengaturan",
             reply_markup=build_settings_keyboard(settings)
@@ -3876,16 +3877,17 @@ async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DE
     )
 
 
-
 async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
+
     settings = read_settings()
     settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
     save_settings(settings)
 
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         query.edit_message_caption(
             caption="⚙️ Pengaturan",
             reply_markup=build_settings_keyboard(settings)
@@ -3893,16 +3895,17 @@ async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes
     )
 
 
-
 async def adminvip_toggle_livechat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
+
     settings = read_settings()
     settings["live_chat_enabled"] = not settings["live_chat_enabled"]
     save_settings(settings)
 
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         query.edit_message_caption(
             caption="⚙️ Pengaturan",
             reply_markup=build_settings_keyboard(settings)
