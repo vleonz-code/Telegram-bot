@@ -1531,11 +1531,11 @@ def build_vip_package_text(package):
     if intro:
         # Box width follows the actual intro text so the border never truncates it.
         intro_safe = html.escape(intro)
-        box_width = max(19, len(intro) + 2)
+        box_width = len(intro)
         parts.extend([
             "",
             "╭" + "─" * box_width + "╮",
-            "│ " + intro_safe + " │",
+            "│" + intro_safe + "│",
             "╰" + "─" * box_width + "╯",
         ])
 
