@@ -6,6 +6,7 @@ import asyncio
 import time
 import copy
 import html
+import re
 import psutil
 psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan pertama - BOT STABLE
 import sys
@@ -761,6 +762,46 @@ def write_blacklist(bl: dict):
     except Exception as e:
         logger.error(f"Blacklist write error: {e}")
 
+
+
+def parse_package_price(raw_price) -> str:
+    """Extract a stable integer price from common package-price formats."""
+    text = str(raw_price or "").strip()
+
+    # Prefer IDR when both IDR and MYR are displayed, because Total
+    # Pendapatan is displayed in Rupiah.
+    patterns = [
+        r"(?i)\b(?:Rp|IDR)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(K|RB|RIBU|M|JT|JUTA)?",
+        r"(?i)\b(?:RM|MYR)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(K|RB|RIBU|M|JT|JUTA)?",
+        r"(?<!\d)([0-9]+(?:[.,][0-9]+)?)\s*(K|RB|RIBU|M|JT|JUTA)(?![A-Za-z])",
+        r"(?<!\d)([0-9][0-9.,]*)(?!\d)",
+    ]
+
+    match = re.search(patterns[0], text)
+    if not match:
+        match = re.search(patterns[1], text)
+    if not match:
+        match = re.search(patterns[2], text)
+    if not match:
+        match = re.search(patterns[3], text)
+
+    if not match:
+        return ""
+
+    number = match.group(1)
+    suffix = (match.group(2) or "").upper() if match.lastindex and match.lastindex >= 2 else ""
+
+    if not suffix:
+        return number.replace(".", "").replace(",", "")
+
+    normalized = number.replace(",", ".")
+    try:
+        value = float(normalized)
+    except ValueError:
+        return ""
+
+    multiplier = 1_000 if suffix in {"K", "RB", "RIBU"} else 1_000_000
+    return str(int(value * multiplier))
 
 def get_package(package_id: int):
 
@@ -3101,14 +3142,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         if not package:
             continue
 
-        harga = (
-            package["harga"]
-            .split("|", 1)[0]
-            .replace("Rp", "").replace("RM", "")
-            .replace(".", "")
-            .replace(",", "")
-            .strip()
-        )
+        harga = parse_package_price(package["harga"].split("|", 1)[0])
 
         if harga.isdigit():
             total_pendapatan += int(harga)
@@ -3258,14 +3292,7 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
         if not package:
             continue
 
-        harga = (
-            package["harga"]
-            .split("|", 1)[0]
-            .replace("Rp", "").replace("RM", "")
-            .replace(".", "")
-            .replace(",", "")
-            .strip()
-        )
+        harga = parse_package_price(package["harga"].split("|", 1)[0])
 
         if harga.isdigit():
             total_pendapatan += int(harga)
@@ -3348,14 +3375,7 @@ async def payment_history_delete_callback(update: Update, context: ContextTypes.
         if not package:
             continue
 
-        harga = (
-            package["harga"]
-            .split("|", 1)[0]
-            .replace("Rp", "").replace("RM", "")
-            .replace(".", "")
-            .replace(",", "")
-            .strip()
-        )
+        harga = parse_package_price(package["harga"].split("|", 1)[0])
 
         if harga.isdigit():
             total_pendapatan += int(harga)
