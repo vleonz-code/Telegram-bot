@@ -1271,7 +1271,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=update.effective_chat.id,
                 text=(
                     "📍 Permintaan ulang belum tersedia.\n\n"
-                    "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
+                    "⏳ Silakan kembali lagi nanti. ୨୧\n\n"
                 ),
                 reply_markup=keyboard
             )
@@ -3784,7 +3784,7 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
+                    "⏳ Silakan kembali lagi nanti. ୨୧\n\n"
                 ),
                 reply_markup=InlineKeyboardMarkup(preview_keyboard)
             )
@@ -5794,7 +5794,7 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
             session.get(
                 "return_text",
                 "📍 Permintaan ulang belum tersedia.\n\n"
-                "⏳ Silahkan coba lagi nanti. ୨୧"
+                "⏳ Silakan kembali lagi nanti. ୨୧"
             ),
             reply_markup=InlineKeyboardMarkup(livechat_return_keyboard)
         )
