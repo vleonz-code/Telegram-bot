@@ -1529,13 +1529,13 @@ def build_vip_package_text(package):
     ]
 
     if intro:
-        # Box width follows the actual intro text so the border never truncates it.
+        # Compact box around the intro; keep the admin text exactly as entered.
         intro_safe = html.escape(intro)
-        box_width = len(intro)
+        box_width = min(len(intro), 17)
         parts.extend([
             "",
             "╭" + "─" * box_width + "╮",
-            "│" + intro_safe + "│",
+            "│ " + intro_safe + " │",
             "╰" + "─" * box_width + "╯",
         ])
 
@@ -1547,9 +1547,8 @@ def build_vip_package_text(package):
             "",
         ])
         for line in benefits:
-            # Keep admin wording/emoji intact; only normalize the existing list marker.
-            clean = line.lstrip("-• ").strip()
-            parts.append(f"  {html.escape(clean)}")
+            # Preserve admin wording, emoji, and bullet marker exactly as entered.
+            parts.append(f"  {html.escape(line)}")
 
     return "\n".join(parts)
 def get_vip_package_banner(package):
