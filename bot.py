@@ -1552,7 +1552,7 @@ def build_vip_package_text(package):
 
         parts.extend([
             "",
-            "━━━━━━━━━━━━━━━━━━━━",
+            "━━━━━━━━━━━━",
         ])
 
     return "\n".join(parts)
