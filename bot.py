@@ -1531,7 +1531,7 @@ def build_vip_package_text(package):
     if intro:
         # Compact box; keep the admin text exactly as entered.
         intro_safe = html.escape(intro)
-        box_width = 10
+        box_width = 14
         parts.extend([
             "",
             "╭" + "─" * box_width + "╮",
