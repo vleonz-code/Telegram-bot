@@ -1652,14 +1652,14 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total = len(active_packages)
         package = active_packages[0]
 
-        await asyncio.gather(
-            context.bot.send_photo(
-                chat_id=query.message.chat_id,
-                photo=get_vip_package_banner(package),
-                caption=build_vip_package_text(package),
-                reply_markup=build_vip_package_keyboard(0, total, package["id"]),
-                parse_mode="HTML",
-            ),
+        await context.bot.send_photo(
+            chat_id=query.message.chat_id,
+            photo=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
+            reply_markup=build_vip_package_keyboard(0, total, package["id"]),
+            parse_mode="HTML",
+        )
+        asyncio.create_task(
             notify_admin_vip_menu(
                 context.bot,
                 user.full_name or "-",
@@ -1771,7 +1771,9 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"━━━━━━━━━━━━━━",
                 reply_markup=keyboard,
                 parse_mode="HTML"
-            ),
+            )
+        )
+        asyncio.create_task(
             notify_admin_vip_package(
                 context.bot,
                 user.full_name or "-",
