@@ -1529,17 +1529,17 @@ def build_vip_package_text(package):
         "━━━━━━━━━━━━━━━━",
     ]
 
+    # Keep the package description visually simple: no extra box/ornaments
+    # around the intro, so the content stays clean and consistent between pages.
     if intro:
-        # Keep the admin's wording/emoji intact; only give it a clean visual header.
         parts.extend([
             "",
-            f"╭─ {html.escape(intro)}",
-            "╰────────────────────",
+            html.escape(intro),
+            "",
         ])
 
     if benefits:
         parts.extend([
-            "",
             "✦ <b>KEUNGGULAN</b> ✦",
             "",
         ])
