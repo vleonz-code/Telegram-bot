@@ -2305,7 +2305,7 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_add_waiting[query.from_user.id] = {
         "step": "nama"
@@ -2319,19 +2319,22 @@ async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TY
             )
         ]
     ])
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "➕ <b>Tambah Paket</b>\n\n"
             "Silakan masukkan nama paket baru."
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     # Hentikan mode Edit Paket jika admin menekan Batal atau kembali
     # ke detail paket tanpa mengirim perubahan.
@@ -2378,25 +2381,30 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         )
 ]
     ])
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"{package['nama']}\n\n"
             f"💰 {package['harga']}"
         ),
         reply_markup=keyboard
+    ),
     )
 
 
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
 
     packages = get_vip_packages_cached()["packages"]
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["PACKAGE_BANNER_FILE_ID"],
             caption=(
@@ -2405,6 +2413,7 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
             parse_mode="HTML",
         ),
         reply_markup=build_adminvip_packages_keyboard(packages),
+    ),
     )
 
 
@@ -2456,15 +2465,18 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["PAYMENT_BANNER_FILE_ID"],
             caption="💳 <b>PEMBAYARAN</b>",
             parse_mode="HTML",
         ),
         reply_markup=build_payment_keyboard(),
+    ),
     )
 
 
@@ -2819,7 +2831,7 @@ async def incoming_vip_detail_callback(
 
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_channel_waiting.discard(query.from_user.id)
 
@@ -2854,7 +2866,9 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
     ]
     ])
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["CHANNEL_POST_BANNER_FILE_ID"],
             caption=(
@@ -2870,16 +2884,19 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
             parse_mode="HTML",
         ),
         reply_markup=keyboard
+    ),
     )
 
 
 async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_channel_waiting.add(query.from_user.id)
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "📝 Edit Channel Post\n\n"
             "Silakan kirim teks Channel Post baru."
@@ -2887,6 +2904,7 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_channel")]
         ])
+    ),
     )
 
 
@@ -2940,7 +2958,7 @@ async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
 async def channel_interval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("1 Menit", callback_data="channel_set_1")],
@@ -2954,9 +2972,12 @@ async def channel_interval_callback(update: Update, context: ContextTypes.DEFAUL
         [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_channel")]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption="⏱ Interval Channel Post",
         reply_markup=keyboard
+    ),
     )
 
 
@@ -3430,25 +3451,28 @@ def build_settings_keyboard(settings):
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
 
     from telegram import InputMediaPhoto
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["SETTINGS_BANNER_FILE_ID"],
             caption="⚙️ Pengaturan"
         ),
         reply_markup=keyboard
+    ),
     )
 
 
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -3469,13 +3493,16 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["STATISTIC_BANNER_FILE_ID"],
             caption="📊 Statistik",
             parse_mode="HTML",
         ),
         reply_markup=keyboard
+    ),
     )
 
 
@@ -3539,7 +3566,7 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -3610,10 +3637,13 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=caption,
         parse_mode="HTML",
         reply_markup=keyboard
+    ),
     )
 
 
@@ -3792,7 +3822,7 @@ async def sweep_pending_preview_deletions(bot):
 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
@@ -3815,13 +3845,16 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = build_adminvip_keyboard()
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["ADMIN_BANNER_FILE_ID"],
             caption=admin_panel_text,
             parse_mode="HTML",
         ),
         reply_markup=keyboard,
+    ),
     )
 
 
@@ -3880,7 +3913,7 @@ async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_qris_waiting.add(query.from_user.id)
 
@@ -3893,7 +3926,9 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "📷 <b>EDIT QRIS</b>\n\n"
             "Silakan kirim foto QRIS baru.\n\n"
@@ -3901,6 +3936,7 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
@@ -4057,7 +4093,7 @@ async def preview_set_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     settings = read_settings()
 
@@ -4082,9 +4118,12 @@ async def adminvip_preview_settings_callback(update: Update, context: ContextTyp
         ]
     ])
 
-    await query.edit_message_text(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_text(
         "🖼 Preview",
         reply_markup=keyboard
+    ),
     )
 
 
@@ -4391,7 +4430,7 @@ async def adminvip_prv_add_cancel_callback(update: Update, context: ContextTypes
 
 async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     idx = int(query.data.split("_")[3])
 
@@ -4410,13 +4449,16 @@ async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAU
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "✏️ <b>Edit Preview</b>\n\n"
             "Kirim foto atau video baru untuk mengganti Preview ini."
         ),
         reply_markup=keyboard,
         parse_mode="HTML"
+    ),
     )
 
 
@@ -4438,7 +4480,7 @@ async def adminvip_prv_edit_cancel_callback(update: Update, context: ContextType
 
 async def adminvip_prv_del_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     idx = int(query.data.split("_")[3])
 
@@ -4455,13 +4497,16 @@ async def adminvip_prv_del_callback(update: Update, context: ContextTypes.DEFAUL
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "🗑️ <b>Hapus Preview</b>\n\n"
             "Preview ini akan dihapus. Lanjutkan?"
         ),
         reply_markup=keyboard,
         parse_mode="HTML"
+    ),
     )
 
 
@@ -4497,7 +4542,7 @@ async def adminvip_prv_delyes_callback(update: Update, context: ContextTypes.DEF
 
 async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     settings = read_settings()
 
@@ -4551,12 +4596,15 @@ async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAU
 
     from telegram import InputMediaPhoto
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["SETTINGS_BANNER_FILE_ID"],
             caption="⚙️ Pengaturan"
         ),
         reply_markup=keyboard
+    ),
     )
 
 
@@ -4616,7 +4664,7 @@ async def preview_media_receive(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4636,7 +4684,9 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         ]
     ])
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"📝 <b>Edit Nama</b>\n\n"
             f"Nama saat ini:\n"
@@ -4645,12 +4695,13 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4671,7 +4722,9 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"💰 <b>Edit Harga</b>\n\n"
             f"Harga saat ini:\n"
@@ -4680,12 +4733,13 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4706,7 +4760,9 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"📄 <b>Edit Deskripsi</b>\n\n"
             f"Deskripsi saat ini:\n"
@@ -4715,12 +4771,13 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4742,7 +4799,9 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"🔗 <b>Edit Link VIP</b>\n\n"
             f"Link saat ini:\n"
@@ -4752,12 +4811,13 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_banner_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4778,7 +4838,9 @@ async def adminvip_banner_callback(update: Update, context: ContextTypes.DEFAULT
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "🖼 <b>Edit Banner Paket</b>\n\n"
             f"Paket: {html.escape(package['nama'])}\n\n"
@@ -4786,12 +4848,13 @@ async def adminvip_banner_callback(update: Update, context: ContextTypes.DEFAULT
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4809,7 +4872,9 @@ async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"⚠️ <b>Yakin ingin menghapus paket ini?</b>\n\n"
             f"{package['nama']}\n"
@@ -4817,6 +4882,7 @@ async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
