@@ -1558,7 +1558,7 @@ def build_vip_package_text(package):
         # Keep the heading centered and leave a small space underneath it.
         parts.extend([
             "",
-            "          ✦ <b>KEUNGGULAN</b> ✦",
+            "          ✦ <b>FITUR VIP</b> ✦",
             "",
         ])
         for line in benefits:
