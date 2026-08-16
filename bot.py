@@ -1596,11 +1596,7 @@ def build_vip_package_text(package):
         ])
 
     if benefits:
-        # Keep the heading centered and leave a small space underneath it.
-        parts.extend([
-            "",
-            "",
-        ])
+        # Keep the detail directly under the compact intro box.
         for line in benefits:
             # Preserve admin wording, emoji, and bullet marker exactly as entered.
             parts.append(f"  {html.escape(line)}")
