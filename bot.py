@@ -1314,6 +1314,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.bot
             )
 
+            # The user already has access; do not create the old
+            # "Permintaan ulang belum tersedia" message.
             return
 
     if (
@@ -3773,53 +3775,13 @@ async def delete_messages_after_delay(
             pass
 
         try:
+            # Preview expiry only cleans up the Preview messages. It must not
+            # create a new "Permintaan ulang" message after the user has
+            # navigated elsewhere (for example to VIP Menu).
             await clear_last_repeat(
                 chat_id,
                 bot
             )
-
-            settings = read_settings()
-
-            if settings["join_vip_enabled"]:
-                keyboard = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            "✨ Gabung VIP",
-                            callback_data="vipmenu"
-                        )
-                    ]
-                ])
-            else:
-                keyboard = None
-
-            preview_keyboard = []
-            if settings["join_vip_enabled"]:
-                preview_keyboard.append([
-                    InlineKeyboardButton(
-                        "💎 Beli VIP",
-                        callback_data="vipmenu"
-                    )
-                ])
-                preview_keyboard.append([
-                    InlineKeyboardButton(
-                        "🆘 Bantuan",
-                        callback_data="livechat_start"
-                    )
-                ])
-
-            msg = await bot.send_message(
-                chat_id=chat_id,
-                text=(
-                    "⏰ Masa Preview sudah selesai.\n\n"
-                    "⏳ Silakan kembali lagi nanti. ୨୧\n\n"
-                ),
-                reply_markup=InlineKeyboardMarkup(preview_keyboard)
-            )
-
-            last_repeat_message[
-                chat_id
-            ] = msg.message_id
-
         except Exception:
             pass
 
