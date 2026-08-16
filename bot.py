@@ -1585,18 +1585,19 @@ def build_vip_package_text(package):
     ]
 
     if intro:
-        # Compact fixed-width header. The top/bottom rules stay identical
-        # in length; only the complete header block is centered as a unit.
+        # Fixed-width centered header. The rule length is constant; the
+        # content is centered within the same fixed-width box.
         intro_safe = html.escape(intro)
         box_width = 14
-        header_pad = max(1, (box_width + 2 - len(intro)) // 2)
-        header_line = " " * header_pad + intro_safe
-        right_pad = max(1, box_width + 2 - len(header_line))
+        inner_width = box_width
+        text_width = len(intro)
+        left_pad = max(1, (inner_width - text_width) // 2)
+        right_pad = max(1, inner_width - text_width - left_pad)
         parts.extend([
             "",
-            "        " + "╭" + "─" * box_width + "╮",
-            "        " + "<b>" + header_line + (" " * right_pad) + "</b>",
-            "        " + "╰" + "─" * box_width + "╯",
+            "╭" + "─" * box_width + "╮",
+            "│" + (" " * left_pad) + intro_safe + (" " * right_pad) + "│",
+            "╰" + "─" * box_width + "╯",
         ])
 
     if benefits:
