@@ -1804,14 +1804,16 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
     old_messages = last_delivered_messages.pop(chat_id, None)
     if old_messages:
-        for message_id in old_messages:
-            try:
-                await context.bot.delete_message(
+        await asyncio.gather(
+            *(
+                context.bot.delete_message(
                     chat_id=chat_id,
                     message_id=message_id
                 )
-            except Exception:
-                pass
+                for message_id in old_messages
+            ),
+            return_exceptions=True
+        )
 
         try:
             pending = read_pending_preview_deletions()
