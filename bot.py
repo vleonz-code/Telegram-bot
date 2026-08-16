@@ -1602,7 +1602,6 @@ def build_vip_package_text(package):
             parts.append(f"  {html.escape(line)}")
 
         parts.extend([
-            "",
             "╰" + "─" * (box_width + 1) + "╯",
         ])
 
