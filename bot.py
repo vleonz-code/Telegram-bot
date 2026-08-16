@@ -578,7 +578,7 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
                     ),
                     InlineKeyboardButton(
                         "🏠 Bantuan",
-                        callback_data="livechat_start"
+                        url="https://t.me/BocilVIP511"
                     )
                 ]
             ])
