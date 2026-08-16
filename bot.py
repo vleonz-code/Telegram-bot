@@ -7568,7 +7568,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             success_msg = await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
+                    "<strong>🎉 PEMBAYARAN BERHASIL!</strong>\n\n"
                     "Pembayaran kamu telah diverifikasi.\n\n"
                     "✨ Akses VIP kamu sudah siap.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
