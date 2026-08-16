@@ -13,6 +13,10 @@ import sys
 import telegram
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
+try:
+    from telegram import CopyTextButton
+except ImportError:
+    CopyTextButton = None
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 
@@ -1738,20 +1742,20 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    # Acknowledge the button tap first so Telegram clears its loading
-    # indicator before the page media is replaced. Pagination logic and
-    # package rendering remain unchanged.
-    await query.answer()
-
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=get_vip_package_banner(package),
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-        ),
-        reply_markup=build_vip_package_keyboard(
-            idx, total, package["id"]
-        ),
+    # Match AdminVIP navigation: callback acknowledgement and media update
+    # run together so Telegram's button spinner is cleared immediately.
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_media(
+            media=InputMediaPhoto(
+                media=get_vip_package_banner(package),
+                caption=build_vip_package_text(package),
+                parse_mode="HTML",
+            ),
+            reply_markup=build_vip_package_keyboard(
+                idx, total, package["id"]
+            ),
+        )
     )
 
 
@@ -4792,14 +4796,32 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         "message_id": query.message.message_id
     }
 
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "❌ Batal",
-                callback_data=f"adminvip_{package_id}"
+    description_text = package["deskripsi"] or ""
+
+    if len(description_text) <= 256:
+        if CopyTextButton is not None:
+            copy_button = InlineKeyboardButton(
+                "📋 Salin Deskripsi",
+                copy_text=CopyTextButton(text=description_text)
             )
-        ]
+        else:
+            copy_button = InlineKeyboardButton(
+                "📋 Salin Deskripsi",
+                api_kwargs={"copy_text": {"text": description_text}}
+            )
+    else:
+        copy_button = None
+
+    keyboard_rows = []
+    if copy_button is not None:
+        keyboard_rows.append([copy_button])
+    keyboard_rows.append([
+        InlineKeyboardButton(
+            "❌ Batal",
+            callback_data=f"adminvip_{package_id}"
+        )
     ])
+    keyboard = InlineKeyboardMarkup(keyboard_rows)
 
     await asyncio.gather(
         answer_task,
