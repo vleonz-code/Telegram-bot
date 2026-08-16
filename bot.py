@@ -1580,7 +1580,7 @@ def build_vip_package_text(package):
     benefits = lines[1:] if len(lines) > 1 else []
 
     parts = [
-        f"🎟️ <b>{html.escape(package['nama'])}</b>",
+        f"💎 <b>{html.escape(package['nama'])}</b>",
         f"💰 {html.escape(package['harga'])}",
     ]
 
