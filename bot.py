@@ -1738,20 +1738,20 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    # Match AdminVIP navigation: callback acknowledgement and media update
-    # run together so Telegram's button spinner is cleared immediately.
-    await asyncio.gather(
-        query.answer(),
-        query.edit_message_media(
-            media=InputMediaPhoto(
-                media=get_vip_package_banner(package),
-                caption=build_vip_package_text(package),
-                parse_mode="HTML",
-            ),
-            reply_markup=build_vip_package_keyboard(
-                idx, total, package["id"]
-            ),
-        )
+    # Acknowledge the button tap first so Telegram clears its loading
+    # indicator before the page media is replaced. Pagination logic and
+    # package rendering remain unchanged.
+    await query.answer()
+
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
+            parse_mode="HTML",
+        ),
+        reply_markup=build_vip_package_keyboard(
+            idx, total, package["id"]
+        ),
     )
 
 
