@@ -1738,24 +1738,20 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    # Prepare the page payload before acknowledging the click. This keeps
-    # everything possible out of the post-ack transition path.
-    page_media = InputMediaPhoto(
-        media=get_vip_package_banner(package),
-        caption=build_vip_package_text(package),
-        parse_mode="HTML",
-    )
-    page_keyboard = build_vip_package_keyboard(
-        idx, total, package["id"]
-    )
-
-    # Acknowledge immediately after the payload is ready, then perform only
-    # the Telegram page replacement.
+    # Acknowledge the button tap first so Telegram clears its loading
+    # indicator before the page media is replaced. Pagination logic and
+    # package rendering remain unchanged.
     await query.answer()
 
     await query.edit_message_media(
-        media=page_media,
-        reply_markup=page_keyboard,
+        media=InputMediaPhoto(
+            media=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
+            parse_mode="HTML",
+        ),
+        reply_markup=build_vip_package_keyboard(
+            idx, total, package["id"]
+        ),
     )
 
 
