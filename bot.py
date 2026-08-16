@@ -1298,7 +1298,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "📚 Lihat VVIP",
+                            "💎 Beli VIP",
                             callback_data="vipmenu"
                         )
                     ],
@@ -3787,7 +3787,7 @@ async def delete_messages_after_delay(
             if settings["join_vip_enabled"]:
                 preview_keyboard.append([
                     InlineKeyboardButton(
-                        "📚 Lihat VVIP",
+                        "💎 Beli VIP",
                         callback_data="vipmenu"
                     )
                 ])
@@ -5821,7 +5821,7 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if settings["join_vip_enabled"]:
             livechat_return_keyboard.insert(0, [
                 InlineKeyboardButton(
-                    "📚 Lihat VVIP",
+                    "💎 Beli VIP",
                     callback_data="vipmenu"
                 )
             ])
