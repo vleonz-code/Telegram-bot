@@ -7208,7 +7208,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reupload_prompt_msg_id = None
     if not upload_waiting[order_id].get("reupload"):
         status_msg = await update.message.reply_text(
-            "✅ Pembayaran kamu sedang diproses.\n"
+            "✅ Pembayaran sedang diproses.\n"
             "⏳ Estimasi waktu: 1–3 menit...\n\n"
         )
         upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
