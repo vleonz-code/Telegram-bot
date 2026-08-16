@@ -566,16 +566,15 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
                 media=media
             )
 
-        _, success_msg = await asyncio.gather(
-            progress.delete(),
-            bot.send_message(
-                chat_id,
-                (
-                    "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
-                    f"✅ Semua {len(media)} media terkirim!"
-                ),
-                parse_mode="HTML"
-            )
+        await progress.delete()
+
+        success_msg = await bot.send_message(
+            chat_id,
+            (
+                "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
+                f"✅ Semua {len(media)} media terkirim!"
+            ),
+            parse_mode="HTML"
         )
 
         delivered = [
@@ -587,6 +586,31 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
             success_msg.message_id
         )
 
+        # The two post-album actions follow the same AdminVIP order switch
+        # already used elsewhere in the bot. They are separate from the
+        # Telegram media group because send_media_group cannot carry buttons.
+        settings = read_settings()
+        if chat_id != ADMIN_ID and settings["join_vip_enabled"]:
+            action_msg = await bot.send_message(
+                chat_id,
+                "Pilih tindakan:",
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "💎 Beli VIP",
+                            callback_data="vipmenu"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🆘 Bantuan",
+                            callback_data="livechat_start"
+                        )
+                    ]
+                ])
+            )
+            delivered.append(action_msg.message_id)
+
         if chat_id == ADMIN_ID:
              return True
 
@@ -596,8 +620,6 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
         last_delivered_messages[
             chat_id
         ] = delivered
-
-        settings = read_settings()
 
         if chat_id != ADMIN_ID and auto_delete:
             pending = read_pending_preview_deletions()
