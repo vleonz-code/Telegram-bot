@@ -1298,7 +1298,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "🔮 Daftar Grup Bocil",
+                            "🔮 Lihat Paket",
                             callback_data="vipmenu"
                         )
                     ],
@@ -1619,13 +1619,10 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 
     if total > 1:
         # Keep the same three-button layout on every page.
-        # Boundary arrows remain visible but become no-op buttons.
-        prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
-        )
-        next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
-        )
+        # Navigation wraps around at both boundaries:
+        # < on 1/total goes to total/total, > on total/total goes to 1/total.
+        prev_callback = f"vipnav_{(idx - 1) % total}"
+        next_callback = f"vipnav_{(idx + 1) % total}"
 
         keyboard.append([
             InlineKeyboardButton(
@@ -3787,7 +3784,7 @@ async def delete_messages_after_delay(
             if settings["join_vip_enabled"]:
                 preview_keyboard.append([
                     InlineKeyboardButton(
-                        "🔮 Daftar Grup Bocil",
+                        "🔮 Lihat Paket",
                         callback_data="vipmenu"
                     )
                 ])
@@ -5846,7 +5843,7 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
         if settings["join_vip_enabled"]:
             livechat_return_keyboard.insert(0, [
                 InlineKeyboardButton(
-                    "🔮 Daftar Grup Bocil",
+                    "🔮 Lihat Paket",
                     callback_data="vipmenu"
                 )
             ])
