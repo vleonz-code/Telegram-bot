@@ -1592,7 +1592,6 @@ def build_vip_package_text(package):
             "",
             "╭" + "─" * box_width + "╮",
             "<b>      " + intro_safe + "      </b>",
-            "╰" + "─" * box_width + "╯",
         ])
 
     if benefits:
