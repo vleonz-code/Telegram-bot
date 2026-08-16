@@ -1857,7 +1857,7 @@ async def send_qris_message(chat_id, context, package, package_id):
             "<blockquote>❝ Scan kode QR di atas untuk melakukan pembayaran, "
             "bayar sesuai nominal paket, lalu kirim screenshot/foto bukti "
             "transfer di sini. ❞</blockquote>\n\n"
-            "💠 <b>Pembayaran via :</b>\n"
+            "<b>Pembayaran via :</b>\n"
             "🟣 OVO · 🔵 Dana · 🟠 ShopeePay\n"
             "🟢 GoPay · 📱 TNG · 🏦 Maybank\n"
             "━━━━━━━━━━━━━━"
@@ -1906,7 +1906,7 @@ async def show_qris_loading_message(chat_id, context):
     )
 
     async def _remove_loading():
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
         try:
             await context.bot.delete_message(
                 chat_id=chat_id,
