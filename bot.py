@@ -1601,8 +1601,8 @@ def build_vip_package_text(package):
             parts.append(f"  {html.escape(line)}")
 
         parts.extend([
-            "╰" + "─" * (box_width + 1) + "╯",
-        ])
+            "",
+            "╰" + "─" * (box_width + 1) + "╯",        ])
 
     return "\n".join(parts)
 def get_vip_package_banner(package):
