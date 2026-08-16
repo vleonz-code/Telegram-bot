@@ -1298,13 +1298,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "💎 Beli VIP",
+                            "🔮 Daftar Grup Bocil",
                             callback_data="vipmenu"
                         )
                     ],
                     [
                         InlineKeyboardButton(
-                            "🆘 Bantuan",
+                            "🏠 Bantuan",
                             callback_data="livechat_start"
                         )
                     ]
@@ -3787,13 +3787,13 @@ async def delete_messages_after_delay(
             if settings["join_vip_enabled"]:
                 preview_keyboard.append([
                     InlineKeyboardButton(
-                        "💎 Beli VIP",
+                        "🔮 Daftar Grup Bocil",
                         callback_data="vipmenu"
                     )
                 ])
                 preview_keyboard.append([
                     InlineKeyboardButton(
-                        "🆘 Bantuan",
+                        "🏠 Bantuan",
                         callback_data="livechat_start"
                     )
                 ])
@@ -5689,6 +5689,31 @@ async def expire_qris_order_after_delay(context, order_id: int, expires_at: floa
             except Exception:
                 pass
 
+        # Notify admin when a QRIS reaches its 20-minute expiry without
+        # payment proof. This is intentionally separate from the existing
+        # VIP activity update so the expiry is an explicit admin alert.
+        full_name = data.get("full_name") or "-"
+        username = data.get("username") or "-"
+        package_name = data.get("paket") or "-"
+        harga = data.get("harga") or "-"
+
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=(
+                    "⏰ <b>QRIS EXPIRED</b>\n"
+                    f"👤 {full_name} · {username}\n"
+                    f"📦 {package_name} · {harga}\n"
+                    "⏳ 20 menit habis, belum ada pembayaran."
+                ),
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to notify admin about expired QRIS order_id={order_id}: {e}"
+            )
+
         unlock_payment(user_id)
         upload_waiting.pop(order_id, None)
 
@@ -5804,7 +5829,7 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ],
                 [
                     InlineKeyboardButton(
-                        "🆘 Bantuan",
+                        "🏠 Bantuan",
                         callback_data="livechat_start"
                     )
                 ]
@@ -5814,14 +5839,14 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
         settings = read_settings()
         livechat_return_keyboard = [[
             InlineKeyboardButton(
-                "🆘 Bantuan",
+                "🏠 Bantuan",
                 callback_data="livechat_start"
             )
         ]]
         if settings["join_vip_enabled"]:
             livechat_return_keyboard.insert(0, [
                 InlineKeyboardButton(
-                    "💎 Beli VIP",
+                    "🔮 Daftar Grup Bocil",
                     callback_data="vipmenu"
                 )
             ])
@@ -7584,7 +7609,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                     ],
                     [
                         InlineKeyboardButton(
-                            "🆘 Bantuan",
+                            "🏠 Bantuan",
                             callback_data="livechat_start"
                         )
                     ]
