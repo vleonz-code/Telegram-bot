@@ -1586,12 +1586,17 @@ def build_vip_package_text(package):
 
     if intro:
         # Compact box; keep the admin text exactly as entered.
+        # Calculate symmetric padding from the rendered text width so the
+        # collection header stays centered for any count/text length.
         intro_safe = html.escape(intro)
-        box_width = 14
+        box_width = max(14, len(intro) + 10)
+        side_pad = max(2, (box_width - len(intro) + 2) // 2)
+        left_pad = side_pad
+        right_pad = box_width + 2 - len(intro) - left_pad
         parts.extend([
             "",
             "╭" + "─" * box_width + "╮",
-            "<b>      " + intro_safe + "      </b>",
+            "<b>" + (" " * left_pad) + intro_safe + (" " * right_pad) + "</b>",
             "╰" + "─" * box_width + "╯",
         ])
 
