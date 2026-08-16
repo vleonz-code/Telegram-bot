@@ -1619,10 +1619,13 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 
     if total > 1:
         # Keep the same three-button layout on every page.
-        # Navigation wraps around at both boundaries:
-        # < on 1/total goes to total/total, > on total/total goes to 1/total.
-        prev_callback = f"vipnav_{(idx - 1) % total}"
-        next_callback = f"vipnav_{(idx + 1) % total}"
+        # Boundary arrows remain visible but become no-op buttons.
+        prev_callback = (
+            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
+        )
+        next_callback = (
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
+        )
 
         keyboard.append([
             InlineKeyboardButton(
@@ -5686,31 +5689,6 @@ async def expire_qris_order_after_delay(context, order_id: int, expires_at: floa
             except Exception:
                 pass
 
-        # Notify admin when a QRIS reaches its 20-minute expiry without
-        # payment proof. This is intentionally separate from the existing
-        # VIP activity update so the expiry is an explicit admin alert.
-        full_name = data.get("full_name") or "-"
-        username = data.get("username") or "-"
-        package_name = data.get("paket") or "-"
-        harga = data.get("harga") or "-"
-
-        try:
-            await context.bot.send_message(
-                chat_id=ADMIN_ID,
-                text=(
-                    "⏰ <b>QRIS EXPIRED</b>\n"
-                    f"👤 {full_name} · {username}\n"
-                    f"📦 {package_name} · {harga}\n"
-                    "⏳ 20 menit habis, belum ada pembayaran."
-                ),
-                parse_mode="HTML",
-                disable_web_page_preview=True,
-            )
-        except Exception as e:
-            logger.error(
-                f"Failed to notify admin about expired QRIS order_id={order_id}: {e}"
-            )
-
         unlock_payment(user_id)
         upload_waiting.pop(order_id, None)
 
@@ -7208,7 +7186,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reupload_prompt_msg_id = None
     if not upload_waiting[order_id].get("reupload"):
         status_msg = await update.message.reply_text(
-            "✅ Pembayaran sedang diproses.\n"
+            "✅ Pembayaran kamu sedang diproses.\n"
             "⏳ Estimasi waktu: 1–3 menit...\n\n"
         )
         upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
