@@ -1314,8 +1314,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.bot
             )
 
-            # The user already has access; do not create the old
-            # "Permintaan ulang belum tersedia" message.
+            # The user is already approved. Do not send the old repeat
+            # message; reopen the normal VIP Menu flow instead.
+            if settings["join_vip_enabled"]:
+                packages = get_vip_packages_cached()["packages"]
+                active_packages = [
+                    package for package in packages
+                    if package.get("aktif", True)
+                ]
+
+                if active_packages:
+                    total = len(active_packages)
+                    package = active_packages[0]
+
+                    await context.bot.send_photo(
+                        chat_id=update.effective_chat.id,
+                        photo=get_vip_package_banner(package),
+                        caption=build_vip_package_text(package),
+                        reply_markup=build_vip_package_keyboard(
+                            0,
+                            total,
+                            package["id"]
+                        ),
+                        parse_mode="HTML",
+                    )
+                else:
+                    await context.bot.send_message(
+                        chat_id=update.effective_chat.id,
+                        text="Belum ada paket VIP yang tersedia saat ini.",
+                    )
+            else:
+                await context.bot.send_message(
+                    chat_id=update.effective_chat.id,
+                    text="⚠️ Order VIP sedang OFF.",
+                )
+
             return
 
     if (
