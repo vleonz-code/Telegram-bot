@@ -566,6 +566,23 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
                 media=media
             )
 
+        settings = read_settings()
+
+        success_keyboard = None
+        if chat_id != ADMIN_ID and settings["join_vip_enabled"]:
+            success_keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "📦 Lihat Paket",
+                        callback_data="vipmenu"
+                    ),
+                    InlineKeyboardButton(
+                        "🆘 Bantuan",
+                        url="https://t.me/BocilVIP511"
+                    )
+                ]
+            ])
+
         _, success_msg = await asyncio.gather(
             progress.delete(),
             bot.send_message(
@@ -574,7 +591,8 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
                     "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
                     f"✅ Semua {len(media)} media terkirim!"
                 ),
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=success_keyboard
             )
         )
 
@@ -596,8 +614,6 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
         last_delivered_messages[
             chat_id
         ] = delivered
-
-        settings = read_settings()
 
         if chat_id != ADMIN_ID and auto_delete:
             pending = read_pending_preview_deletions()
@@ -1662,6 +1678,36 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             show_alert=True
         )
         return
+
+    chat_id = query.message.chat_id
+
+    old_task = preview_delete_tasks.pop(chat_id, None)
+    if old_task:
+        old_task.cancel()
+
+    old_messages = last_delivered_messages.pop(chat_id, None)
+    if old_messages:
+        for message_id in old_messages:
+            try:
+                await context.bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
+
+        try:
+            pending = read_pending_preview_deletions()
+            pending = [
+                entry for entry in pending
+                if not (
+                    entry.get("chat_id") == chat_id
+                    and entry.get("message_ids") == old_messages
+                )
+            ]
+            save_pending_preview_deletions(pending)
+        except Exception:
+            pass
 
     # Match AdminVIP fast callback pattern: acknowledge the tap while
     # clearing the stale deeplink notice instead of serializing both awaits.
@@ -5704,6 +5750,21 @@ async def expire_qris_order_after_delay(context, order_id: int, expires_at: floa
             chat_id=user_id,
             text="⚠️ Pembayaran expired. Silakan buat ulang pembayaran."
         )
+
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=(
+                    "⏰ <b>QRIS Expired (Tidak Dibayar)</b>\n\n"
+                    f"👤 {html.escape(data.get('full_name') or '-')}\n"
+                    f"🆔 {user_id}\n"
+                    f"🎟️ {html.escape(data.get('paket') or '-')}\n"
+                    f"💰 {html.escape(data.get('harga') or '-')}"
+                ),
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
 
     except asyncio.CancelledError:
         raise
