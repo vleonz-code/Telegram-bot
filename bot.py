@@ -7565,17 +7565,11 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             f"user_id={user_id}"
         )
         try:
-            livechat_sessions[user_id] = {
-                "source": "purchase",
-                "vip_link": vip_link,
-            }
-
             success_msg = await context.bot.send_message(
                 chat_id=user_id,
                 text=(
                     "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
                     "Pembayaran kamu telah diverifikasi.\n\n"
-                    f"Pilihan VIP: <b>{html.escape(package['nama'])}</b>\n\n"
                     "✨ Akses VIP kamu sudah siap.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
                     "⚠️ Mohon jangan bagikan akses ini."
