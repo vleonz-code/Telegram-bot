@@ -573,11 +573,11 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
             success_keyboard = InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🔮 Lihat Paket",
-                        callback_data="vipmenu_preview"
+                        "📦 Lihat Paket",
+                        callback_data="vipmenu"
                     ),
                     InlineKeyboardButton(
-                        "🏠 Bantuan",
+                        "🆘 Bantuan",
                         url="https://t.me/BocilVIP511"
                     )
                 ]
@@ -1679,6 +1679,36 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    chat_id = query.message.chat_id
+
+    old_task = preview_delete_tasks.pop(chat_id, None)
+    if old_task:
+        old_task.cancel()
+
+    old_messages = last_delivered_messages.pop(chat_id, None)
+    if old_messages:
+        for message_id in old_messages:
+            try:
+                await context.bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
+
+        try:
+            pending = read_pending_preview_deletions()
+            pending = [
+                entry for entry in pending
+                if not (
+                    entry.get("chat_id") == chat_id
+                    and entry.get("message_ids") == old_messages
+                )
+            ]
+            save_pending_preview_deletions(pending)
+        except Exception:
+            pass
+
     # Match AdminVIP fast callback pattern: acknowledge the tap while
     # clearing the stale deeplink notice instead of serializing both awaits.
     await asyncio.gather(
@@ -1730,101 +1760,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"@{user.username}" if user.username else "-",
         user.id,
     )
-
-
-async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Khusus tombol 'Lihat Paket' di pesan sukses pengiriman preview.
-    Beda dengan vipmenu_callback biasa: menu VIP ditampilkan dulu di
-    bawah, baru album lama di atasnya dihapus setelahnya. Tidak berlaku
-    untuk tombol Lihat Paket lain (timer habis, repeat deeplink, dst)."""
-    query = update.callback_query
-
-    if not read_settings()["join_vip_enabled"]:
-        await query.answer(
-            "⚠️ Order VIP sedang OFF.",
-            show_alert=True
-        )
-        return
-
-    chat_id = query.message.chat_id
-
-    await asyncio.gather(
-        query.answer(),
-        clear_last_repeat(
-            chat_id,
-            context.bot
-        )
-    )
-
-    packages = get_vip_packages_cached()["packages"]
-
-    active_packages = [
-        package for package in packages
-        if package.get("aktif", True)
-    ]
-
-    user = query.from_user
-
-    if not active_packages:
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text="Belum ada paket VIP yang tersedia saat ini.",
-        )
-        await notify_admin_vip_menu(
-            context.bot,
-            user.full_name or "-",
-            f"@{user.username}" if user.username else "-",
-            user.id,
-        )
-    else:
-        total = len(active_packages)
-        package = active_packages[0]
-
-        await context.bot.send_photo(
-            chat_id=chat_id,
-            photo=get_vip_package_banner(package),
-            caption=build_vip_package_text(package),
-            reply_markup=build_vip_package_keyboard(0, total, package["id"]),
-            parse_mode="HTML",
-        )
-        asyncio.create_task(
-            notify_admin_vip_menu(
-                context.bot,
-                user.full_name or "-",
-                f"@{user.username}" if user.username else "-",
-                user.id,
-            )
-        )
-
-    # Menu VIP sudah tampil di bawah -- baru sekarang album lama di
-    # atasnya dibereskan, supaya tidak ada jeda "chat kosong".
-    old_task = preview_delete_tasks.pop(chat_id, None)
-    if old_task:
-        old_task.cancel()
-
-    old_messages = last_delivered_messages.pop(chat_id, None)
-    if old_messages:
-        for message_id in old_messages:
-            try:
-                await context.bot.delete_message(
-                    chat_id=chat_id,
-                    message_id=message_id
-                )
-            except Exception:
-                pass
-
-        try:
-            pending = read_pending_preview_deletions()
-            pending = [
-                entry for entry in pending
-                if not (
-                    entry.get("chat_id") == chat_id
-                    and entry.get("message_ids") == old_messages
-                )
-            ]
-            save_pending_preview_deletions(pending)
-        except Exception:
-            pass
 
 
 
@@ -8337,11 +8272,6 @@ def main():
     CallbackQueryHandler(
         vipmenu_callback,
         pattern=r"^vipmenu$"
-    ))
-    app.add_handler(
-    CallbackQueryHandler(
-        vipmenu_from_preview_callback,
-        pattern=r"^vipmenu_preview$"
     ))
     app.add_handler(
     CallbackQueryHandler(
