@@ -13,6 +13,10 @@ import sys
 import telegram
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
+try:
+    from telegram import CopyTextButton
+except ImportError:
+    CopyTextButton = None
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 
@@ -562,17 +566,19 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
                 media=media
             )
 
-        preview_success_keyboard = None
-        if read_settings()["join_vip_enabled"]:
-            preview_success_keyboard = InlineKeyboardMarkup([
+        settings = read_settings()
+
+        success_keyboard = None
+        if chat_id != ADMIN_ID and settings["join_vip_enabled"]:
+            success_keyboard = InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🔮 Lihat Paket",
+                        "📦 Lihat Paket",
                         callback_data="vipmenu"
                     ),
                     InlineKeyboardButton(
-                        "🏠 Bantuan",
-                        callback_data="livechat_start"
+                        "🆘 Bantuan",
+                        url="https://t.me/BocilVIP511"
                     )
                 ]
             ])
@@ -586,7 +592,7 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
                     f"✅ Semua {len(media)} media terkirim!"
                 ),
                 parse_mode="HTML",
-                reply_markup=preview_success_keyboard
+                reply_markup=success_keyboard
             )
         )
 
@@ -608,8 +614,6 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
         last_delivered_messages[
             chat_id
         ] = delivered
-
-        settings = read_settings()
 
         if chat_id != ADMIN_ID and auto_delete:
             pending = read_pending_preview_deletions()
@@ -1310,13 +1314,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "📚 Lihat VVIP",
+                            "🔮 Lihat Paket",
                             callback_data="vipmenu"
                         )
                     ],
                     [
                         InlineKeyboardButton(
-                            "🆘 Bantuan",
+                            "🏠 Bantuan",
                             callback_data="livechat_start"
                         )
                     ]
@@ -1596,23 +1600,19 @@ def build_vip_package_text(package):
     benefits = lines[1:] if len(lines) > 1 else []
 
     parts = [
-        f"🎟️ <b>{html.escape(package['nama'])}</b>",
-        f"💰 {html.escape(package['harga'])}",
+        f"💎 {html.escape(package['nama'])}",
+        f"💰 <b>{html.escape(package['harga'])}</b>",
     ]
 
     if intro:
-        # Compact fixed-width header. The top/bottom rules stay identical
-        # in length; only the complete header block is centered as a unit.
+        # Compact box; keep the admin text exactly as entered.
         intro_safe = html.escape(intro)
         box_width = 14
-        header_pad = max(1, (box_width + 2 - len(intro)) // 2)
-        header_line = " " * header_pad + intro_safe
-        right_pad = max(1, box_width + 2 - len(header_line))
         parts.extend([
             "",
-            "        " + "╭" + "─" * box_width + "╮",
-            "        " + "<b>" + header_line + (" " * right_pad) + "</b>",
-            "        " + "╰" + "─" * box_width + "╯",
+            "╭" + "─" * (box_width + 1) + "╮",
+            "<b>      " + intro_safe + "      </b>",
+            "",
         ])
 
     if benefits:
@@ -1622,8 +1622,7 @@ def build_vip_package_text(package):
             parts.append(f"  {html.escape(line)}")
 
         parts.extend([
-            "",
-            "╰" + "─" * box_width + "╯",
+            "╰" + "─" * (box_width + 1) + "╯",
         ])
 
     return "\n".join(parts)
@@ -1679,6 +1678,36 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             show_alert=True
         )
         return
+
+    chat_id = query.message.chat_id
+
+    old_task = preview_delete_tasks.pop(chat_id, None)
+    if old_task:
+        old_task.cancel()
+
+    old_messages = last_delivered_messages.pop(chat_id, None)
+    if old_messages:
+        for message_id in old_messages:
+            try:
+                await context.bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=message_id
+                )
+            except Exception:
+                pass
+
+        try:
+            pending = read_pending_preview_deletions()
+            pending = [
+                entry for entry in pending
+                if not (
+                    entry.get("chat_id") == chat_id
+                    and entry.get("message_ids") == old_messages
+                )
+            ]
+            save_pending_preview_deletions(pending)
+        except Exception:
+            pass
 
     # Match AdminVIP fast callback pattern: acknowledge the tap while
     # clearing the stale deeplink notice instead of serializing both awaits.
@@ -1868,13 +1897,13 @@ async def send_qris_message(chat_id, context, package, package_id):
         caption=(
             "<b>✅ QRIS telah dibuat</b>\n"
             "⏳ 20 menit\n"
-            "━━━━━━━━━━━━━━\n\n"
+            "━━━━━━━━━━━━━━\n"
             f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
             "<blockquote>❝ Scan kode QR di atas untuk melakukan pembayaran, "
             "bayar sesuai nominal paket, lalu kirim screenshot/foto bukti "
-            "transfer di sini. ❞</blockquote>\n\n"
-            "💠 <b>Pembayaran via :</b>\n"
+            "transfer dengan menekan Sudah Transfer. ❞</blockquote>\n\n"
+            "<b>Pembayaran via :</b>\n"
             "🟣 OVO · 🔵 Dana · 🟠 ShopeePay\n"
             "🟢 GoPay · 📱 TNG · 🏦 Maybank\n"
             "━━━━━━━━━━━━━━"
@@ -3804,13 +3833,13 @@ async def delete_messages_after_delay(
             if settings["join_vip_enabled"]:
                 preview_keyboard.append([
                     InlineKeyboardButton(
-                        "📚 Lihat VVIP",
+                        "🔮 Lihat Paket",
                         callback_data="vipmenu"
                     )
                 ])
                 preview_keyboard.append([
                     InlineKeyboardButton(
-                        "🆘 Bantuan",
+                        "🏠 Bantuan",
                         callback_data="livechat_start"
                     )
                 ])
@@ -4813,14 +4842,32 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         "message_id": query.message.message_id
     }
 
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "❌ Batal",
-                callback_data=f"adminvip_{package_id}"
+    description_text = package["deskripsi"] or ""
+
+    if len(description_text) <= 256:
+        if CopyTextButton is not None:
+            copy_button = InlineKeyboardButton(
+                "📋 Salin Deskripsi",
+                copy_text=CopyTextButton(text=description_text)
             )
-        ]
+        else:
+            copy_button = InlineKeyboardButton(
+                "📋 Salin Deskripsi",
+                api_kwargs={"copy_text": {"text": description_text}}
+            )
+    else:
+        copy_button = None
+
+    keyboard_rows = []
+    if copy_button is not None:
+        keyboard_rows.append([copy_button])
+    keyboard_rows.append([
+        InlineKeyboardButton(
+            "❌ Batal",
+            callback_data=f"adminvip_{package_id}"
+        )
     ])
+    keyboard = InlineKeyboardMarkup(keyboard_rows)
 
     await asyncio.gather(
         answer_task,
@@ -5704,6 +5751,21 @@ async def expire_qris_order_after_delay(context, order_id: int, expires_at: floa
             text="⚠️ Pembayaran expired. Silakan buat ulang pembayaran."
         )
 
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=(
+                    "⏰ <b>QRIS Expired (Tidak Dibayar)</b>\n\n"
+                    f"👤 {html.escape(data.get('full_name') or '-')}\n"
+                    f"🆔 {user_id}\n"
+                    f"🎟️ {html.escape(data.get('paket') or '-')}\n"
+                    f"💰 {html.escape(data.get('harga') or '-')}"
+                ),
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+
     except asyncio.CancelledError:
         raise
     except Exception as e:
@@ -5803,7 +5865,7 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 ],
                 [
                     InlineKeyboardButton(
-                        "🆘 Bantuan",
+                        "🏠 Bantuan",
                         callback_data="livechat_start"
                     )
                 ]
@@ -5813,14 +5875,14 @@ async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TY
         settings = read_settings()
         livechat_return_keyboard = [[
             InlineKeyboardButton(
-                "🆘 Bantuan",
+                "🏠 Bantuan",
                 callback_data="livechat_start"
             )
         ]]
         if settings["join_vip_enabled"]:
             livechat_return_keyboard.insert(0, [
                 InlineKeyboardButton(
-                    "📚 Lihat VVIP",
+                    "🔮 Lihat Paket",
                     callback_data="vipmenu"
                 )
             ])
@@ -7564,17 +7626,11 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             f"user_id={user_id}"
         )
         try:
-            livechat_sessions[user_id] = {
-                "source": "purchase",
-                "vip_link": vip_link,
-            }
-
             success_msg = await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
+                    "<strong>🎉 PEMBAYARAN BERHASIL!</strong>\n\n"
                     "Pembayaran kamu telah diverifikasi.\n\n"
-                    f"Pilihan VIP: <b>{html.escape(package['nama'])}</b>\n\n"
                     "✨ Akses VIP kamu sudah siap.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
                     "⚠️ Mohon jangan bagikan akses ini."
@@ -7589,7 +7645,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                     ],
                     [
                         InlineKeyboardButton(
-                            "🆘 Bantuan",
+                            "🏠 Bantuan",
                             callback_data="livechat_start"
                         )
                     ]
