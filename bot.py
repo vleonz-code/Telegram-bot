@@ -1590,7 +1590,8 @@ def build_vip_package_text(package):
         box_width = 14
         parts.extend([
             "",
-            "╭" + "─" * (box_width + 1) + "╮",            "<b>      " + intro_safe + "      </b>",
+            "╭" + "─" * (box_width + 1) + "╮",
+            "<b>      " + intro_safe + "      </b>",
             "",
         ])
 
@@ -1602,7 +1603,8 @@ def build_vip_package_text(package):
 
         parts.extend([
             "",
-            "╰" + "─" * (box_width + 1) + "╯",        ])
+            "╰" + "─" * (box_width + 1) + "╯",
+        ])
 
     return "\n".join(parts)
 def get_vip_package_banner(package):
