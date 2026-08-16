@@ -573,11 +573,11 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
             success_keyboard = InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "📦 Lihat Paket",
+                        "🔮 Lihat Paket",
                         callback_data="vipmenu"
                     ),
                     InlineKeyboardButton(
-                        "🆘 Bantuan",
+                        "🏠 Bantuan",
                         url="https://t.me/BocilVIP511"
                     )
                 ]
