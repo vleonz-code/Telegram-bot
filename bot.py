@@ -5689,6 +5689,31 @@ async def expire_qris_order_after_delay(context, order_id: int, expires_at: floa
             except Exception:
                 pass
 
+        # Notify admin when a QRIS reaches its 20-minute expiry without
+        # payment proof. This is intentionally separate from the existing
+        # VIP activity update so the expiry is an explicit admin alert.
+        full_name = data.get("full_name") or "-"
+        username = data.get("username") or "-"
+        package_name = data.get("paket") or "-"
+        harga = data.get("harga") or "-"
+
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=(
+                    "⏰ <b>QRIS EXPIRED</b>\n"
+                    f"👤 {full_name} · {username}\n"
+                    f"📦 {package_name} · {harga}\n"
+                    "⏳ 20 menit habis, belum ada pembayaran."
+                ),
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to notify admin about expired QRIS order_id={order_id}: {e}"
+            )
+
         unlock_payment(user_id)
         upload_waiting.pop(order_id, None)
 
