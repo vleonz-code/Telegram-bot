@@ -593,18 +593,16 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
         if chat_id != ADMIN_ID and settings["join_vip_enabled"]:
             action_msg = await bot.send_message(
                 chat_id,
-                "Pilih tindakan:",
+                " ",
                 reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            "💎 Beli VIP",
-                            callback_data="vipmenu"
-                        )
-                    ],
                     [
                         InlineKeyboardButton(
                             "🆘 Bantuan",
                             callback_data="livechat_start"
+                        ),
+                        InlineKeyboardButton(
+                            "💎 Beli VIP",
+                            callback_data="vipmenu"
                         )
                     ]
                 ])
@@ -1316,37 +1314,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.bot
             )
 
-            if settings["join_vip_enabled"]:
-                keyboard = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            "💎 Beli VIP",
-                            callback_data="vipmenu"
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            "🆘 Bantuan",
-                            callback_data="livechat_start"
-                        )
-                    ]
-                ])
-            else:
-                keyboard = None
-
-            msg = await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=(
-                    "📍 Permintaan ulang belum tersedia.\n\n"
-                    "⏳ Silakan kembali lagi nanti. ୨୧\n\n"
-                ),
-                reply_markup=keyboard
-            )
-
-            last_repeat_message[
-                update.effective_chat.id
-            ] = msg.message_id
-
             return
 
     if (
@@ -1684,6 +1651,26 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             show_alert=True
         )
         return
+
+    # Leaving Preview for VIP Menu must stop the Preview timer and remove
+    # all preview-related messages, including the post-album action buttons.
+    chat_id = query.message.chat_id
+    preview_task = preview_delete_tasks.pop(chat_id, None)
+    if preview_task and not preview_task.done():
+        preview_task.cancel()
+
+    preview_message_ids = last_delivered_messages.pop(chat_id, None)
+    if preview_message_ids:
+        await asyncio.gather(
+            *(
+                context.bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=message_id
+                )
+                for message_id in preview_message_ids
+            ),
+            return_exceptions=True
+        )
 
     # Match AdminVIP fast callback pattern: acknowledge the tap while
     # clearing the stale deeplink notice instead of serializing both awaits.
