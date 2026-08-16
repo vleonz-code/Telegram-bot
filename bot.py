@@ -1585,18 +1585,13 @@ def build_vip_package_text(package):
     ]
 
     if intro:
-        # Fixed-width centered header. The rule length is constant; the
-        # content is centered within the same fixed-width box.
+        # Compact box; keep the admin text exactly as entered.
         intro_safe = html.escape(intro)
         box_width = 14
-        inner_width = box_width
-        text_width = len(intro)
-        left_pad = max(1, (inner_width - text_width) // 2)
-        right_pad = max(1, inner_width - text_width - left_pad)
         parts.extend([
             "",
             "╭" + "─" * box_width + "╮",
-            "│" + (" " * left_pad) + intro_safe + (" " * right_pad) + "│",
+            "<b>      " + intro_safe + "      </b>",
             "╰" + "─" * box_width + "╯",
         ])
 
