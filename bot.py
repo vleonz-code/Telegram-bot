@@ -8634,35 +8634,55 @@ async def admin_order_reminder_loop(app, order_id):
                 ])
 
                 try:
-                    timestamp = datetime.now(WIB).strftime("%H:%M:%S WIB")
-
-                    # Re-send the single active reminder every 15 seconds so it
-                    # returns to the bottom of the admin chat. Delete the previous
-                    # reminder first, then persist the new message_id.
                     if message_id:
+                        timestamp = datetime.now(WIB).strftime("%H:%M:%S WIB")
+                        await app.bot.edit_message_text(
+                            chat_id=ADMIN_ID,
+                            message_id=message_id,
+                            text=(
+                                "📨 <b>Order Masuk</b>\n\n"
+                                f"🔔 Pengingat • {timestamp}"
+                            ),
+                            parse_mode="HTML",
+                            reply_markup=keyboard,
+                        )
+                    else:
+                        msg = await app.bot.send_message(
+                            chat_id=ADMIN_ID,
+                            text="📨 <b>Order Masuk</b>",
+                            parse_mode="HTML",
+                            reply_markup=keyboard,
+                        )
+                        data["admin_verification_message_id"] = msg.message_id
+                        await _save_pending_order_state(order_id)
+                except Exception as e:
+                    # If the tracked admin message was deleted or became invalid,
+                    # replace it with exactly one fresh reminder message. This keeps
+                    # the reminder alive across manual deletion and bot restarts.
+                    # Any failed edit means the tracked reminder message is no
+                    # longer safely usable (deleted, invalid, or otherwise
+                    # uneditable). Replace it immediately and keep the watcher alive.
+                    try:
+                        msg = await app.bot.send_message(
+                            chat_id=ADMIN_ID,
+                            text="📨 <b>Order Masuk</b>",
+                            parse_mode="HTML",
+                            reply_markup=keyboard,
+                        )
+                        data["admin_verification_message_id"] = msg.message_id
+                        await _save_pending_order_state(order_id)
+                        logger.info(
+                            "ADMIN_ORDER_REMINDER_REPLACED "
+                            f"order_id={order_id} new_message_id={msg.message_id}"
+                        )
+                        continue
+                    except Exception:
+                        data["admin_verification_message_id"] = None
                         try:
-                            await app.bot.delete_message(
-                                chat_id=ADMIN_ID,
-                                message_id=message_id,
-                            )
+                            await _save_pending_order_state(order_id)
                         except Exception:
                             pass
-
-                    msg = await app.bot.send_message(
-                        chat_id=ADMIN_ID,
-                        text=(
-                            "📨 <b>Order Masuk</b>\n\n"
-                            f"🔔 Pengingat • {timestamp}"
-                        ),
-                        parse_mode="HTML",
-                        reply_markup=keyboard,
-                    )
-                    data["admin_verification_message_id"] = msg.message_id
-                    await _save_pending_order_state(order_id)
-
-                except Exception:
-                    # Leave the watcher alive; the next 15-second cycle retries.
-                    continue
+                        continue
     except asyncio.CancelledError:
         raise
 
