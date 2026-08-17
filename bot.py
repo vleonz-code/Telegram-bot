@@ -6259,11 +6259,12 @@ async def expire_qris_order_after_delay(context, order_id: int, expires_at: floa
             await context.bot.send_message(
                 chat_id=ADMIN_ID,
                 text=(
-                    "⏰ <b>QRIS Expired (Tidak Dibayar)</b>\n\n"
-                    f"👤 {html.escape(data.get('full_name') or '-')}\n"
-                    f"🆔 {user_id}\n"
-                    f"🎟️ {html.escape(data.get('paket') or '-')}\n"
-                    f"💰 {html.escape(data.get('harga') or '-')}"
+                    "⏰ <b>QRIS EXPIRED</b>\n\n"
+                    f"👤 <b>Nama</b> : {html.escape(data.get('full_name') or '-')}\n"
+                    f"🆔 <b>User ID</b> : {user_id}\n"
+                    f"📦 <b>Paket</b> : {html.escape(data.get('paket') or '-')}\n"
+                    f"💰 <b>Harga</b> : {html.escape(data.get('harga') or '-') }\n\n"
+                    "⚠️ <b>Tidak dibayar sebelum batas waktu.</b>"
                 ),
                 parse_mode="HTML"
             )
@@ -8135,7 +8136,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 text=(
                     "<strong>🎉 PEMBAYARAN BERHASIL!</strong>\n\n"
                     "✨ Akses VIP kamu sudah siap.\n\n"
-                    "Tekan tombol di bawah untuk bergabung.\n\n"
+                    "Tekan tombol di bawah untuk bergabung.\n"
                     "⚠️ Jangan bagikan akses ini."
                 ),
                 parse_mode=ParseMode.HTML,
