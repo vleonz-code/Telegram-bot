@@ -3309,7 +3309,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
 async def payment_history_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     callback_data = query.data
 
@@ -3412,9 +3412,12 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         )
     ])
 
-    await query.edit_message_caption(
-        caption=text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption=text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        ),
     )
 
 
