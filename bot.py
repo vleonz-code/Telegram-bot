@@ -1984,16 +1984,16 @@ async def send_qris_message(chat_id, context, package, package_id):
         caption=(
             "<b>✅ QRIS telah dibuat</b>\n"
             "⏳ 20 menit\n"
-            "━━━━━━━━━━━━━━\n"
+            "╭───────────────╮\n"
             f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
-            f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
+            f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n"
             "<blockquote>❝ Scan kode QR di atas untuk melakukan pembayaran, "
             "bayar sesuai nominal paket, lalu kirim screenshot/foto bukti "
-            "transfer dengan menekan Sudah Transfer. ❞</blockquote>\n\n"
+            "transfer dengan menekan Sudah Transfer. ❞</blockquote>\n"
             "<b>Pembayaran via :</b>\n"
             "🟣 OVO · 🔵 Dana · 🟠 ShopeePay\n"
             "🟢 GoPay · 📱 TNG · 🏦 Maybank\n"
-            "━━━━━━━━━━━━━━"
+            "╰───────────────╯"
         ),
         parse_mode="HTML",
 
