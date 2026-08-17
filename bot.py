@@ -1395,7 +1395,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Send waiting message to user
-    waiting_msg = await update.message.reply_text("⏳ Video preview sedang diproses…\n\nEstimasi waktu: 1–3 menit.")
+    waiting_msg = await update.message.reply_text("🔮 Permintaan sudah dikirim\n\nMohon tunggu sebentar ya. ୨୧")
 
     # Store pending request
     pending_requests[user_id] = {
@@ -1989,7 +1989,7 @@ async def send_qris_message(chat_id, context, package, package_id):
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
             "<blockquote>❝ Scan kode QR di atas untuk melakukan pembayaran, "
             "bayar sesuai nominal paket, lalu kirim screenshot/foto bukti "
-            "transfer dengan menekan Sudah Transfer. ❞</blockquote>\n\n"
+            "transfer melalui tombol Sudah Transfer. ❞</blockquote>\n\n"
             "<b>Pembayaran via :</b>\n"
             "🟣 OVO · 🔵 Dana · 🟠 ShopeePay\n"
             "🟢 GoPay · 📱 TNG · 🏦 Maybank\n"
