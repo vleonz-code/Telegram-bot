@@ -3371,6 +3371,7 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         order_time = raw_time.replace(", ", " ", 1)
 
     text = (
+        "📥 <b>BUKTI TRANSFER</b>\n\n"
         f"🧾 <b>Order ID</b> : #{html.escape(str(order_number))}\n"
         f"👤 <b>Nama</b> : {html.escape(str(order.get('full_name', '-')))}\n"
         f"🔗 <b>Username</b> : {html.escape(str(order.get('username', '-')))}\n"
