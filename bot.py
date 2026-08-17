@@ -3552,27 +3552,26 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
 
     keyboard = []
 
-    navigation_row = []
-    if page > 0:
-        navigation_row.append(
-            InlineKeyboardButton(
-                "◀️",
-                callback_data=f"history_page_{tanggal}_{page - 1}"
+    navigation_row = [
+        InlineKeyboardButton(
+            "‹",
+            callback_data=(
+                f"history_page_{tanggal}_{page - 1}"
+                if page > 0 else "history_nav_noop"
             )
-        )
-    navigation_row.append(
+        ),
         InlineKeyboardButton(
             f"{page + 1}/{len(remaining_orders)}",
-            callback_data=f"history_page_{tanggal}_{page}"
-        )
-    )
-    if page < len(remaining_orders) - 1:
-        navigation_row.append(
-            InlineKeyboardButton(
-                "▶️",
-                callback_data=f"history_page_{tanggal}_{page + 1}"
+            callback_data="history_nav_noop"
+        ),
+        InlineKeyboardButton(
+            "›",
+            callback_data=(
+                f"history_page_{tanggal}_{page + 1}"
+                if page < len(remaining_orders) - 1 else "history_nav_noop"
             )
         )
+    ]
     keyboard.append(navigation_row)
     keyboard.append([
         InlineKeyboardButton(
