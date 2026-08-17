@@ -7715,25 +7715,6 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     username = f"@{user.username}" if user.username else "-"
     order_time = datetime.now(WIB).strftime("%d/%m/%Y %I:%M %p")
 
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "✅ Terima",
-                callback_data=f"pay_ok|{order_id}"
-            ),
-            InlineKeyboardButton(
-                "📷 Foto Ulang",
-                callback_data=f"pay_no|{order_id}"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🚫 Ban User",
-                callback_data=f"pay_ban|{order_id}"
-            )
-        ]
-    ])
-
     try:
         admin_proof_task = asyncio.create_task(
             context.bot.send_photo(
@@ -7752,8 +7733,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"{html.escape(str(upload_waiting[order_id]['harga']))}\n"
                 f"🕒 <b>Waktu</b> : {order_time}"
                 ),
-                parse_mode="HTML",
-                reply_markup=keyboard
+                parse_mode="HTML"
             )
         )
     except Exception as e:
@@ -7810,6 +7790,34 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         raise
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "✅ Terima",
+                callback_data=f"pay_ok|{order_id}"
+            ),
+            InlineKeyboardButton(
+                "📷 Foto Ulang",
+                callback_data=f"pay_no|{order_id}"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🚫 Ban User",
+                callback_data=f"pay_ban|{order_id}"
+            )
+        ]
+    ])
+    admin_verification_task = asyncio.create_task(
+        context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=(
+                "📋 Verifikasi Pembayaran"
+            ),
+            reply_markup=keyboard
+        )
+    )
+
     try:
         await update.message.delete()
         logger.info(
@@ -7822,7 +7830,15 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"message_id={update.message.message_id}, order_id={order_id}): {e}"
         )
 
-
+    try:
+        await admin_verification_task
+    except Exception as e:
+        logger.error(
+            "PAYMENT_VERIFICATION_MESSAGE_ERROR "
+            f"order_id={order_id} "
+            f"exception={repr(e)}",
+            exc_info=True
+        )
 
 
 async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -7943,18 +7959,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         )
         return
 
-    async def _edit_admin_message(text, reply_markup=None):
-        if query.message and query.message.photo:
-            return await query.edit_message_caption(
-                caption=text,
-                parse_mode="HTML",
-                reply_markup=reply_markup
-            )
-        return await query.edit_message_text(
-            text=text,
-            reply_markup=reply_markup
-        )
-
     data = upload_waiting.get(order_id)
 
     user_id = data["user_id"] if data else None
@@ -7964,7 +7968,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             f"action={action} "
             f"order_id={order_id}"
         )
-        await _edit_admin_message(
+        await query.edit_message_text(
             "⚠️ Data pembayaran sudah tidak tersedia."
         )
         return
@@ -7980,7 +7984,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             f"action={action} "
             f"order_id={order_id}"
         )
-        await _edit_admin_message(
+        await query.edit_message_text(
             "⚠️ Pembayaran ini sudah diproses atau tidak lagi menunggu."
         )
         return
@@ -7999,7 +8003,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             f"order_id={order_id}"
         )
         try:
-            await _edit_admin_message(
+            await query.edit_message_text(
                 "⏳ Persetujuan sedang diproses..."
             )
             payment_trace_logger.info(
@@ -8021,7 +8025,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 f"order_id={order_id} "
                 f"package_id={data.get('package_id')}"
             )
-            await _edit_admin_message(
+            await query.edit_message_text(
                 "⚠️ Paket tidak tersedia atau link VIP belum dikonfigurasi.\n"
                 "Pesanan tetap menunggu tindakan admin."
             )
@@ -8106,27 +8110,11 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                         f"exception={repr(e)}"
                     )
 
-        admin_proof_message_id = data.get("admin_proof_message_id")
-        if admin_proof_message_id and query.message and query.message.photo:
-            final_edit_task = asyncio.create_task(
-                query.edit_message_media(
-                    media=InputMediaPhoto(
-                        media="AgACAgUAAxkBAAJbgGqC8llJ3d9X9WIdwrh057XrujgPAAJYEmsbLxEYVPY9MXiWV0aYAQADAgADeQADPQQ",
-                        caption="✅ <b>Pembayaran telah disetujui.</b>",
-                        parse_mode="HTML"
-                    ),
-                    reply_markup=None
-                )
+        final_edit_task = asyncio.create_task(
+            query.edit_message_text(
+                "✅ Pembayaran telah disetujui."
             )
-        elif admin_proof_message_id:
-            final_edit_task = asyncio.create_task(
-                context.bot.delete_message(
-                    chat_id=ADMIN_ID,
-                    message_id=admin_proof_message_id
-                )
-            )
-        else:
-            final_edit_task = None
+        )
 
         if payment_message_ids:
             await asyncio.gather(
@@ -8181,18 +8169,32 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             )
             raise
 
-        if final_edit_task:
+        try:
+            await final_edit_task
+            payment_trace_logger.info(
+                "PAY_OK_FINAL_EDIT_SUCCESS "
+                f"order_id={order_id}"
+            )
+        except Exception as e:
+            logger.error(f"Edit admin message error: {e}")
+            payment_trace_logger.error(
+                "PAY_OK_FINAL_EDIT_FAILED "
+                f"order_id={order_id} "
+                f"exception={repr(e)}"
+            )
+
+        admin_proof_message_id = data.get("admin_proof_message_id")
+        if admin_proof_message_id:
             try:
-                await final_edit_task
-                payment_trace_logger.info(
-                    "PAY_OK_FINAL_EDIT_SUCCESS "
-                    f"order_id={order_id}"
+                await context.bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=admin_proof_message_id
                 )
             except Exception as e:
-                logger.error(f"Edit admin message error: {e}")
-                payment_trace_logger.error(
-                    "PAY_OK_FINAL_EDIT_FAILED "
+                logger.warning(
+                    "PAY_OK_ADMIN_PROOF_DELETE_FAILED "
                     f"order_id={order_id} "
+                    f"message_id={admin_proof_message_id} "
                     f"exception={repr(e)}"
                 )
 
@@ -8354,7 +8356,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             ]
         ])
 
-        await _edit_admin_message(
+        await query.edit_message_text(
             "⚠️ Konfirmasi\n\n"
             "Yakin ingin membatasi akses user ini?",
             reply_markup=keyboard
@@ -8381,7 +8383,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             ]
         ])
 
-        await _edit_admin_message(
+        await query.edit_message_text(
             text=(
                 "📋 Verifikasi Pembayaran"
             ),
@@ -8425,7 +8427,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         )
 
         try:
-            await _edit_admin_message(
+            await query.edit_message_text(
                 "✅ User berhasil dibatasi."
             )
         finally:
