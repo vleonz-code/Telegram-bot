@@ -8613,7 +8613,15 @@ async def admin_order_reminder_loop(app, order_id):
             lock = payment_admin_locks.setdefault(order_id, asyncio.Lock())
             async with lock:
                 data = upload_waiting.get(order_id)
-                if not data or not data.get("photo_uploaded") or not data.get("processing"):
+                if not data or not (
+                    data.get("photo_uploaded") is True
+                    and data.get("photo_file_id")
+                    and (
+                        data.get("processing") is True
+                        or data.get("admin_verification_message_id")
+                        or data.get("qris_msg_id")
+                    )
+                ):
                     return
 
                 message_id = data.get("admin_verification_message_id")
@@ -8694,7 +8702,15 @@ async def ensure_admin_order_reminders(app):
     admin notification failed before the watcher could be started.
     """
     for order_id, data in list(upload_waiting.items()):
-        if not data.get("photo_uploaded") or not data.get("processing"):
+        if not (
+            data.get("photo_uploaded") is True
+            and data.get("photo_file_id")
+            and (
+                data.get("processing") is True
+                or data.get("admin_verification_message_id")
+                or data.get("qris_msg_id")
+            )
+        ):
             continue
 
         task = admin_order_reminder_tasks.get(order_id)
