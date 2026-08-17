@@ -8641,6 +8641,30 @@ async def admin_order_reminder_manager(app):
                                 reply_markup=keyboard,
                             )
                             continue
+                        except telegram.error.BadRequest as exc:
+                            # Recover only when Telegram says the tracked
+                            # message is unavailable. A transient/API error
+                            # must not create duplicate reminders.
+                            error_text = str(exc).lower()
+                            if not (
+                                "message to edit not found" in error_text
+                                or "message not found" in error_text
+                                or "message can't be edited" in error_text
+                            ):
+                                continue
+                        except Exception:
+                            # Network/transport failure: retain the current
+                            # message_id and retry on the next 15s cycle.
+                            continue
+
+                        # The tracked reminder is genuinely unavailable.
+                        # Delete it if it still exists, then create exactly
+                        # one replacement and persist the new message_id.
+                        try:
+                            await app.bot.delete_message(
+                                chat_id=ADMIN_ID,
+                                message_id=message_id,
+                            )
                         except Exception:
                             pass
 
