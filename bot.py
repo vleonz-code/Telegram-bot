@@ -3291,19 +3291,22 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         )
     ])
 
-    await query.edit_message_caption(
-        caption=(
-            "📋 <b>ORDER HISTORY</b>\n\n"
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["PAYMENT_BANNER_FILE_ID"],
+            caption=(
+                "📋 <b>ORDER HISTORY</b>\n\n"
 
-            f"💰 Total Pendapatan\n"
-            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+                f"💰 Total Pendapatan\n"
+                f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
 
-            f"📦 Total Order : {total_order}\n\n"
+                f"📦 Total Order : {total_order}\n\n"
 
-            "Pilih tanggal transaksi di bawah ini."
+                "Pilih tanggal transaksi di bawah ini."
+            ),
+            parse_mode="HTML",
         ),
         reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="HTML",
     )
 
 
