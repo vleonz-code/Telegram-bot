@@ -939,9 +939,11 @@ def increment_counter() -> int:
 async def notify_admin(bot, full_name: str, username: str, user_id: int):
     now = datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
     text = (
-        f"🟢 VIP DIAKSES\n"
-        f"📱 Aplikasi : Ochil\n"
-        f"👤 {full_name} · 🆔 {user_id}"
+        f"🟢 *Media VIP Diakses*\n\n"
+        f"👤 Name: {full_name}\n"
+        f"🔗 Username: {username}\n"
+        f"🆔 User ID: `{user_id}`\n\n"
+        f"Time: {now}"
     )
     try:
         await bot.send_message(
@@ -952,6 +954,23 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
         )
     except Exception as e:
         logger.error(f"Failed to notify admin: {e}")
+
+
+async def notify_admin_prev2(bot, full_name: str, username: str, user_id: int):
+    text = (
+        f"🟢 *Media VIP Diakses*\n\n"
+        f"📱 *Aplikasi : Ochil*\n"
+        f"👤 {full_name} · 🆔 `{user_id}`"
+    )
+    try:
+        await bot.send_message(
+            chat_id=ADMIN_ID,
+            text=text,
+            parse_mode="Markdown",
+            disable_notification=True
+        )
+    except Exception as e:
+        logger.error(f"Failed to notify admin PREV2: {e}")
 
 # In-memory cache for VIP admin activity.
 # Keeps the existing workflow and persistent JSON storage intact.
@@ -1355,7 +1374,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ok:
             save_user_to_registry(user_id, full_name, username)
             increment_counter()
-            await notify_admin(context.bot, full_name, username, user_id)
+            if payload == DEEP_LINK_B:
+                await notify_admin_prev2(
+                    context.bot, full_name, username, user_id
+                )
+            else:
+                await notify_admin(
+                    context.bot, full_name, username, user_id
+                )
 
             approved = read_approved()
 
