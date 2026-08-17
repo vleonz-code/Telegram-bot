@@ -8700,10 +8700,21 @@ def start_admin_order_reminder(app, order_id):
     )
 
 
-async def restore_admin_order_reminders(app):
+async def ensure_admin_order_reminders(app):
+    """Ensure every still-pending proof order has one live reminder watcher.
+
+    This is intentionally idempotent: it does not restart an existing watcher.
+    It also repairs orders that were persisted before a restart, or whose initial
+    admin notification failed before the watcher could be started.
+    """
     for order_id, data in list(upload_waiting.items()):
         if not data.get("photo_uploaded") or not data.get("processing"):
             continue
+
+        task = admin_order_reminder_tasks.get(order_id)
+        if task and not task.done():
+            continue
+
         message_id = data.get("admin_verification_message_id")
         if not message_id:
             keyboard = InlineKeyboardMarkup([
@@ -8728,7 +8739,27 @@ async def restore_admin_order_reminders(app):
                     f"order_id={order_id} exception={repr(e)}"
                 )
                 continue
+
         start_admin_order_reminder(app, order_id)
+
+
+async def admin_order_recovery_supervisor(app):
+    """Periodically recover pending orders whose reminder watcher was lost."""
+    try:
+        while True:
+            await asyncio.sleep(ADMIN_ORDER_ALERT_INTERVAL)
+            try:
+                await ensure_admin_order_reminders(app)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.error(
+                    "ADMIN_ORDER_RECOVERY_SUPERVISOR_ERROR "
+                    f"exception={repr(e)}",
+                    exc_info=True,
+                )
+    except asyncio.CancelledError:
+        raise
 
 
 # ---------------------------------------------------------------------------
@@ -8828,9 +8859,12 @@ def main():
             ):
                 schedule_qris_expiry(app, _order_id, float(_expires_at))
 
-        await restore_admin_order_reminders(app)
+        await ensure_admin_order_reminders(app)
         await set_admin_commands(app)
         app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
+        app.bot_data["admin_order_recovery_task"] = asyncio.create_task(
+            admin_order_recovery_supervisor(app)
+        )
         app.bot_data["pre_upload_cleanup_tasks"] = [
             asyncio.create_task(pre_upload_cleanup_worker(app.bot))
             for _ in range(2)
@@ -8842,6 +8876,14 @@ def main():
             task.cancel()
             try:
                 await task
+            except asyncio.CancelledError:
+                pass
+
+        recovery_task = app.bot_data.get("admin_order_recovery_task")
+        if recovery_task:
+            recovery_task.cancel()
+            try:
+                await recovery_task
             except asyncio.CancelledError:
                 pass
 
