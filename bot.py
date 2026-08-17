@@ -183,6 +183,34 @@ def save_order_history(data):
         )
 
 
+def calculate_next_order_id() -> int:
+    max_order_id = 0
+
+    pending = read_pending_orders()
+    for order in pending.get("orders", []):
+        if not isinstance(order, dict):
+            continue
+        try:
+            order_id = int(order["order_id"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if order_id > max_order_id:
+            max_order_id = order_id
+
+    history = read_order_history()
+    for order in history.get("orders", []):
+        if not isinstance(order, dict):
+            continue
+        try:
+            order_id = int(order["order_id"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if order_id > max_order_id:
+            max_order_id = order_id
+
+    return max_order_id + 1
+
+
 def read_pending_orders():
     if not os.path.exists(PENDING_ORDERS_FILE):
         return {"orders": []}
@@ -2201,6 +2229,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     global next_order_id
+
+    next_order_id = calculate_next_order_id()
 
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
@@ -8483,11 +8513,8 @@ def restore_pending_orders():
     global next_order_id
 
     pending = read_pending_orders()
-    history = read_order_history()
 
     upload_waiting = {}
-
-    max_order_id = 0
 
     for order in pending["orders"]:
         if not isinstance(order, dict):
@@ -8503,22 +8530,7 @@ def restore_pending_orders():
         order["order_id"] = order_id
         upload_waiting[order_id] = order
 
-        if order_id > max_order_id:
-            max_order_id = order_id
-
-    for order in history.get("orders", []):
-        if not isinstance(order, dict):
-            continue
-
-        try:
-            order_id = int(order["order_id"])
-        except (KeyError, TypeError, ValueError):
-            continue
-
-        if order_id > max_order_id:
-            max_order_id = order_id
-
-    next_order_id = max_order_id + 1
+    next_order_id = calculate_next_order_id()
 
 # ---------------------------------------------------------------------------
 # AUTO CHANNEL POST
