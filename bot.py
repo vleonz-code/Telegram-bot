@@ -1702,14 +1702,13 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Match AdminVIP fast callback pattern: acknowledge the tap while
-    # clearing the stale deeplink notice instead of serializing both awaits.
-    await asyncio.gather(
-        query.answer(),
-        clear_last_repeat(
-            query.message.chat_id,
-            context.bot
-        )
+    # Start acknowledgement immediately so the button feels responsive
+    # while the local VIP-menu preparation continues.
+    answer_task = asyncio.create_task(query.answer())
+
+    await clear_last_repeat(
+        query.message.chat_id,
+        context.bot
     )
 
     packages = get_vip_packages_cached()["packages"]
@@ -1737,6 +1736,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
         )
+        await answer_task
         asyncio.create_task(
             notify_admin_vip_menu(
                 context.bot,
@@ -1747,6 +1747,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    await answer_task
     await notify_admin_vip_menu(
         context.bot,
         user.full_name or "-",
@@ -1862,6 +1863,9 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = int(query.data.split("_")[1])
 
+    # Start acknowledgement before local package preparation.
+    answer_task = asyncio.create_task(query.answer())
+
     packages = get_vip_packages_cached()["packages"]
     active_packages = [
         package for package in packages
@@ -1875,10 +1879,9 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    # Match AdminVIP navigation: callback acknowledgement and media update
-    # run together so Telegram's button spinner is cleared immediately.
+    # Keep the already-started acknowledgement concurrent with the page update.
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         query.edit_message_media(
             media=InputMediaPhoto(
                 media=get_vip_package_banner(package),
