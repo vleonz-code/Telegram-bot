@@ -8006,6 +8006,16 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 f"exception={repr(e)}"
             )
 
+        admin_proof_delete_task = None
+        admin_proof_message_id = data.get("admin_proof_message_id")
+        if admin_proof_message_id:
+            admin_proof_delete_task = asyncio.create_task(
+                context.bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=admin_proof_message_id
+                )
+            )
+
         package = get_package(data["package_id"])
         if not package or not package.get("vip_link"):
             payment_trace_logger.error(
@@ -8171,13 +8181,9 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 f"exception={repr(e)}"
             )
 
-        admin_proof_message_id = data.get("admin_proof_message_id")
-        if admin_proof_message_id:
+        if admin_proof_delete_task:
             try:
-                await context.bot.delete_message(
-                    chat_id=ADMIN_ID,
-                    message_id=admin_proof_message_id
-                )
+                await admin_proof_delete_task
             except Exception as e:
                 logger.warning(
                     "PAY_OK_ADMIN_PROOF_DELETE_FAILED "
@@ -8276,6 +8282,18 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             except Exception:
                 pass
 
+        admin_proof_delete_task = None
+        admin_proof_message_id = upload_waiting[order_id].get(
+            "admin_proof_message_id"
+        )
+        if admin_proof_message_id:
+            admin_proof_delete_task = asyncio.create_task(
+                context.bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=admin_proof_message_id
+                )
+            )
+
         admin_reupload_edit_task = asyncio.create_task(
             query.edit_message_text(
                 "❌ Pembayaran ditolak."
@@ -8308,15 +8326,9 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
 
         await admin_reupload_edit_task
 
-        admin_proof_message_id = upload_waiting[order_id].get(
-            "admin_proof_message_id"
-        )
-        if admin_proof_message_id:
+        if admin_proof_delete_task:
             try:
-                await context.bot.delete_message(
-                    chat_id=ADMIN_ID,
-                    message_id=admin_proof_message_id
-                )
+                await admin_proof_delete_task
             except Exception as e:
                 logger.warning(
                     "PAY_NO_ADMIN_PROOF_DELETE_FAILED "
@@ -8388,6 +8400,16 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
 
         write_blacklist(blacklist)
 
+        admin_proof_delete_task = None
+        admin_proof_message_id = data.get("admin_proof_message_id")
+        if admin_proof_message_id:
+            admin_proof_delete_task = asyncio.create_task(
+                context.bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=admin_proof_message_id
+                )
+            )
+
         task = qris_expiry_tasks.pop(order_id, None)
         if task and not task.done():
             task.cancel()
@@ -8424,13 +8446,9 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             except Exception:
                 pass
 
-        admin_proof_message_id = data.get("admin_proof_message_id")
-        if admin_proof_message_id:
+        if admin_proof_delete_task:
             try:
-                await context.bot.delete_message(
-                    chat_id=ADMIN_ID,
-                    message_id=admin_proof_message_id
-                )
+                await admin_proof_delete_task
             except Exception as e:
                 logger.warning(
                     "PAY_BAN_ADMIN_PROOF_DELETE_FAILED "
