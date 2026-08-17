@@ -183,34 +183,6 @@ def save_order_history(data):
         )
 
 
-def calculate_next_order_id() -> int:
-    max_order_id = 0
-
-    pending = read_pending_orders()
-    for order in pending.get("orders", []):
-        if not isinstance(order, dict):
-            continue
-        try:
-            order_id = int(order["order_id"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        if order_id > max_order_id:
-            max_order_id = order_id
-
-    history = read_order_history()
-    for order in history.get("orders", []):
-        if not isinstance(order, dict):
-            continue
-        try:
-            order_id = int(order["order_id"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        if order_id > max_order_id:
-            max_order_id = order_id
-
-    return max_order_id + 1
-
-
 def read_pending_orders():
     if not os.path.exists(PENDING_ORDERS_FILE):
         return {"orders": []}
@@ -2230,7 +2202,25 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     global next_order_id
 
-    next_order_id = calculate_next_order_id()
+    pending = read_pending_orders()
+    history = read_order_history()
+    used_order_ids = set()
+
+    for order in pending.get("orders", []):
+        try:
+            used_order_ids.add(int(order["order_id"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    for order in history.get("orders", []):
+        try:
+            used_order_ids.add(int(order["order_id"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    next_order_id = max(used_order_ids, default=0) + 1
+    while next_order_id in used_order_ids:
+        next_order_id += 1
 
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
@@ -8508,13 +8498,60 @@ migrate_to_volume("vip_activity.json")
 migrate_vip_menu_description()
 
 
+def repair_order_history_ids():
+    """Ensure stored order IDs are unique without changing valid unique IDs."""
+    history = read_order_history()
+    pending = read_pending_orders()
+
+    used_ids = set()
+    for order in pending.get("orders", []):
+        if not isinstance(order, dict):
+            continue
+        try:
+            used_ids.add(int(order["order_id"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    max_id = max(used_ids, default=0)
+    changed = False
+
+    for order in history.get("orders", []):
+        if not isinstance(order, dict):
+            continue
+
+        try:
+            order_id = int(order["order_id"])
+        except (KeyError, TypeError, ValueError):
+            order_id = 0
+
+        if order_id > 0 and order_id not in used_ids:
+            used_ids.add(order_id)
+            max_id = max(max_id, order_id)
+            order["order_id"] = order_id
+            continue
+
+        max_id += 1
+        while max_id in used_ids:
+            max_id += 1
+        order["order_id"] = max_id
+        used_ids.add(max_id)
+        changed = True
+
+    if changed:
+        save_order_history(history)
+
+
 def restore_pending_orders():
     global upload_waiting
     global next_order_id
 
+    repair_order_history_ids()
     pending = read_pending_orders()
+    history = read_order_history()
 
     upload_waiting = {}
+
+    max_order_id = 0
 
     for order in pending["orders"]:
         if not isinstance(order, dict):
@@ -8530,7 +8567,20 @@ def restore_pending_orders():
         order["order_id"] = order_id
         upload_waiting[order_id] = order
 
-    next_order_id = calculate_next_order_id()
+        if order_id > max_order_id:
+            max_order_id = order_id
+
+    for order in history.get("orders", []):
+        if not isinstance(order, dict):
+            continue
+        try:
+            order_id = int(order["order_id"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if order_id > max_order_id:
+            max_order_id = order_id
+
+    next_order_id = max_order_id + 1
 
 # ---------------------------------------------------------------------------
 # AUTO CHANNEL POST
