@@ -3311,7 +3311,18 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
     query = update.callback_query
     await query.answer()
 
-    tanggal = query.data.replace("history_", "")
+    callback_data = query.data
+
+    if callback_data.startswith("history_page_"):
+        page_data = callback_data.replace("history_page_", "", 1)
+        tanggal, page_str = page_data.rsplit("_", 1)
+        try:
+            page = int(page_str)
+        except ValueError:
+            page = 0
+    else:
+        tanggal = callback_data.replace("history_", "", 1)
+        page = 0
 
     history = read_order_history()
 
@@ -3330,31 +3341,71 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         )
         return
 
-    text = f"📅 {tanggal}\n\n"
+    if page < 0 or page >= len(orders):
+        page = 0
 
-    for i, order in enumerate(orders, start=1):
+    order = orders[page]
 
-        package = get_package(order["package_id"])
+    package = get_package(order["package_id"])
 
-        jam = order["time"].split(",")[1].strip()
+    jam = order["time"].split(",")[1].strip()
 
-        harga = (
-            package["harga"]
-            if package
-            else "-"
+    harga = (
+        package["harga"]
+        if package
+        else "-"
+    )
+
+    text = (
+        f"📅 {tanggal}\n\n"
+        f"📋 Order #{page + 1} dari {len(orders)}\n\n"
+        f"👤 {order['full_name']}\n"
+        f"🆔 {order['user_id']}\n"
+        f"🔗 {order['username']}\n\n"
+        f"📦 {package['nama'] if package else '-'}\n"
+        f"💰 {harga}\n\n"
+        f"🕒 {jam}"
+    )
+
+    keyboard = []
+
+    if order.get("photo_file_id"):
+        keyboard.append([
+            InlineKeyboardButton(
+                "📎 Lihat Bukti",
+                callback_data=f"history_proof_{tanggal}_{page}"
+            )
+        ])
+
+    navigation_row = []
+
+    if page > 0:
+        navigation_row.append(
+            InlineKeyboardButton(
+                "◀️",
+                callback_data=f"history_page_{tanggal}_{page - 1}"
+            )
         )
 
-        text += (
-            f"📋 Order #{i}\n\n"
-            f"👤 {order['full_name']}\n"
-            f"🆔 {order['user_id']}\n"
-            f"🔗 {order['username']}\n\n"
-            f"📦 {package['nama'] if package else '-'}\n"
-            f"💰 {harga}\n\n"
-            f"🕒 {jam}\n\n"
+    navigation_row.append(
+        InlineKeyboardButton(
+            f"{page + 1}/{len(orders)}",
+            callback_data=f"history_page_{tanggal}_{page}"
+        )
+    )
+
+    if page < len(orders) - 1:
+        navigation_row.append(
+            InlineKeyboardButton(
+                "▶️",
+                callback_data=f"history_page_{tanggal}_{page + 1}"
+            )
         )
 
-    keyboard = InlineKeyboardMarkup([
+    if navigation_row:
+        keyboard.append(navigation_row)
+
+    keyboard.extend([
         [
             InlineKeyboardButton(
                 "🗑 Hapus Tanggal Ini",
@@ -3371,8 +3422,53 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
 
     await query.edit_message_caption(
         caption=text,
-        reply_markup=keyboard,
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
+
+
+async def payment_history_proof_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    proof_data = query.data.replace("history_proof_", "", 1)
+    tanggal, page_str = proof_data.rsplit("_", 1)
+
+    try:
+        page = int(page_str)
+    except ValueError:
+        await query.answer("❌ Data bukti tidak valid.", show_alert=True)
+        return
+
+    history = read_order_history()
+
+    orders = []
+
+    for order in history["orders"]:
+
+        if order["time"].startswith(tanggal):
+
+            orders.append(order)
+
+    if page < 0 or page >= len(orders):
+        await query.answer("❌ Order tidak ditemukan.", show_alert=True)
+        return
+
+    order = orders[page]
+    photo_file_id = order.get("photo_file_id")
+
+    if not photo_file_id:
+        await query.answer("❌ Bukti transfer tidak tersedia.", show_alert=True)
+        return
+
+    try:
+        await context.bot.send_photo(
+            chat_id=query.message.chat_id,
+            photo=photo_file_id,
+            caption=f"📎 Bukti Transfer\nOrder #{page + 1}\n{tanggal}",
+        )
+    except Exception as e:
+        logger.error(f"Send payment history proof error: {e}")
+        await query.answer("❌ Gagal menampilkan bukti transfer.", show_alert=True)
 
 
 async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -7754,7 +7850,8 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 "full_name": data["full_name"],
                 "username": data["username"],
                 "package_id": data["package_id"],
-                "time": datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
+                "time": datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB"),
+                "photo_file_id": data.get("photo_file_id")
             })
 
             save_order_history(history)
@@ -8436,6 +8533,16 @@ def main():
     CallbackQueryHandler(
         payment_history_delete_callback,
         pattern=r"^history_delete_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_history_detail_callback,
+        pattern=r"^history_page_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_history_proof_callback,
+        pattern=r"^history_proof_"
     ))
     app.add_handler(
     CallbackQueryHandler(
