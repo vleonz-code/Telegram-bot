@@ -575,11 +575,11 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
             success_keyboard = InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🔮 Lihat Paket",
+                        "📦 Lihat Paket",
                         callback_data="vipmenu_preview"
                     ),
                     InlineKeyboardButton(
-                        "🏠 Bantuan",
+                        "🆘 Bantuan",
                         url="https://t.me/BocilVIP511"
                     )
                 ]
@@ -8632,8 +8632,7 @@ async def admin_order_reminder_loop(app, order_id):
                             chat_id=ADMIN_ID,
                             message_id=message_id,
                             text=(
-                                "📥 <b>Ada Order Masuk</b>\n\n"
-                                "Silakan cek Inbox 📥\n\n"
+                                "📍 <b>Pesanan Masuk</b>\n\n"
                                 f"🔔 Pengingat • {timestamp}"
                             ),
                             parse_mode="HTML",
