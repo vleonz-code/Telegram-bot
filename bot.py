@@ -7775,10 +7775,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         upload_waiting[order_id]["reupload"] = False
 
     try:
-        admin_proof_message = await admin_proof_task
-        upload_waiting[order_id]["admin_proof_message_id"] = (
-            admin_proof_message.message_id
-        )
+        await admin_proof_task
     except Exception as e:
         logger.error(
             "PAYMENT_SEND_ADMIN_ERROR "
@@ -8018,16 +8015,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 f"exception={repr(e)}"
             )
 
-        admin_proof_delete_task = None
-        admin_proof_message_id = data.get("admin_proof_message_id")
-        if admin_proof_message_id:
-            admin_proof_delete_task = asyncio.create_task(
-                context.bot.delete_message(
-                    chat_id=ADMIN_ID,
-                    message_id=admin_proof_message_id
-                )
-            )
-
         package = get_package(data["package_id"])
         if not package or not package.get("vip_link"):
             payment_trace_logger.error(
@@ -8193,17 +8180,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 f"exception={repr(e)}"
             )
 
-        if admin_proof_delete_task:
-            try:
-                await admin_proof_delete_task
-            except Exception as e:
-                logger.warning(
-                    "PAY_OK_ADMIN_PROOF_DELETE_FAILED "
-                    f"order_id={order_id} "
-                    f"message_id={admin_proof_message_id} "
-                    f"exception={repr(e)}"
-                )
-
         if user_id not in ORDER_HISTORY_EXCLUDED:
             payment_trace_logger.info(
                 "PAY_OK_HISTORY_SAVE_START "
@@ -8294,18 +8270,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             except Exception:
                 pass
 
-        admin_proof_delete_task = None
-        admin_proof_message_id = upload_waiting[order_id].get(
-            "admin_proof_message_id"
-        )
-        if admin_proof_message_id:
-            admin_proof_delete_task = asyncio.create_task(
-                context.bot.delete_message(
-                    chat_id=ADMIN_ID,
-                    message_id=admin_proof_message_id
-                )
-            )
-
         admin_reupload_edit_task = asyncio.create_task(
             query.edit_message_text(
                 "❌ Pembayaran ditolak."
@@ -8337,17 +8301,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         save_pending_orders(pending)
 
         await admin_reupload_edit_task
-
-        if admin_proof_delete_task:
-            try:
-                await admin_proof_delete_task
-            except Exception as e:
-                logger.warning(
-                    "PAY_NO_ADMIN_PROOF_DELETE_FAILED "
-                    f"order_id={order_id} "
-                    f"message_id={admin_proof_message_id} "
-                    f"exception={repr(e)}"
-                )
 
         if data.get("incoming_admin_menu_message_id"):
             await delete_incoming_vip_admin_messages(context, data)
@@ -8412,16 +8365,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
 
         write_blacklist(blacklist)
 
-        admin_proof_delete_task = None
-        admin_proof_message_id = data.get("admin_proof_message_id")
-        if admin_proof_message_id:
-            admin_proof_delete_task = asyncio.create_task(
-                context.bot.delete_message(
-                    chat_id=ADMIN_ID,
-                    message_id=admin_proof_message_id
-                )
-            )
-
         task = qris_expiry_tasks.pop(order_id, None)
         if task and not task.done():
             task.cancel()
@@ -8457,17 +8400,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 await user_ban_notice_task
             except Exception:
                 pass
-
-        if admin_proof_delete_task:
-            try:
-                await admin_proof_delete_task
-            except Exception as e:
-                logger.warning(
-                    "PAY_BAN_ADMIN_PROOF_DELETE_FAILED "
-                    f"order_id={order_id} "
-                    f"message_id={admin_proof_message_id} "
-                    f"exception={repr(e)}"
-                )
 
         if data.get("incoming_admin_menu_message_id"):
             await delete_incoming_vip_admin_messages(context, data)
