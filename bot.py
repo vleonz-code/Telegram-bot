@@ -1702,13 +1702,14 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Start acknowledgement immediately so the button feels responsive
-    # while the local VIP-menu preparation continues.
-    answer_task = asyncio.create_task(query.answer())
-
-    await clear_last_repeat(
-        query.message.chat_id,
-        context.bot
+    # Match AdminVIP fast callback pattern: acknowledge the tap while
+    # clearing the stale deeplink notice instead of serializing both awaits.
+    await asyncio.gather(
+        query.answer(),
+        clear_last_repeat(
+            query.message.chat_id,
+            context.bot
+        )
     )
 
     packages = get_vip_packages_cached()["packages"]
@@ -1736,7 +1737,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
         )
-        await answer_task
         asyncio.create_task(
             notify_admin_vip_menu(
                 context.bot,
@@ -1747,7 +1747,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    await answer_task
     await notify_admin_vip_menu(
         context.bot,
         user.full_name or "-",
@@ -1852,46 +1851,72 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
 
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    _diag_t0 = time.perf_counter()
     query = update.callback_query
 
+    _diag_settings_t0 = time.perf_counter()
     if not read_settings()["join_vip_enabled"]:
         await query.answer(
             "⚠️ Order VIP sedang OFF.",
             show_alert=True
         )
+        logger.info("VIP_DIAG nav=off settings_ms=%.1f",
+                    (time.perf_counter() - _diag_settings_t0) * 1000)
         return
+    _diag_settings_ms = (time.perf_counter() - _diag_settings_t0) * 1000
 
     idx = int(query.data.split("_")[1])
 
-    # Start acknowledgement before local package preparation.
-    answer_task = asyncio.create_task(query.answer())
-
+    _diag_cache_t0 = time.perf_counter()
     packages = get_vip_packages_cached()["packages"]
     active_packages = [
         package for package in packages
         if package.get("aktif", True)
     ]
+    _diag_cache_ms = (time.perf_counter() - _diag_cache_t0) * 1000
 
     if not active_packages:
+        logger.info(
+            "VIP_DIAG nav=empty settings_ms=%.1f cache_ms=%.1f total_ms=%.1f",
+            _diag_settings_ms, _diag_cache_ms,
+            (time.perf_counter() - _diag_t0) * 1000
+        )
         return
 
     total = len(active_packages)
     idx = idx % total
     package = active_packages[idx]
 
-    # Keep the already-started acknowledgement concurrent with the page update.
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
-            media=InputMediaPhoto(
-                media=get_vip_package_banner(package),
-                caption=build_vip_package_text(package),
-                parse_mode="HTML",
-            ),
-            reply_markup=build_vip_package_keyboard(
-                idx, total, package["id"]
-            ),
-        )
+    _diag_build_t0 = time.perf_counter()
+    media = InputMediaPhoto(
+        media=get_vip_package_banner(package),
+        caption=build_vip_package_text(package),
+        parse_mode="HTML",
+    )
+    markup = build_vip_package_keyboard(idx, total, package["id"])
+    _diag_build_ms = (time.perf_counter() - _diag_build_t0) * 1000
+
+    _diag_answer_t0 = time.perf_counter()
+    await query.answer()
+    _diag_answer_ms = (time.perf_counter() - _diag_answer_t0) * 1000
+
+    _diag_edit_t0 = time.perf_counter()
+    await query.edit_message_media(
+        media=media,
+        reply_markup=markup,
+    )
+    _diag_edit_ms = (time.perf_counter() - _diag_edit_t0) * 1000
+
+    logger.info(
+        "VIP_DIAG nav idx=%s settings_ms=%.1f cache_ms=%.1f build_ms=%.1f "
+        "answer_ms=%.1f edit_ms=%.1f total_ms=%.1f",
+        idx,
+        _diag_settings_ms,
+        _diag_cache_ms,
+        _diag_build_ms,
+        _diag_answer_ms,
+        _diag_edit_ms,
+        (time.perf_counter() - _diag_t0) * 1000,
     )
 
 
