@@ -8632,7 +8632,7 @@ async def admin_order_reminder_loop(app, order_id):
                             chat_id=ADMIN_ID,
                             message_id=message_id,
                             text=(
-                                "📍 <b>Pesanan Masuk</b>\n\n"
+                                "📨 <b>Order Masuk</b>\n\n"
                                 f"🔔 Pengingat • {timestamp}"
                             ),
                             parse_mode="HTML",
@@ -8641,7 +8641,7 @@ async def admin_order_reminder_loop(app, order_id):
                     else:
                         msg = await app.bot.send_message(
                             chat_id=ADMIN_ID,
-                            text="📍 <b>Pesanan Masuk</b>",
+                            text="📨 <b>Order Masuk</b>",
                             parse_mode="HTML",
                             reply_markup=keyboard,
                         )
@@ -8664,7 +8664,7 @@ async def admin_order_reminder_loop(app, order_id):
                         try:
                             msg = await app.bot.send_message(
                                 chat_id=ADMIN_ID,
-                                text="📍 <b>Pesanan Masuk</b>",
+                                text="📨 <b>Order Masuk</b>",
                                 parse_mode="HTML",
                                 reply_markup=keyboard,
                             )
@@ -8726,7 +8726,7 @@ async def ensure_admin_order_reminders(app):
             try:
                 msg = await app.bot.send_message(
                     chat_id=ADMIN_ID,
-                    text="📍 <b>Pesanan Masuk</b>",
+                    text="📨 <b>Order Masuk</b>",
                     parse_mode="HTML",
                     reply_markup=keyboard,
                 )
