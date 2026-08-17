@@ -939,11 +939,9 @@ def increment_counter() -> int:
 async def notify_admin(bot, full_name: str, username: str, user_id: int):
     now = datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
     text = (
-        f"🟢 *Media VIP Diakses*\n\n"
-        f"👤 Name: {full_name}\n"
-        f"🔗 Username: {username}\n"
-        f"🆔 User ID: `{user_id}`\n\n"
-        f"Time: {now}"
+        f"🟢 VIP DIAKSES\n"
+        f"📱 Aplikasi : Ochil\n"
+        f"👤 {full_name} · 🆔 {user_id}"
     )
     try:
         await bot.send_message(
