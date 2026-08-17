@@ -3359,14 +3359,25 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         else "-"
     )
 
+    order_number = order.get("order_id", page + 1)
+
+    raw_time = str(order.get("time", "-"))
+    try:
+        order_time = datetime.strptime(
+            raw_time,
+            "%d %b %Y, %H:%M:%S WIB"
+        ).strftime("%d/%m/%Y %I:%M %p")
+    except ValueError:
+        order_time = raw_time.replace(", ", " ", 1)
+
     text = (
-        f"📋 Order #{page + 1}\n\n"
-        f"👤 {order['full_name']}\n"
-        f"🆔 {order['user_id']}\n"
-        f"🔗 {order['username']}\n\n"
-        f"📦 {package['nama'] if package else '-'}\n"
-        f"💰 {harga}\n\n"
-        f"📅 {order['time'].replace(', ', ' ', 1)}"
+        f"🧾 <b>Order ID</b> : #{html.escape(str(order_number))}\n"
+        f"👤 <b>Nama</b> : {html.escape(str(order.get('full_name', '-')))}\n"
+        f"🔗 <b>Username</b> : {html.escape(str(order.get('username', '-')))}\n"
+        f"🆔 <b>User ID</b> : {order.get('user_id', '-')}\n\n"
+        f"📦 <b>Paket</b> : {html.escape(str(package['nama'] if package else '-'))}\n"
+        f"💰 <b>Harga</b> : {html.escape(str(harga))}\n"
+        f"🕒 <b>Waktu</b> : {html.escape(order_time)}"
     )
 
     keyboard = []
@@ -8143,6 +8154,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             history = read_order_history()
 
             history["orders"].append({
+                "order_id": order_id,
                 "user_id": user_id,
                 "full_name": data["full_name"],
                 "username": data["username"],
