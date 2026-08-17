@@ -3376,33 +3376,27 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
             )
         ])
 
-    navigation_row = []
-
-    if page > 0:
-        navigation_row.append(
-            InlineKeyboardButton(
-                "◀️",
-                callback_data=f"history_page_{tanggal}_{page - 1}"
+    navigation_row = [
+        InlineKeyboardButton(
+            "‹",
+            callback_data=(
+                f"history_page_{tanggal}_{page - 1}"
+                if page > 0 else "history_nav_noop"
             )
-        )
-
-    navigation_row.append(
+        ),
         InlineKeyboardButton(
             f"{page + 1}/{len(orders)}",
-            callback_data=f"history_page_{tanggal}_{page}"
-        )
-    )
-
-    if page < len(orders) - 1:
-        navigation_row.append(
-            InlineKeyboardButton(
-                "▶️",
-                callback_data=f"history_page_{tanggal}_{page + 1}"
+            callback_data="history_nav_noop"
+        ),
+        InlineKeyboardButton(
+            "›",
+            callback_data=(
+                f"history_page_{tanggal}_{page + 1}"
+                if page < len(orders) - 1 else "history_nav_noop"
             )
         )
-
-    if navigation_row:
-        keyboard.append(navigation_row)
+    ]
+    keyboard.append(navigation_row)
 
     keyboard.append([
         InlineKeyboardButton(
@@ -3425,6 +3419,10 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
             reply_markup=InlineKeyboardMarkup(keyboard),
         ),
     )
+
+
+async def history_nav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
 
 
 async def payment_history_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -7239,7 +7237,7 @@ def build_payment_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            "📥 Incoming VIP",
+            "📥 Order",
             callback_data="incoming_vip"
         ),
         InlineKeyboardButton(
@@ -8839,6 +8837,11 @@ def main():
     CallbackQueryHandler(
         payment_history_detail_callback,
         pattern=r"^history_page_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        history_nav_noop_callback,
+        pattern=r"^history_nav_noop$"
     ))
     app.add_handler(
     CallbackQueryHandler(
