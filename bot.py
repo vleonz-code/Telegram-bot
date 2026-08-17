@@ -1860,11 +1860,8 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "⚠️ Order VIP sedang OFF.",
             show_alert=True
         )
-        logger.info(
-            "VIP_DIAG nav=off settings_ms=%.1f total_ms=%.1f",
-            (time.perf_counter() - _diag_settings_t0) * 1000,
-            (time.perf_counter() - _diag_t0) * 1000,
-        )
+        logger.info("VIP_DIAG nav=off settings_ms=%.1f",
+                    (time.perf_counter() - _diag_settings_t0) * 1000)
         return
     _diag_settings_ms = (time.perf_counter() - _diag_settings_t0) * 1000
 
@@ -1881,9 +1878,8 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not active_packages:
         logger.info(
             "VIP_DIAG nav=empty settings_ms=%.1f cache_ms=%.1f total_ms=%.1f",
-            _diag_settings_ms,
-            _diag_cache_ms,
-            (time.perf_counter() - _diag_t0) * 1000,
+            _diag_settings_ms, _diag_cache_ms,
+            (time.perf_counter() - _diag_t0) * 1000
         )
         return
 
@@ -1900,26 +1896,41 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     markup = build_vip_package_keyboard(idx, total, package["id"])
     _diag_build_ms = (time.perf_counter() - _diag_build_t0) * 1000
 
-    # Preserve baseline behavior: answer and media edit remain concurrent.
-    _diag_answer_t0 = time.perf_counter()
-    _diag_edit_t0 = time.perf_counter()
-    await asyncio.gather(
-        query.answer(),
-        query.edit_message_media(
+    _diag_api_t0 = time.perf_counter()
+
+    async def _diag_answer():
+        t0 = time.perf_counter()
+        result = await query.answer()
+        return result, (time.perf_counter() - t0) * 1000
+
+    async def _diag_edit():
+        t0 = time.perf_counter()
+        result = await query.edit_message_media(
             media=media,
             reply_markup=markup,
-        ),
+        )
+        return result, (time.perf_counter() - t0) * 1000
+
+    answer_task = asyncio.create_task(_diag_answer())
+    edit_task = asyncio.create_task(_diag_edit())
+
+    (_, _diag_answer_ms), (_, _diag_edit_ms) = await asyncio.gather(
+        answer_task,
+        edit_task,
     )
-    _diag_total_request_ms = (time.perf_counter() - _diag_answer_t0) * 1000
+
+    _diag_api_ms = (time.perf_counter() - _diag_api_t0) * 1000
 
     logger.info(
-        "VIP_DIAG nav idx=%s settings_ms=%.1f cache_ms=%.1f build_ms=%.1f "
-        "answer_edit_gather_ms=%.1f total_ms=%.1f",
+        "VIP_DIAG_DETAIL nav idx=%s settings_ms=%.1f cache_ms=%.1f build_ms=%.1f "
+        "answer_ms=%.1f edit_ms=%.1f api_gather_ms=%.1f total_ms=%.1f",
         idx,
         _diag_settings_ms,
         _diag_cache_ms,
         _diag_build_ms,
-        _diag_total_request_ms,
+        _diag_answer_ms,
+        _diag_edit_ms,
+        _diag_api_ms,
         (time.perf_counter() - _diag_t0) * 1000,
     )
 
