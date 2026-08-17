@@ -3357,14 +3357,13 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
     )
 
     text = (
-        f"📅 {tanggal}\n\n"
-        f"📋 Order #{page + 1} dari {len(orders)}\n\n"
+        f"📋 Order #{page + 1}\n\n"
         f"👤 {order['full_name']}\n"
         f"🆔 {order['user_id']}\n"
         f"🔗 {order['username']}\n\n"
         f"📦 {package['nama'] if package else '-'}\n"
         f"💰 {harga}\n\n"
-        f"🕒 {jam}"
+        f"📅 {order['time'].replace(', ', ' ', 1)}"
     )
 
     keyboard = []
@@ -3407,6 +3406,13 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
 
     keyboard.append([
         InlineKeyboardButton(
+            "🗑️ Hapus",
+            callback_data=f"history_delete_{tanggal}_{page}"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
             "🔙 Kembali",
             callback_data="payment_history"
         )
@@ -3419,6 +3425,178 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
             reply_markup=InlineKeyboardMarkup(keyboard),
         ),
     )
+
+
+async def payment_history_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    delete_data = query.data.replace("history_delete_", "", 1)
+    tanggal, page_str = delete_data.rsplit("_", 1)
+
+    try:
+        page = int(page_str)
+    except ValueError:
+        await query.answer("❌ Data order tidak valid.", show_alert=True)
+        return
+
+    history = read_order_history()
+    orders = [
+        order
+        for order in history["orders"]
+        if order["time"].startswith(tanggal)
+    ]
+
+    if page < 0 or page >= len(orders):
+        await query.answer("❌ Order tidak ditemukan.", show_alert=True)
+        return
+
+    order = orders[page]
+    package = get_package(order["package_id"])
+    harga = package["harga"] if package else "-"
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data=f"history_page_{tanggal}_{page}"
+            ),
+            InlineKeyboardButton(
+                "🗑️ Hapus",
+                callback_data=f"history_delete_yes_{tanggal}_{page}"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "⚠️ Hapus Order\n\n"
+            f"👤 {order['full_name']}\n"
+            f"🆔 {order['user_id']}\n\n"
+            f"📦 {package['nama'] if package else '-'}\n"
+            f"💰 {harga}\n\n"
+            "Hanya order ini yang akan dihapus.\n"
+            "Order lainnya tetap aman."
+        ),
+        reply_markup=keyboard,
+    )
+
+
+async def payment_history_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    delete_data = query.data.replace("history_delete_yes_", "", 1)
+    tanggal, page_str = delete_data.rsplit("_", 1)
+
+    try:
+        page = int(page_str)
+    except ValueError:
+        await query.answer("❌ Data order tidak valid.", show_alert=True)
+        return
+
+    history = read_order_history()
+    matching_indices = [
+        index
+        for index, order in enumerate(history["orders"])
+        if order["time"].startswith(tanggal)
+    ]
+
+    if page < 0 or page >= len(matching_indices):
+        await query.answer("❌ Order sudah tidak tersedia.", show_alert=True)
+        return
+
+    del history["orders"][matching_indices[page]]
+    save_order_history(history)
+
+    remaining_orders = [
+        order
+        for order in history["orders"]
+        if order["time"].startswith(tanggal)
+    ]
+
+    if not remaining_orders:
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "🔙 Order History",
+                    callback_data="payment_history"
+                )
+            ]
+        ])
+        await query.edit_message_caption(
+            caption="✅ Order berhasil dihapus.\n\nTidak ada order lain pada tanggal ini.",
+            reply_markup=keyboard,
+        )
+        return
+
+    if page >= len(remaining_orders):
+        page = len(remaining_orders) - 1
+
+    order = remaining_orders[page]
+    package = get_package(order["package_id"])
+    harga = package["harga"] if package else "-"
+
+    text = (
+        f"📋 Order #{page + 1}\n\n"
+        f"👤 {order['full_name']}\n"
+        f"🆔 {order['user_id']}\n"
+        f"🔗 {order['username']}\n\n"
+        f"📦 {package['nama'] if package else '-'}\n"
+        f"💰 {harga}\n\n"
+        f"📅 {order['time'].replace(', ', ' ', 1)}"
+    )
+
+    keyboard = []
+    if order.get("photo_file_id"):
+        keyboard.append([
+            InlineKeyboardButton(
+                "📎 Lihat Bukti",
+                callback_data=f"history_proof_{tanggal}_{page}"
+            )
+        ])
+
+    navigation_row = []
+    if page > 0:
+        navigation_row.append(
+            InlineKeyboardButton(
+                "◀️",
+                callback_data=f"history_page_{tanggal}_{page - 1}"
+            )
+        )
+    navigation_row.append(
+        InlineKeyboardButton(
+            f"{page + 1}/{len(remaining_orders)}",
+            callback_data=f"history_page_{tanggal}_{page}"
+        )
+    )
+    if page < len(remaining_orders) - 1:
+        navigation_row.append(
+            InlineKeyboardButton(
+                "▶️",
+                callback_data=f"history_page_{tanggal}_{page + 1}"
+            )
+        )
+    keyboard.append(navigation_row)
+    keyboard.append([
+        InlineKeyboardButton(
+            "🗑️ Hapus",
+            callback_data=f"history_delete_{tanggal}_{page}"
+        )
+    ])
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="payment_history"
+        )
+    ])
+
+    await query.edit_message_caption(
+        caption=text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
 
 
 async def payment_history_proof_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -8661,6 +8839,16 @@ def main():
     CallbackQueryHandler(
         payment_history_detail_callback,
         pattern=r"^history_page_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_history_delete_yes_callback,
+        pattern=r"^history_delete_yes_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_history_delete_callback,
+        pattern=r"^history_delete_"
     ))
     app.add_handler(
     CallbackQueryHandler(
