@@ -8668,11 +8668,12 @@ async def admin_order_reminder_loop(app, order_id):
                             f"order_id={order_id} new_message_id={msg.message_id}"
                         )
                         continue
-                    except Exception as replacement_error:
-                        logger.warning(
-                            "ADMIN_ORDER_REMINDER_REPLACE_FAILED "
-                            f"order_id={order_id} exception={repr(replacement_error)}"
-                        )
+                    except Exception:
+                        data["admin_verification_message_id"] = None
+                        try:
+                            await _save_pending_order_state(order_id)
+                        except Exception:
+                            pass
                         continue
     except asyncio.CancelledError:
         raise
@@ -8718,11 +8719,7 @@ async def ensure_admin_order_reminders(app):
                 )
                 data["admin_verification_message_id"] = msg.message_id
                 await _save_pending_order_state(order_id)
-            except Exception as e:
-                logger.error(
-                    "ADMIN_ORDER_RECOVERY_SEND_FAILED "
-                    f"order_id={order_id} exception={repr(e)}"
-                )
+            except Exception:
                 continue
 
         start_admin_order_reminder(app, order_id)
