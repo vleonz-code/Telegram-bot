@@ -3405,19 +3405,11 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
     if navigation_row:
         keyboard.append(navigation_row)
 
-    keyboard.extend([
-        [
-            InlineKeyboardButton(
-                "🗑 Hapus Tanggal Ini",
-                callback_data=f"history_delete_{tanggal}"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🔙 Kembali",
-                callback_data="payment_history"
-            )
-        ]
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="payment_history"
+        )
     ])
 
     await query.edit_message_caption(
@@ -3475,16 +3467,230 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "📅 Hapus Tanggal",
+                callback_data="payment_clear_date"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🗑 Hapus Semua Order",
+                callback_data="payment_clear_all"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data="adminvip_payment"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "⚠️ Clear Order\n\n"
+            "Silahkan pilih:"
+        ),
+        reply_markup=keyboard,
+    )
+
+
+async def payment_clear_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    callback_data = query.data
+
+    if callback_data.startswith("payment_clear_date_page_"):
+        try:
+            page = int(callback_data.replace("payment_clear_date_page_", "", 1))
+        except ValueError:
+            page = 0
+    else:
+        page = 0
+
     history = read_order_history()
 
+    tanggal_order = {}
+    for order in history["orders"]:
+        tanggal = order["time"].split(",")[0]
+        tanggal_order[tanggal] = tanggal_order.get(tanggal, 0) + 1
+
+    dates = sorted(tanggal_order.items(), reverse=True)
+
+    if not dates:
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "🔙 Kembali",
+                    callback_data="payment_clear"
+                )
+            ]
+        ])
+        await query.edit_message_caption(
+            caption=(
+                "📅 Hapus Order Berdasarkan Tanggal\n\n"
+                "Belum ada Order History."
+            ),
+            reply_markup=keyboard,
+        )
+        return
+
+    per_page = 6
+    total_pages = (len(dates) + per_page - 1) // per_page
+
+    if page < 0 or page >= total_pages:
+        page = 0
+
+    start_index = page * per_page
+    page_dates = dates[start_index:start_index + per_page]
+
+    keyboard = []
+
+    for tanggal, jumlah in page_dates:
+        keyboard.append([
+            InlineKeyboardButton(
+                f"📅 {tanggal} ({jumlah})",
+                callback_data=f"payment_clear_date_select_{tanggal}"
+            )
+        ])
+
+    navigation_row = []
+
+    if page > 0:
+        navigation_row.append(
+            InlineKeyboardButton(
+                "◀️",
+                callback_data=f"payment_clear_date_page_{page - 1}"
+            )
+        )
+
+    navigation_row.append(
+        InlineKeyboardButton(
+            f"{page + 1}/{total_pages}",
+            callback_data=f"payment_clear_date_page_{page}"
+        )
+    )
+
+    if page < total_pages - 1:
+        navigation_row.append(
+            InlineKeyboardButton(
+                "▶️",
+                callback_data=f"payment_clear_date_page_{page + 1}"
+            )
+        )
+
+    keyboard.append(navigation_row)
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="payment_clear"
+        )
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "📅 Hapus Order Berdasarkan Tanggal\n\n"
+            "Silahkan pilih tanggal:"
+        ),
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+async def payment_clear_date_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    tanggal = query.data.replace("payment_clear_date_select_", "", 1)
+    history = read_order_history()
+
+    total_order = 0
+    total_pendapatan = 0
+
+    for order in history["orders"]:
+        if not order["time"].startswith(tanggal):
+            continue
+
+        total_order += 1
+
+        package = get_package(order["package_id"])
+        if not package:
+            continue
+
+        harga = parse_package_price(package["harga"].split("|", 1)[0])
+        if harga.isdigit():
+            total_pendapatan += int(harga)
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data="payment_clear_date"
+            ),
+            InlineKeyboardButton(
+                "✅ Ya, Hapus",
+                callback_data=f"payment_clear_date_yes_{tanggal}"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "⚠️ Hapus Order Tanggal Ini\n\n"
+            f"📅 {tanggal}\n\n"
+            f"📦 Total Order\n"
+            f"{total_order}\n\n"
+            f"💰 Total Pendapatan\n"
+            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+            "Data tidak dapat dikembalikan."
+        ),
+        reply_markup=keyboard,
+    )
+
+
+async def payment_clear_date_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    tanggal = query.data.replace("payment_clear_date_yes_", "", 1)
+    history = read_order_history()
+
+    history["orders"] = [
+        order
+        for order in history["orders"]
+        if not order["time"].startswith(tanggal)
+    ]
+
+    save_order_history(history)
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Clear Order",
+                callback_data="payment_clear"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption="✅ Transaksi tanggal berhasil dihapus.",
+        reply_markup=keyboard,
+    )
+
+
+async def payment_clear_all_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    history = read_order_history()
     total_order = len(history["orders"])
 
     total_pendapatan = 0
-
     packages = read_vip_packages()["packages"]
 
     for order in history["orders"]:
-
         package = next(
             (
                 p for p in packages
@@ -3497,7 +3703,6 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
             continue
 
         harga = parse_package_price(package["harga"].split("|", 1)[0])
-
         if harga.isdigit():
             total_pendapatan += int(harga)
 
@@ -3505,33 +3710,30 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
         [
             InlineKeyboardButton(
                 "❌ Batal",
-                callback_data="adminvip_payment"
+                callback_data="payment_clear"
             ),
             InlineKeyboardButton(
-                "✅ Ya, Clear",
-                callback_data="payment_clear_yes"
+                "✅ Ya, Hapus Semua",
+                callback_data="payment_clear_all_yes"
             )
         ]
     ])
 
     await query.edit_message_caption(
         caption=(
-            "⚠️ Clear Order\n\n"
+            "⚠️ Hapus Semua Order\n\n"
             "Seluruh Order History akan dihapus.\n\n"
-
             f"📦 Total Order\n"
             f"{total_order}\n\n"
-
             f"💰 Total Pendapatan\n"
             f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
-
             "Data tidak dapat dikembalikan."
         ),
         reply_markup=keyboard,
     )
 
 
-async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def payment_clear_all_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -3550,98 +3752,6 @@ async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAU
 
     await query.edit_message_caption(
         caption="✅ Order History berhasil dibersihkan.",
-        reply_markup=keyboard,
-    )
-
-
-async def payment_history_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    tanggal = query.data.replace("history_delete_", "")
-
-    history = read_order_history()
-
-    packages = read_vip_packages()["packages"]
-
-    total_order = 0
-    total_pendapatan = 0
-
-    for order in history["orders"]:
-
-        if not order["time"].startswith(tanggal):
-            continue
-
-        total_order += 1
-
-        package = get_package(order["package_id"])
-
-        if not package:
-            continue
-
-        harga = parse_package_price(package["harga"].split("|", 1)[0])
-
-        if harga.isdigit():
-            total_pendapatan += int(harga)
-
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "✅ Ya, Hapus",
-                callback_data=f"history_delete_yes_{tanggal}"
-            ),
-            InlineKeyboardButton(
-                "❌ Batal",
-                callback_data=f"history_{tanggal}"
-            )
-        ]
-    ])
-
-    await query.edit_message_caption(
-        caption=(
-            "⚠️ Hapus Tanggal Ini\n\n"
-
-            f"📅 {tanggal}\n\n"
-
-            f"📦 Total Order\n"
-            f"{total_order}\n\n"
-
-            f"💰 Total Pendapatan\n"
-            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
-
-            "Data tidak dapat dikembalikan."
-        ),
-        reply_markup=keyboard,
-    )
-
-
-async def payment_history_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    tanggal = query.data.replace("history_delete_yes_", "")
-
-    history = read_order_history()
-
-    history["orders"] = [
-        order
-        for order in history["orders"]
-        if not order["time"].startswith(tanggal)
-    ]
-
-    save_order_history(history)
-
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "🔙 Order History",
-                callback_data="payment_history"
-            )
-        ]
-    ])
-
-    await query.edit_message_caption(
-        caption="✅ Transaksi tanggal berhasil dihapus.",
         reply_markup=keyboard,
     )
 
@@ -8521,18 +8631,28 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
-        payment_clear_yes_callback,
-        pattern=r"^payment_clear_yes$"
+        payment_clear_date_callback,
+        pattern=r"^payment_clear_date(?:_page_\d+)?$"
     ))
     app.add_handler(
     CallbackQueryHandler(
-        payment_history_delete_yes_callback,
-        pattern=r"^history_delete_yes_"
+        payment_clear_date_select_callback,
+        pattern=r"^payment_clear_date_select_"
     ))
     app.add_handler(
     CallbackQueryHandler(
-        payment_history_delete_callback,
-        pattern=r"^history_delete_"
+        payment_clear_date_yes_callback,
+        pattern=r"^payment_clear_date_yes_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_clear_all_callback,
+        pattern=r"^payment_clear_all$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_clear_all_yes_callback,
+        pattern=r"^payment_clear_all_yes$"
     ))
     app.add_handler(
     CallbackQueryHandler(
