@@ -3368,13 +3368,6 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
 
     keyboard = []
 
-    if order.get("photo_file_id"):
-        keyboard.append([
-            InlineKeyboardButton(
-                "📎 Lihat Bukti",
-                callback_data=f"history_proof_{tanggal}_{page}"
-            )
-        ])
 
     navigation_row = [
         InlineKeyboardButton(
@@ -3412,10 +3405,19 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         )
     ])
 
+    history_media = InputMediaPhoto(
+        media=(
+            order["photo_file_id"]
+            if order.get("photo_file_id")
+            else os.environ["PAYMENT_BANNER_FILE_ID"]
+        ),
+        caption=text,
+    )
+
     await asyncio.gather(
         answer_task,
-        query.edit_message_caption(
-            caption=text,
+        query.edit_message_media(
+            media=history_media,
             reply_markup=InlineKeyboardMarkup(keyboard),
         ),
     )
@@ -3522,8 +3524,11 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
                 )
             ]
         ])
-        await query.edit_message_caption(
-            caption="✅ Order berhasil dihapus.\n\nTidak ada order lain pada tanggal ini.",
+        await query.edit_message_media(
+            media=InputMediaPhoto(
+                media=os.environ["PAYMENT_BANNER_FILE_ID"],
+                caption="✅ Order berhasil dihapus.\n\nTidak ada order lain pada tanggal ini.",
+            ),
             reply_markup=keyboard,
         )
         return
@@ -3546,13 +3551,6 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
     )
 
     keyboard = []
-    if order.get("photo_file_id"):
-        keyboard.append([
-            InlineKeyboardButton(
-                "📎 Lihat Bukti",
-                callback_data=f"history_proof_{tanggal}_{page}"
-            )
-        ])
 
     navigation_row = []
     if page > 0:
@@ -3589,8 +3587,17 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
         )
     ])
 
-    await query.edit_message_caption(
+    history_media = InputMediaPhoto(
+        media=(
+            order["photo_file_id"]
+            if order.get("photo_file_id")
+            else os.environ["PAYMENT_BANNER_FILE_ID"]
+        ),
         caption=text,
+    )
+
+    await query.edit_message_media(
+        media=history_media,
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
