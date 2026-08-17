@@ -8483,6 +8483,7 @@ def restore_pending_orders():
     global next_order_id
 
     pending = read_pending_orders()
+    history = read_order_history()
 
     upload_waiting = {}
 
@@ -8501,6 +8502,18 @@ def restore_pending_orders():
 
         order["order_id"] = order_id
         upload_waiting[order_id] = order
+
+        if order_id > max_order_id:
+            max_order_id = order_id
+
+    for order in history.get("orders", []):
+        if not isinstance(order, dict):
+            continue
+
+        try:
+            order_id = int(order["order_id"])
+        except (KeyError, TypeError, ValueError):
+            continue
 
         if order_id > max_order_id:
             max_order_id = order_id
