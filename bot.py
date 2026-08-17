@@ -8641,17 +8641,11 @@ async def admin_order_reminder_manager(app):
                                 reply_markup=keyboard,
                             )
                             continue
-                        except telegram.error.BadRequest as exc:
-                            # Recover only when Telegram says the tracked
-                            # message is unavailable. A transient/API error
-                            # must not create duplicate reminders.
-                            error_text = str(exc).lower()
-                            if not (
-                                "message to edit not found" in error_text
-                                or "message not found" in error_text
-                                or "message can't be edited" in error_text
-                            ):
-                                continue
+                        except telegram.error.BadRequest:
+                            # Telegram has rejected editing the tracked
+                            # message. Treat this as an unusable reminder
+                            # message and recover it exactly once.
+                            pass
                         except Exception:
                             # Network/transport failure: retain the current
                             # message_id and retry on the next 15s cycle.
