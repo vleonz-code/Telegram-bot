@@ -8106,11 +8106,27 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                         f"exception={repr(e)}"
                     )
 
-        final_edit_task = asyncio.create_task(
-            query.edit_message_text(
-                "✅ Pembayaran telah disetujui."
+        admin_proof_message_id = data.get("admin_proof_message_id")
+        if admin_proof_message_id and query.message and query.message.photo:
+            final_edit_task = asyncio.create_task(
+                query.edit_message_media(
+                    media=InputMediaPhoto(
+                        media="AgACAgUAAxkBAAJbgGqC8llJ3d9X9WIdwrh057XrujgPAAJYEmsbLxEYVPY9MXiWV0aYAQADAgADeQADPQQ",
+                        caption="✅ <b>Pembayaran telah disetujui.</b>",
+                        parse_mode="HTML"
+                    ),
+                    reply_markup=None
+                )
             )
-        )
+        elif admin_proof_message_id:
+            final_edit_task = asyncio.create_task(
+                context.bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=admin_proof_message_id
+                )
+            )
+        else:
+            final_edit_task = None
 
         if payment_message_ids:
             await asyncio.gather(
@@ -8165,49 +8181,18 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             )
             raise
 
-        try:
-            await final_edit_task
-            payment_trace_logger.info(
-                "PAY_OK_FINAL_EDIT_SUCCESS "
-                f"order_id={order_id}"
-            )
-        except Exception as e:
-            logger.error(f"Edit admin message error: {e}")
-            payment_trace_logger.error(
-                "PAY_OK_FINAL_EDIT_FAILED "
-                f"order_id={order_id} "
-                f"exception={repr(e)}"
-            )
-
-        admin_proof_message_id = data.get("admin_proof_message_id")
-        if admin_proof_message_id and query.message and query.message.photo:
+        if final_edit_task:
             try:
-                await query.edit_message_media(
-                    media=InputMediaPhoto(
-                        media=os.environ["PAYMENT_BANNER_FILE_ID"],
-                        caption="✅ <b>Pembayaran telah disetujui.</b>",
-                        parse_mode="HTML"
-                    ),
-                    reply_markup=None
+                await final_edit_task
+                payment_trace_logger.info(
+                    "PAY_OK_FINAL_EDIT_SUCCESS "
+                    f"order_id={order_id}"
                 )
             except Exception as e:
-                logger.warning(
-                    "PAY_OK_ADMIN_PROOF_MEDIA_EDIT_FAILED "
+                logger.error(f"Edit admin message error: {e}")
+                payment_trace_logger.error(
+                    "PAY_OK_FINAL_EDIT_FAILED "
                     f"order_id={order_id} "
-                    f"message_id={admin_proof_message_id} "
-                    f"exception={repr(e)}"
-                )
-        elif admin_proof_message_id:
-            try:
-                await context.bot.delete_message(
-                    chat_id=ADMIN_ID,
-                    message_id=admin_proof_message_id
-                )
-            except Exception as e:
-                logger.warning(
-                    "PAY_OK_ADMIN_PROOF_DELETE_FAILED "
-                    f"order_id={order_id} "
-                    f"message_id={admin_proof_message_id} "
                     f"exception={repr(e)}"
                 )
 
