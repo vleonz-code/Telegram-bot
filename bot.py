@@ -7743,7 +7743,10 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         upload_waiting[order_id]["reupload"] = False
 
     try:
-        await admin_proof_task
+        admin_proof_message = await admin_proof_task
+        upload_waiting[order_id]["admin_proof_message_id"] = (
+            admin_proof_message.message_id
+        )
     except Exception as e:
         logger.error(
             "PAYMENT_SEND_ADMIN_ERROR "
@@ -8148,6 +8151,21 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 f"exception={repr(e)}"
             )
 
+        admin_proof_message_id = data.get("admin_proof_message_id")
+        if admin_proof_message_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=admin_proof_message_id
+                )
+            except Exception as e:
+                logger.warning(
+                    "PAY_OK_ADMIN_PROOF_DELETE_FAILED "
+                    f"order_id={order_id} "
+                    f"message_id={admin_proof_message_id} "
+                    f"exception={repr(e)}"
+                )
+
         if user_id not in ORDER_HISTORY_EXCLUDED:
             payment_trace_logger.info(
                 "PAY_OK_HISTORY_SAVE_START "
@@ -8270,6 +8288,23 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
 
         await admin_reupload_edit_task
 
+        admin_proof_message_id = upload_waiting[order_id].get(
+            "admin_proof_message_id"
+        )
+        if admin_proof_message_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=admin_proof_message_id
+                )
+            except Exception as e:
+                logger.warning(
+                    "PAY_NO_ADMIN_PROOF_DELETE_FAILED "
+                    f"order_id={order_id} "
+                    f"message_id={admin_proof_message_id} "
+                    f"exception={repr(e)}"
+                )
+
         if data.get("incoming_admin_menu_message_id"):
             await delete_incoming_vip_admin_messages(context, data)
             await restore_incoming_vip_menu(context, data)
@@ -8368,6 +8403,21 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 await user_ban_notice_task
             except Exception:
                 pass
+
+        admin_proof_message_id = data.get("admin_proof_message_id")
+        if admin_proof_message_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=ADMIN_ID,
+                    message_id=admin_proof_message_id
+                )
+            except Exception as e:
+                logger.warning(
+                    "PAY_BAN_ADMIN_PROOF_DELETE_FAILED "
+                    f"order_id={order_id} "
+                    f"message_id={admin_proof_message_id} "
+                    f"exception={repr(e)}"
+                )
 
         if data.get("incoming_admin_menu_message_id"):
             await delete_incoming_vip_admin_messages(context, data)
