@@ -3426,6 +3426,7 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
             else os.environ["PAYMENT_BANNER_FILE_ID"]
         ),
         caption=text,
+        parse_mode="HTML",
     )
 
     await asyncio.gather(
@@ -3607,6 +3608,7 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
             else os.environ["PAYMENT_BANNER_FILE_ID"]
         ),
         caption=text,
+        parse_mode="HTML",
     )
 
     await query.edit_message_media(
