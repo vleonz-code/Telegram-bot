@@ -726,6 +726,11 @@ def save_pending_preview_deletions(pending: list):
 _blacklist_cache = None
 
 
+def is_banned_user(user_id: int) -> bool:
+    """Return True only when the user is explicitly present in blacklist."""
+    return user_id in read_blacklist()
+
+
 def read_blacklist() -> dict:
     global _blacklist_cache
 
@@ -1671,6 +1676,13 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 
 async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if is_banned_user(query.from_user.id):
+        await query.answer(
+            "🚫 Akses Anda telah dibatasi.",
+            show_alert=True
+        )
+        return
+
 
     if not read_settings()["join_vip_enabled"]:
         await query.answer(
@@ -1738,6 +1750,13 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
     bawah, baru album lama di atasnya dihapus setelahnya. Tidak berlaku
     untuk tombol Lihat Paket lain (timer habis, repeat deeplink, dst)."""
     query = update.callback_query
+    if is_banned_user(query.from_user.id):
+        await query.answer(
+            "🚫 Akses Anda telah dibatasi.",
+            show_alert=True
+        )
+        return
+
 
     if not read_settings()["join_vip_enabled"]:
         await query.answer(
@@ -1829,6 +1848,13 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if is_banned_user(query.from_user.id):
+        await query.answer(
+            "🚫 Akses Anda telah dibatasi.",
+            show_alert=True
+        )
+        return
+
 
     if not read_settings()["join_vip_enabled"]:
         await query.answer(
@@ -1877,6 +1903,13 @@ async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
+        if is_banned_user(query.from_user.id):
+            await query.answer(
+                "🚫 Akses Anda telah dibatasi.",
+                show_alert=True
+            )
+            return
+
 
         if not read_settings()["join_vip_enabled"]:
             await query.answer(
@@ -2043,6 +2076,13 @@ def cleanup_failed_qris_order(order_id, user_id):
 
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if is_banned_user(query.from_user.id):
+        await query.answer(
+            "🚫 Akses Anda telah dibatasi.",
+            show_alert=True
+        )
+        return
+
 
     if (
         not read_settings()["join_vip_enabled"]
