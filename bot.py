@@ -8651,43 +8651,29 @@ async def admin_order_reminder_loop(app, order_id):
                     # If the tracked admin message was deleted or became invalid,
                     # replace it with exactly one fresh reminder message. This keeps
                     # the reminder alive across manual deletion and bot restarts.
-                    error_text = str(e).lower()
-                    message_missing = any(
-                        marker in error_text
-                        for marker in (
-                            "message to edit not found",
-                            "message can't be edited",
-                            "message identifier is not specified",
+                    # Any failed edit means the tracked reminder message is no
+                    # longer safely usable (deleted, invalid, or otherwise
+                    # uneditable). Replace it immediately and keep the watcher alive.
+                    try:
+                        msg = await app.bot.send_message(
+                            chat_id=ADMIN_ID,
+                            text="📨 <b>Order Masuk</b>",
+                            parse_mode="HTML",
+                            reply_markup=keyboard,
                         )
-                    )
-                    if message_missing:
-                        try:
-                            msg = await app.bot.send_message(
-                                chat_id=ADMIN_ID,
-                                text="📨 <b>Order Masuk</b>",
-                                parse_mode="HTML",
-                                reply_markup=keyboard,
-                            )
-                            data["admin_verification_message_id"] = msg.message_id
-                            await _save_pending_order_state(order_id)
-                            logger.info(
-                                "ADMIN_ORDER_REMINDER_REPLACED "
-                                f"order_id={order_id} new_message_id={msg.message_id}"
-                            )
-                            continue
-                        except Exception as replacement_error:
-                            logger.warning(
-                                "ADMIN_ORDER_REMINDER_REPLACE_FAILED "
-                                f"order_id={order_id} exception={repr(replacement_error)}"
-                            )
-                            continue
-
-                    logger.warning(
-                        "ADMIN_ORDER_REMINDER_EDIT_FAILED "
-                        f"order_id={order_id} exception={repr(e)}"
-                    )
-                    # Keep the same message id and retry on the next interval.
-                    continue
+                        data["admin_verification_message_id"] = msg.message_id
+                        await _save_pending_order_state(order_id)
+                        logger.info(
+                            "ADMIN_ORDER_REMINDER_REPLACED "
+                            f"order_id={order_id} new_message_id={msg.message_id}"
+                        )
+                        continue
+                    except Exception as replacement_error:
+                        logger.warning(
+                            "ADMIN_ORDER_REMINDER_REPLACE_FAILED "
+                            f"order_id={order_id} exception={repr(replacement_error)}"
+                        )
+                        continue
     except asyncio.CancelledError:
         raise
 
