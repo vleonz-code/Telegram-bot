@@ -958,8 +958,8 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
 
 async def notify_admin_prev2(bot, full_name: str, username: str, user_id: int):
     text = (
-        f"📱 *App VIP Diakses*\n\n"
-        f"👤 {full_name} · 🆔 `{user_id}`"
+        f"📱 *Aplikasi VIP Diakses*\n"
+        f"👤 {full_name} 🆔 `{user_id}`"
     )
     try:
         await bot.send_message(
