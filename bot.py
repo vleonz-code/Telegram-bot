@@ -3576,14 +3576,26 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
     package = get_package(order["package_id"])
     harga = package["harga"] if package else "-"
 
+    order_number = order.get("order_id", page + 1)
+
+    raw_time = str(order.get("time", "-"))
+    try:
+        order_time = datetime.strptime(
+            raw_time,
+            "%d %b %Y, %H:%M:%S WIB"
+        ).strftime("%d/%m/%Y %I:%M %p")
+    except ValueError:
+        order_time = raw_time.replace(", ", " ", 1)
+
     text = (
-        f"📋 Order #{page + 1}\n\n"
-        f"👤 {order['full_name']}\n"
-        f"🆔 {order['user_id']}\n"
-        f"🔗 {order['username']}\n\n"
-        f"📦 {package['nama'] if package else '-'}\n"
-        f"💰 {harga}\n\n"
-        f"📅 {order['time'].replace(', ', ' ', 1)}"
+        "📥 <b>BUKTI TRANSFER</b>\n\n"
+        f"🧾 <b>Order ID</b> : #{html.escape(str(order_number))}\n"
+        f"👤 <b>Nama</b> : {html.escape(str(order.get('full_name', '-')))}\n"
+        f"🔗 <b>Username</b> : {html.escape(str(order.get('username', '-')))}\n"
+        f"🆔 <b>User ID</b> : {order.get('user_id', '-')}\n\n"
+        f"📦 <b>Paket</b> : {html.escape(str(package['nama'] if package else '-'))}\n"
+        f"💰 <b>Harga</b> : {html.escape(str(harga))}\n"
+        f"🕒 <b>Waktu</b> : {html.escape(order_time)}"
     )
 
     keyboard = []
