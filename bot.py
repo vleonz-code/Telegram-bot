@@ -8599,20 +8599,13 @@ async def _save_pending_order_state(order_id):
             return
 
 
-def _cancel_admin_order_reminder(order_id):
-    task = admin_order_reminder_tasks.pop(order_id, None)
-    if task and not task.done():
-        task.cancel()
-
-
-async def admin_order_reminder_loop(app, order_id):
+async def admin_order_reminder_manager(app):
+    """Single lightweight reminder manager for all pending admin orders."""
     try:
         while True:
             await asyncio.sleep(ADMIN_ORDER_ALERT_INTERVAL)
 
-            lock = payment_admin_locks.setdefault(order_id, asyncio.Lock())
-            async with lock:
-                data = upload_waiting.get(order_id)
+            for order_id, data in list(upload_waiting.items()):
                 if not data or not (
                     data.get("photo_uploaded") is True
                     and data.get("photo_file_id")
@@ -8622,7 +8615,7 @@ async def admin_order_reminder_loop(app, order_id):
                         or data.get("qris_msg_id")
                     )
                 ):
-                    return
+                    continue
 
                 message_id = data.get("admin_verification_message_id")
                 keyboard = InlineKeyboardMarkup([
@@ -8634,64 +8627,51 @@ async def admin_order_reminder_loop(app, order_id):
                 ])
 
                 try:
+                    timestamp = datetime.now(WIB).strftime("%H:%M:%S WIB")
                     if message_id:
-                        timestamp = datetime.now(WIB).strftime("%H:%M:%S WIB")
-                        await app.bot.edit_message_text(
-                            chat_id=ADMIN_ID,
-                            message_id=message_id,
-                            text=(
-                                "📨 <b>Order Masuk</b>\n\n"
-                                f"🔔 Pengingat • {timestamp}"
-                            ),
-                            parse_mode="HTML",
-                            reply_markup=keyboard,
-                        )
-                    else:
-                        msg = await app.bot.send_message(
-                            chat_id=ADMIN_ID,
-                            text="📨 <b>Order Masuk</b>",
-                            parse_mode="HTML",
-                            reply_markup=keyboard,
-                        )
-                        data["admin_verification_message_id"] = msg.message_id
-                        await _save_pending_order_state(order_id)
-                except Exception as e:
-                    # If the tracked admin message was deleted or became invalid,
-                    # replace it with exactly one fresh reminder message. This keeps
-                    # the reminder alive across manual deletion and bot restarts.
-                    # Any failed edit means the tracked reminder message is no
-                    # longer safely usable (deleted, invalid, or otherwise
-                    # uneditable). Replace it immediately and keep the watcher alive.
-                    try:
-                        msg = await app.bot.send_message(
-                            chat_id=ADMIN_ID,
-                            text="📨 <b>Order Masuk</b>",
-                            parse_mode="HTML",
-                            reply_markup=keyboard,
-                        )
-                        data["admin_verification_message_id"] = msg.message_id
-                        await _save_pending_order_state(order_id)
-                        logger.info(
-                            "ADMIN_ORDER_REMINDER_REPLACED "
-                            f"order_id={order_id} new_message_id={msg.message_id}"
-                        )
-                        continue
-                    except Exception:
-                        data["admin_verification_message_id"] = None
                         try:
-                            await _save_pending_order_state(order_id)
+                            await app.bot.edit_message_text(
+                                chat_id=ADMIN_ID,
+                                message_id=message_id,
+                                text=(
+                                    "📨 <b>Order Masuk</b>\n\n"
+                                    f"🔔 Pengingat • {timestamp}"
+                                ),
+                                parse_mode="HTML",
+                                reply_markup=keyboard,
+                            )
+                            continue
                         except Exception:
                             pass
-                        continue
+
+                    msg = await app.bot.send_message(
+                        chat_id=ADMIN_ID,
+                        text=(
+                            "📨 <b>Order Masuk</b>\n\n"
+                            f"🔔 Pengingat • {timestamp}"
+                        ),
+                        parse_mode="HTML",
+                        reply_markup=keyboard,
+                    )
+                    data["admin_verification_message_id"] = msg.message_id
+                    await _save_pending_order_state(order_id)
+
+                except Exception:
+                    # Failure for one order must never stop the manager.
+                    continue
+
     except asyncio.CancelledError:
         raise
 
 
 def start_admin_order_reminder(app, order_id):
-    _cancel_admin_order_reminder(order_id)
-    admin_order_reminder_tasks[order_id] = asyncio.create_task(
-        admin_order_reminder_loop(app, order_id)
-    )
+    # Compatibility shim: the single manager handles all pending orders.
+    return
+
+
+def _cancel_admin_order_reminder(order_id):
+    # Compatibility shim for existing payment callbacks.
+    return
 
 
 async def ensure_admin_order_reminders(app):
@@ -8739,30 +8719,6 @@ async def ensure_admin_order_reminders(app):
                 continue
 
         start_admin_order_reminder(app, order_id)
-
-
-async def admin_order_recovery_supervisor(app):
-    """Periodically recover pending orders whose reminder watcher was lost."""
-    try:
-        while True:
-            await asyncio.sleep(ADMIN_ORDER_ALERT_INTERVAL)
-            try:
-                await ensure_admin_order_reminders(app)
-            except asyncio.CancelledError:
-                raise
-            except Exception as e:
-                logger.error(
-                    "ADMIN_ORDER_RECOVERY_SUPERVISOR_ERROR "
-                    f"exception={repr(e)}",
-                    exc_info=True,
-                )
-    except asyncio.CancelledError:
-        raise
-
-
-# ---------------------------------------------------------------------------
-# AUTO CHANNEL POST
-# ---------------------------------------------------------------------------
 
 
 async def channel_auto_post_loop(app):
@@ -8858,11 +8814,11 @@ def main():
                 schedule_qris_expiry(app, _order_id, float(_expires_at))
 
         await ensure_admin_order_reminders(app)
+        app.bot_data["admin_order_reminder_manager_task"] = asyncio.create_task(
+            admin_order_reminder_manager(app)
+        )
         await set_admin_commands(app)
         app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
-        app.bot_data["admin_order_recovery_task"] = asyncio.create_task(
-            admin_order_recovery_supervisor(app)
-        )
         app.bot_data["pre_upload_cleanup_tasks"] = [
             asyncio.create_task(pre_upload_cleanup_worker(app.bot))
             for _ in range(2)
@@ -8877,11 +8833,11 @@ def main():
             except asyncio.CancelledError:
                 pass
 
-        recovery_task = app.bot_data.get("admin_order_recovery_task")
-        if recovery_task:
-            recovery_task.cancel()
+        reminder_manager_task = app.bot_data.get("admin_order_reminder_manager_task")
+        if reminder_manager_task:
+            reminder_manager_task.cancel()
             try:
-                await recovery_task
+                await reminder_manager_task
             except asyncio.CancelledError:
                 pass
 
