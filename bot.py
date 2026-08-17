@@ -8079,10 +8079,9 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 chat_id=user_id,
                 text=(
                     "<strong>🎉 PEMBAYARAN BERHASIL!</strong>\n\n"
-                    "Pembayaran kamu telah diverifikasi.\n\n"
                     "✨ Akses VIP kamu sudah siap.\n\n"
-                    "Tekan tombol di bawah untuk bergabung.\n"
-                    "⚠️ Mohon jangan bagikan akses ini."
+                    "Tekan tombol di bawah untuk bergabung.\n\n"
+                    "⚠️ Jangan bagikan akses ini."
                 ),
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([
