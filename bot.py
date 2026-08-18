@@ -1865,8 +1865,16 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = int(query.data.split("_")[1])
 
-    # Start acknowledgement before local package preparation.
+    # LOG ONLY — Fire-and-Forget baseline behavior unchanged.
+    _vip_log_t0 = time.perf_counter()
+    logger.info("[VIP NAV LOG] CLICK")
+
     answer_task = asyncio.create_task(query.answer())
+    _vip_log_t1 = time.perf_counter()
+    logger.info(
+        "[VIP NAV LOG] answer_task_scheduled=%.6fs",
+        _vip_log_t1 - _vip_log_t0,
+    )
 
     packages = get_vip_packages_cached()["packages"]
     active_packages = [
@@ -1881,23 +1889,36 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = idx % total
     package = active_packages[idx]
 
-    # A/B TEST ONLY:
-    # Use the first active package's existing banner for EVERY VIP page.
-    # Caption, keyboard, pagination, and Fire-and-Forget behavior remain unchanged.
-    global_test_banner = get_vip_package_banner(active_packages[0])
+    _vip_log_t2 = time.perf_counter()
+    logger.info(
+        "[VIP NAV LOG] before_edit page=%d/%d local_after_schedule=%.6fs",
+        idx + 1,
+        total,
+        _vip_log_t2 - _vip_log_t1,
+    )
 
-    # Fire-and-forget acknowledgement: do not make page navigation wait
-    # for Telegram's callback acknowledgement round-trip.
-    # The media edit remains awaited so the page change itself is confirmed.
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=global_test_banner,
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-        ),
+    _vip_log_edit_start = time.perf_counter()
+
+    # SAME-BANNER TEST:
+    # The media is intentionally kept unchanged. Only caption + keyboard
+    # are edited, so Telegram does not have to perform an editMessageMedia.
+    # This tests whether the remaining roughness comes from re-processing
+    # the media even when the banner itself is identical.
+    await query.edit_message_caption(
+        caption=build_vip_package_text(package),
+        parse_mode="HTML",
         reply_markup=build_vip_package_keyboard(
             idx, total, package["id"]
         ),
+    )
+
+    _vip_log_edit_end = time.perf_counter()
+    logger.info(
+        "[VIP NAV LOG] edit_done page=%d/%d edit_media=%.6fs handler_total=%.6fs",
+        idx + 1,
+        total,
+        _vip_log_edit_end - _vip_log_edit_start,
+        _vip_log_edit_end - _vip_log_t0,
     )
 
 
