@@ -467,9 +467,9 @@ preview_delete_tasks = {}
 # Token per-chat_id untuk cegah race condition navigasi VIP (bukan lock —
 # cuma penanda "tap mana yang paling baru", dicek sebelum kirim edit).
 vip_nav_latest = {}
-# Single non-blocking VIP navigation driver per chat. Tap terbaru hanya mengganti intent.
-vip_nav_driver_active = set()
-vip_nav_pending = {}
+# Latest-tap cancellation: one replaceable edit task per chat.
+# No lock, queue, debounce, or wait between taps.
+vip_nav_tasks = {}
 qris_expiry_tasks = {}
 admin_order_reminder_tasks = {}
 livechat_sessions = {}
@@ -1860,48 +1860,81 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
 
 
+async def _vipnav_edit_latest(intent, chat_id):
+    """Execute the newest VIP navigation edit; newer taps cancel this task."""
+    idx = intent["idx"]
+    total = intent["total"]
+    package = intent["package"]
+    driver_query = intent["query"]
+    _vip_log_t0 = intent["log_t0"]
+    _vip_diag_t1 = intent["diag_t1"]
+    _vip_log_edit_start = intent["log_edit_start"]
+    _vip_diag_before_edit = intent["diag_before_edit"]
+    token = intent["token"]
+
+    if vip_nav_latest.get(chat_id) != token:
+        logger.info("[VIP NAV LOG] STALE_SKIPPED page=%d/%d", idx + 1, total)
+        return
+
+    try:
+        await driver_query.edit_message_caption(
+            caption=build_vip_package_text(package),
+            parse_mode="HTML",
+            reply_markup=build_vip_package_keyboard(idx, total, package["id"]),
+        )
+    except asyncio.CancelledError:
+        logger.info("[VIP NAV LOG] CANCELLED page=%d/%d", idx + 1, total)
+        raise
+    except telegram.error.BadRequest as exc:
+        if "message is not modified" in str(exc).lower():
+            logger.info("[VIP NAV LOG] duplicate edit suppressed page=%d/%d", idx + 1, total)
+            return
+        logger.exception("[VIP NAV LOG] edit_failed page=%d/%d", idx + 1, total)
+        return
+    except Exception:
+        logger.exception("[VIP NAV LOG] edit_failed page=%d/%d", idx + 1, total)
+        return
+
+    _vip_diag_after_edit = time.perf_counter()
+    logger.info(
+        f"[VIP NAV DIAG] caption_edit_done "
+        f"api_elapsed={_vip_diag_after_edit - _vip_diag_before_edit:.6f}s "
+        f"handler_since_task={_vip_diag_after_edit - _vip_diag_t1:.6f}s"
+    )
+    _vip_log_edit_end = time.perf_counter()
+    logger.info(
+        "[VIP NAV LOG] edit_done page=%d/%d edit_media=%.6fs handler_total=%.6fs",
+        idx + 1, total,
+        _vip_log_edit_end - _vip_log_edit_start,
+        _vip_log_edit_end - _vip_log_t0,
+    )
+
+
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
     if not read_settings()["join_vip_enabled"]:
-        await query.answer(
-            "⚠️ Order VIP sedang OFF.",
-            show_alert=True
-        )
+        await query.answer("⚠️ Order VIP sedang OFF.", show_alert=True)
         return
 
     idx = int(query.data.split("_")[1])
-
-    # LATEST-INTENT / SINGLE-DRIVER:
-    # Tidak memakai lock dan tidak menunggu edit sebelumnya.
-    # Setiap tap hanya mengganti intent terbaru; hanya satu driver per chat
-    # yang boleh mempunyai request edit Telegram aktif pada satu waktu.
     _vip_nav_chat_id = query.message.chat_id
     _vip_nav_token = time.perf_counter_ns()
     vip_nav_latest[_vip_nav_chat_id] = _vip_nav_token
 
-    # LOG ONLY — Fire-and-Forget baseline behavior unchanged.
     _vip_log_t0 = time.perf_counter()
     logger.info("[VIP NAV LOG] CLICK")
-
     _vip_diag_t0 = time.perf_counter()
-    answer_task = asyncio.create_task(query.answer())
+    asyncio.create_task(query.answer())
     _vip_diag_t1 = time.perf_counter()
     logger.info(
         f"[VIP NAV DIAG] answer_task_created delta={_vip_diag_t1 - _vip_diag_t0:.6f}s"
     )
     _vip_log_t1 = time.perf_counter()
-    logger.info(
-        "[VIP NAV LOG] answer_task_scheduled=%.6fs",
-        _vip_log_t1 - _vip_log_t0,
-    )
+    logger.info("[VIP NAV LOG] answer_task_scheduled=%.6fs", _vip_log_t1 - _vip_log_t0)
 
     packages = get_vip_packages_cached()["packages"]
-    active_packages = [
-        package for package in packages
-        if package.get("aktif", True)
-    ]
-
+    active_packages = [p for p in packages if p.get("aktif", True)]
     if not active_packages:
         return
 
@@ -1912,11 +1945,8 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _vip_log_t2 = time.perf_counter()
     logger.info(
         "[VIP NAV LOG] before_edit page=%d/%d local_after_schedule=%.6fs",
-        idx + 1,
-        total,
-        _vip_log_t2 - _vip_log_t1,
+        idx + 1, total, _vip_log_t2 - _vip_log_t1,
     )
-
     _vip_log_edit_start = time.perf_counter()
     _vip_diag_before_edit = time.perf_counter()
     logger.info(
@@ -1924,9 +1954,7 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"since_answer_task={_vip_diag_before_edit - _vip_diag_t1:.6f}s"
     )
 
-    # Simpan hanya intent terbaru. Callback yang datang saat driver aktif
-    # tidak melakukan HTTP edit dan langsung selesai.
-    vip_nav_pending[_vip_nav_chat_id] = {
+    intent = {
         "token": _vip_nav_token,
         "idx": idx,
         "total": total,
@@ -1938,106 +1966,22 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "diag_before_edit": _vip_diag_before_edit,
     }
 
-    if _vip_nav_chat_id in vip_nav_driver_active:
+    previous_task = vip_nav_tasks.get(_vip_nav_chat_id)
+    if previous_task is not None and not previous_task.done():
+        previous_task.cancel()
         logger.info(
-            "[VIP NAV LOG] COALESCED page=%d/%d",
-            idx + 1,
-            total,
+            "[VIP NAV LOG] CANCEL_PREVIOUS chat=%s page=%d/%d",
+            _vip_nav_chat_id, idx + 1, total,
         )
-        return
 
-    # Atomic in the event-loop sense: no await occurs between membership
-    # check and add, so exactly one callback becomes the driver per chat.
-    vip_nav_driver_active.add(_vip_nav_chat_id)
+    new_task = asyncio.create_task(_vipnav_edit_latest(intent, _vip_nav_chat_id))
+    vip_nav_tasks[_vip_nav_chat_id] = new_task
 
-    try:
-        while True:
-            intent = vip_nav_pending.pop(_vip_nav_chat_id, None)
-            if intent is None:
-                break
+    def _vipnav_task_done(done_task, chat_id=_vip_nav_chat_id):
+        if vip_nav_tasks.get(chat_id) is done_task:
+            vip_nav_tasks.pop(chat_id, None)
 
-            idx = intent["idx"]
-            total = intent["total"]
-            package = intent["package"]
-            driver_query = intent["query"]
-            _vip_log_t0 = intent["log_t0"]
-            _vip_diag_t1 = intent["diag_t1"]
-            _vip_log_edit_start = intent["log_edit_start"]
-            _vip_diag_before_edit = intent["diag_before_edit"]
-
-            # Do not send an intent that has already been replaced before
-            # this driver got to it.
-            if vip_nav_latest.get(_vip_nav_chat_id) != intent["token"]:
-                logger.info(
-                    "[VIP NAV LOG] STALE_SKIPPED page=%d/%d",
-                    idx + 1,
-                    total,
-                )
-                continue
-
-            # SAME-BANNER TEST:
-            # The media is intentionally kept unchanged. Only caption + keyboard
-            # are edited, so Telegram does not have to perform an editMessageMedia.
-            # This tests whether the remaining roughness comes from re-processing
-            # the media even when the banner itself is identical.
-            try:
-                await driver_query.edit_message_caption(
-                    caption=build_vip_package_text(package),
-                    parse_mode="HTML",
-                    reply_markup=build_vip_package_keyboard(
-                        idx, total, package["id"]
-                    ),
-                )
-            except telegram.error.BadRequest as exc:
-                if "message is not modified" in str(exc).lower():
-                    logger.info(
-                        "[VIP NAV LOG] duplicate edit suppressed page=%d/%d",
-                        idx + 1,
-                        total,
-                    )
-                    # Keep the single-driver alive so a newer pending intent,
-                    # if any, is still processed by the same loop.
-                    continue
-                logger.exception(
-                    "[VIP NAV LOG] edit_failed page=%d/%d",
-                    idx + 1,
-                    total,
-                )
-                # Do not strand a newer intent that arrived while this
-                # request was in flight. The loop will consume it next.
-                continue
-            except Exception:
-                logger.exception(
-                    "[VIP NAV LOG] edit_failed page=%d/%d",
-                    idx + 1,
-                    total,
-                )
-                # Same recovery rule: keep the driver alive and consume the
-                # latest pending intent instead of abandoning it.
-                continue
-
-            _vip_diag_after_edit = time.perf_counter()
-            logger.info(
-                f"[VIP NAV DIAG] caption_edit_done "
-                f"api_elapsed={_vip_diag_after_edit - _vip_diag_before_edit:.6f}s "
-                f"handler_since_task={_vip_diag_after_edit - _vip_diag_t1:.6f}s"
-            )
-
-            _vip_log_edit_end = time.perf_counter()
-            logger.info(
-                "[VIP NAV LOG] edit_done page=%d/%d edit_media=%.6fs handler_total=%.6fs",
-                idx + 1,
-                total,
-                _vip_log_edit_end - _vip_log_edit_start,
-                _vip_log_edit_end - _vip_log_t0,
-            )
-
-            # If a newer tap arrived while Telegram was processing this edit,
-            # it is already in vip_nav_pending. The loop immediately coalesces
-            # to that latest intent without creating another driver.
-    finally:
-        vip_nav_driver_active.discard(_vip_nav_chat_id)
-
+    new_task.add_done_callback(_vipnav_task_done)
 
 
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
