@@ -1662,10 +1662,10 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
         # Keep the same three-button layout on every page.
         # Boundary arrows remain visible but become no-op buttons.
         prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else f"vipnav_{total - 1}"
+            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
         )
         next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_0"
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
         )
 
         keyboard.append([
@@ -1878,7 +1878,10 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     total = len(active_packages)
-    idx = idx % total
+    # Do not wrap navigation: first page cannot go backward,
+    # and last page cannot go forward. Buttons remain visible;
+    # boundary buttons use the existing no-op callback.
+    idx = max(0, min(idx, total - 1))
     package = active_packages[idx]
 
     # Fire-and-forget acknowledgement: do not make page navigation wait
