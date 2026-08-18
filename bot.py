@@ -8704,8 +8704,15 @@ def main():
     restore_pending_orders()
 
     request = HTTPXRequest(
-        connection_pool_size=4,
+        connection_pool_size=1,
         http_version="1.1",
+        httpx_kwargs={
+            "limits": __import__("httpx").Limits(
+                max_keepalive_connections=1,
+                max_connections=1,
+                keepalive_expiry=30.0,
+            )
+        },
     )
     app = (
         ApplicationBuilder()
