@@ -9427,16 +9427,46 @@ def main():
 
         _vip_original_do_request = _VIP_HTTPXRequest.do_request
 
-        async def _vip_timed_do_request(self, *args, **kwargs):
-            endpoint = str(args[0]) if args else str(kwargs.get("endpoint", ""))
-            if "editMessageCaption" not in endpoint:
-                return await _vip_original_do_request(self, *args, **kwargs)
+        async def _vip_timed_do_request(
+            self,
+            url,
+            method,
+            request_data=None,
+            read_timeout=None,
+            write_timeout=None,
+            connect_timeout=None,
+            pool_timeout=None,
+        ):
+            endpoint = str(url)
+
+            if "editmessagecaption" not in endpoint.lower():
+                return await _vip_original_do_request(
+                    self,
+                    url,
+                    method,
+                    request_data,
+                    read_timeout,
+                    write_timeout,
+                    connect_timeout,
+                    pool_timeout,
+                )
 
             _vip_http_t0 = time.perf_counter()
-            logger.info("[VIP HTTP DIAG] editMessageCaption request_start")
+            logger.info(
+                f"[VIP HTTP DIAG] editMessageCaption request_start "
+                f"url={endpoint}"
+            )
             try:
-                result = await _vip_original_do_request(self, *args, **kwargs)
-                return result
+                return await _vip_original_do_request(
+                    self,
+                    url,
+                    method,
+                    request_data,
+                    read_timeout,
+                    write_timeout,
+                    connect_timeout,
+                    pool_timeout,
+                )
             finally:
                 _vip_http_t1 = time.perf_counter()
                 logger.info(
