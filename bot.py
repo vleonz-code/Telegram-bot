@@ -9074,7 +9074,8 @@ def main():
     app.add_handler(
     CallbackQueryHandler(
         vipnav_callback,
-        pattern=r"^vipnav_\d+$"
+        pattern=r"^vipnav_\d+$",
+        block=False
     ))
     app.add_handler(
     CallbackQueryHandler(
