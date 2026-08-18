@@ -1301,7 +1301,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     # Already approved
-    if user_id in read_approved() and payload == DEEP_LINK_A:
+    if user_id in read_approved():
 
         if user_id not in admin_request_counts:
             admin_request_counts[user_id] = 1
@@ -1482,11 +1482,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     context.bot, full_name, username, user_id
                 )
 
-            approved = read_approved()
+            if payload == DEEP_LINK_A:
+                approved = read_approved()
 
-            if user_id not in approved:
-               approved.add(user_id)
-               save_approved(approved)
+                if user_id not in approved:
+                   approved.add(user_id)
+                   save_approved(approved)
 
         return
 
