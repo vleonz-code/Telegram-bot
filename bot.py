@@ -1733,7 +1733,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_photo(
             chat_id=query.message.chat_id,
-            photo=os.environ["PACKAGE_BANNER_FILE_ID"],
+            photo=get_vip_package_banner(package),
             caption=build_vip_package_text(package),
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
@@ -1808,7 +1808,7 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
         await context.bot.send_photo(
             chat_id=chat_id,
-            photo=os.environ["PACKAGE_BANNER_FILE_ID"],
+            photo=get_vip_package_banner(package),
             caption=build_vip_package_text(package),
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
@@ -1885,14 +1885,23 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = max(0, min(idx, total - 1))
     package = active_packages[idx]
 
-    # Keep the shared VIP banner fixed; change only caption + keyboard.
-    await query.edit_message_caption(
-        caption=build_vip_package_text(package),
-        parse_mode="HTML",
+    # Keep the existing media replacement unchanged.
+    # TEMPORARY ONE-TIME TIMING TEST — remove after measurement.
+    _vip_timing_start = time.perf_counter()
+
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
+            parse_mode="HTML",
+        ),
         reply_markup=build_vip_package_keyboard(
             idx, total, package["id"]
         ),
     )
+
+    _vip_timing_elapsed = time.perf_counter() - _vip_timing_start
+    print(f"[VIP TIMING TEST] edit_message_media = {_vip_timing_elapsed:.3f}s")
 
 
 
