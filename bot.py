@@ -18,6 +18,7 @@ try:
 except ImportError:
     CopyTextButton = None
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.request import HTTPXRequest
 from telegram.constants import ParseMode
 
 logging.basicConfig(
@@ -1885,36 +1886,17 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = max(0, min(idx, total - 1))
     package = active_packages[idx]
 
-    target_banner = get_vip_package_banner(package)
-    new_caption = build_vip_package_text(package)
-    new_keyboard = build_vip_package_keyboard(
-        idx, total, package["id"]
-    )
-
-    # If this page uses the same Telegram photo already displayed, avoid the
-    # heavier media replacement and update only caption + keyboard.
-    current_photo = (
-        query.message.photo[-1].file_id
-        if query.message.photo
-        else None
-    )
-
-    if current_photo and current_photo == target_banner:
-        await query.edit_message_caption(
-            caption=new_caption,
+    # Keep the existing media replacement unchanged.
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
             parse_mode="HTML",
-            reply_markup=new_keyboard,
-        )
-    else:
-        # Different banner: retain the existing media-change path.
-        await query.edit_message_media(
-            media=InputMediaPhoto(
-                media=target_banner,
-                caption=new_caption,
-                parse_mode="HTML",
-            ),
-            reply_markup=new_keyboard,
-        )
+        ),
+        reply_markup=build_vip_package_keyboard(
+            idx, total, package["id"]
+        ),
+    )
 
 
 
@@ -8721,7 +8703,16 @@ def main():
 
     restore_pending_orders()
 
-    app = ApplicationBuilder().token(token).build()
+    request = HTTPXRequest(
+        connection_pool_size=4,
+        http_version="1.1",
+    )
+    app = (
+        ApplicationBuilder()
+        .token(token)
+        .request(request)
+        .build()
+    )
 
     async def start_background(app):
         for _order_id, _order in upload_waiting.items():
