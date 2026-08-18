@@ -1865,8 +1865,9 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = int(query.data.split("_")[1])
 
-    # Start acknowledgement before local package preparation.
-    answer_task = asyncio.create_task(query.answer())
+    # Acknowledge the callback immediately. Telegram keeps the button
+    # loading indicator visible until answerCallbackQuery completes.
+    await query.answer()
 
     packages = get_vip_packages_cached()["packages"]
     active_packages = [
@@ -1884,9 +1885,7 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = max(0, min(idx, total - 1))
     package = active_packages[idx]
 
-    # Fire-and-forget acknowledgement: do not make page navigation wait
-    # for Telegram's callback acknowledgement round-trip.
-    # The media edit remains awaited so the page change itself is confirmed.
+    # Keep the existing media replacement unchanged.
     await query.edit_message_media(
         media=InputMediaPhoto(
             media=get_vip_package_banner(package),
