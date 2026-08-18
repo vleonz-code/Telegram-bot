@@ -18,7 +18,6 @@ try:
 except ImportError:
     CopyTextButton = None
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
-from telegram.request import HTTPXRequest
 from telegram.constants import ParseMode
 
 logging.basicConfig(
@@ -1734,7 +1733,7 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.send_photo(
             chat_id=query.message.chat_id,
-            photo=get_vip_package_banner(package),
+            photo=os.environ["PACKAGE_BANNER_FILE_ID"],
             caption=build_vip_package_text(package),
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
@@ -1809,7 +1808,7 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
         await context.bot.send_photo(
             chat_id=chat_id,
-            photo=get_vip_package_banner(package),
+            photo=os.environ["PACKAGE_BANNER_FILE_ID"],
             caption=build_vip_package_text(package),
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
@@ -1886,13 +1885,10 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = max(0, min(idx, total - 1))
     package = active_packages[idx]
 
-    # Keep the existing media replacement unchanged.
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=get_vip_package_banner(package),
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-        ),
+    # Keep the shared VIP banner fixed; change only caption + keyboard.
+    await query.edit_message_caption(
+        caption=build_vip_package_text(package),
+        parse_mode="HTML",
         reply_markup=build_vip_package_keyboard(
             idx, total, package["id"]
         ),
@@ -8703,23 +8699,7 @@ def main():
 
     restore_pending_orders()
 
-    request = HTTPXRequest(
-        connection_pool_size=1,
-        http_version="1.1",
-        httpx_kwargs={
-            "limits": __import__("httpx").Limits(
-                max_keepalive_connections=1,
-                max_connections=1,
-                keepalive_expiry=30.0,
-            )
-        },
-    )
-    app = (
-        ApplicationBuilder()
-        .token(token)
-        .request(request)
-        .build()
-    )
+    app = ApplicationBuilder().token(token).build()
 
     async def start_background(app):
         for _order_id, _order in upload_waiting.items():
