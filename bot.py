@@ -1476,7 +1476,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=update.effective_chat.id,
                 text=(
                     "📍 Permintaan ulang belum tersedia.\n\n"
-                    "⏳ Silakan kembali lagi nanti. ୨୧\n\n"
+                    "⏳ Silakan join lagi nanti. ୨୧\n\n"
                 ),
                 reply_markup=keyboard
             )
@@ -4634,7 +4634,7 @@ async def delete_messages_after_delay(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "⏳ Silakan kembali lagi nanti. ୨୧\n\n"
+                    "⏳ Silakan join lagi nanti. ୨୧\n\n"
                 ),
                 reply_markup=InlineKeyboardMarkup(preview_keyboard)
             )
