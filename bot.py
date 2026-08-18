@@ -1867,7 +1867,10 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Acknowledge the callback immediately. Telegram keeps the button
     # loading indicator visible until answerCallbackQuery completes.
+    # TEMPORARY DIAGNOSTIC ONLY — behavior unchanged.
+    _vip_t0 = time.perf_counter()
     await query.answer()
+    _vip_t1 = time.perf_counter()
 
     packages = get_vip_packages_cached()["packages"]
     active_packages = [
@@ -1885,9 +1888,7 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = max(0, min(idx, total - 1))
     package = active_packages[idx]
 
-    # Keep the existing media replacement unchanged.
-    # TEMPORARY ONE-TIME TIMING TEST — remove after measurement.
-    _vip_timing_start = time.perf_counter()
+    _vip_t2 = time.perf_counter()
 
     await query.edit_message_media(
         media=InputMediaPhoto(
@@ -1900,8 +1901,15 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
     )
 
-    _vip_timing_elapsed = time.perf_counter() - _vip_timing_start
-    print(f"[VIP TIMING TEST] edit_message_media = {_vip_timing_elapsed:.3f}s")
+    _vip_t3 = time.perf_counter()
+
+    print(
+        "[VIP FULL TIMING] "
+        f"answer={_vip_t1 - _vip_t0:.3f}s | "
+        f"local_after_answer={_vip_t2 - _vip_t1:.3f}s | "
+        f"edit_media={_vip_t3 - _vip_t2:.3f}s | "
+        f"handler_total={_vip_t3 - _vip_t0:.3f}s"
+    )
 
 
 
