@@ -4548,11 +4548,11 @@ async def delete_messages_after_delay(
         await asyncio.sleep(delay)
 
         notification_list = []
-        delete_results = []
+        groups = pending_message_groups or [message_ids]
+        group_keys = {tuple(group) for group in groups}
+
         try:
             pending_before_delete = read_pending_preview_deletions()
-            groups = pending_message_groups or [message_ids]
-            group_keys = {tuple(group) for group in groups}
             for entry in pending_before_delete:
                 if (
                     entry.get("chat_id") == chat_id
@@ -4561,23 +4561,19 @@ async def delete_messages_after_delay(
                 ):
                     notification_list.append(entry["admin_notification"])
         except Exception:
-            groups = pending_message_groups or [message_ids]
-            group_keys = {tuple(group) for group in groups}
+            pass
 
-        delete_results = await asyncio.gather(
-            *[
-                bot.delete_message(
+        delete_ok = True
+        for group in groups:
+            if not group:
+                continue
+            try:
+                await bot.delete_messages(
                     chat_id=chat_id,
-                    message_id=message_id
+                    message_ids=group
                 )
-                for message_id in message_ids
-            ],
-            return_exceptions=True
-        )
-        delete_ok = all(
-            not isinstance(result, Exception)
-            for result in delete_results
-        )
+            except Exception:
+                delete_ok = False
 
         if delete_ok:
             for notification in notification_list:
@@ -4588,8 +4584,6 @@ async def delete_messages_after_delay(
 
         try:
             pending = read_pending_preview_deletions()
-            groups = pending_message_groups or [message_ids]
-            group_keys = {tuple(group) for group in groups}
             pending = [
                 entry for entry in pending
                 if not (
@@ -4661,7 +4655,6 @@ async def delete_messages_after_delay(
                 chat_id,
                 None
             )
-
 
 async def sweep_pending_preview_deletions(bot):
     """Jadwalkan ulang penghapusan untuk semua pengiriman preview yang
