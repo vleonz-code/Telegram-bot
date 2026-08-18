@@ -1038,14 +1038,50 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
         f"Time: {now}"
     )
     try:
-        await bot.send_message(
+        message = await bot.send_message(
             chat_id=ADMIN_ID,
             text=text,
             parse_mode="Markdown",
             disable_notification=True
         )
+        return {
+            "message_id": message.message_id,
+            "full_name": full_name or "-",
+            "username": username or "-",
+            "user_id": user_id,
+            "time": now,
+        }
     except Exception as e:
         logger.error(f"Failed to notify admin: {e}")
+        return None
+
+
+async def update_media_access_notification_deleted(
+    bot,
+    notification: dict
+):
+    if not notification or not notification.get("message_id"):
+        return
+
+    text = (
+        f"📮 *Album Dihapus*\n\n"
+        f"👤 Name: {notification.get('full_name') or '-'}\n"
+        f"🔗 Username: {notification.get('username') or '-'}\n"
+        f"🆔 User ID: `{notification.get('user_id')}`\n\n"
+        f"Time: {notification.get('time') or '-'}"
+    )
+    try:
+        await bot.edit_message_text(
+            chat_id=ADMIN_ID,
+            message_id=notification["message_id"],
+            text=text,
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        logger.error(
+            f"Failed to update media access notification for "
+            f"user {notification.get('user_id')}: {e}"
+        )
 
 
 async def notify_admin_prev2(bot, full_name: str, username: str, user_id: int):
@@ -1478,9 +1514,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     context.bot, full_name, username, user_id
                 )
             else:
-                await notify_admin(
+                notification = await notify_admin(
                     context.bot, full_name, username, user_id
                 )
+                if payload == DEEP_LINK_A and notification:
+                    pending = read_pending_preview_deletions()
+                    for entry in reversed(pending):
+                        if (
+                            entry.get("chat_id") == update.effective_chat.id
+                            and not entry.get("admin_notification")
+                        ):
+                            entry["admin_notification"] = notification
+                            break
+                    save_pending_preview_deletions(pending)
 
             if payload == DEEP_LINK_A:
                 approved = read_approved()
@@ -1929,13 +1975,34 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
     old_messages = last_delivered_messages.pop(chat_id, None)
     if old_messages:
+        notification = None
+        delete_ok = False
+        try:
+            pending = read_pending_preview_deletions()
+            for entry in pending:
+                if (
+                    entry.get("chat_id") == chat_id
+                    and entry.get("message_ids") == old_messages
+                ):
+                    notification = entry.get("admin_notification")
+                    break
+        except Exception:
+            pending = []
+
         try:
             await context.bot.delete_messages(
                 chat_id=chat_id,
                 message_ids=old_messages
             )
+            delete_ok = True
         except Exception:
             pass
+
+        if delete_ok:
+            await update_media_access_notification_deleted(
+                context.bot,
+                notification
+            )
 
         try:
             pending = read_pending_preview_deletions()
@@ -4480,13 +4547,44 @@ async def delete_messages_after_delay(
 
         await asyncio.sleep(delay)
 
+        notification_list = []
+        delete_results = []
         try:
-            await bot.delete_messages(
-                chat_id=chat_id,
-                message_ids=message_ids
-            )
+            pending_before_delete = read_pending_preview_deletions()
+            groups = pending_message_groups or [message_ids]
+            group_keys = {tuple(group) for group in groups}
+            for entry in pending_before_delete:
+                if (
+                    entry.get("chat_id") == chat_id
+                    and tuple(entry.get("message_ids") or []) in group_keys
+                    and entry.get("admin_notification")
+                ):
+                    notification_list.append(entry["admin_notification"])
         except Exception:
-            pass
+            groups = pending_message_groups or [message_ids]
+            group_keys = {tuple(group) for group in groups}
+
+        delete_results = await asyncio.gather(
+            *[
+                bot.delete_message(
+                    chat_id=chat_id,
+                    message_id=message_id
+                )
+                for message_id in message_ids
+            ],
+            return_exceptions=True
+        )
+        delete_ok = all(
+            not isinstance(result, Exception)
+            for result in delete_results
+        )
+
+        if delete_ok:
+            for notification in notification_list:
+                await update_media_access_notification_deleted(
+                    bot,
+                    notification
+                )
 
         try:
             pending = read_pending_preview_deletions()
