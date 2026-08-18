@@ -1854,10 +1854,21 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # while the local VIP-menu preparation continues.
     answer_task = asyncio.create_task(query.answer())
 
-    await clear_last_repeat(
+    # Capture and remove the OLD repeat-message ID before starting the
+    # background delete. This prevents the task from ever reading a newer
+    # message ID that may be assigned later.
+    old_repeat_message_id = last_repeat_message.pop(
         query.message.chat_id,
-        context.bot
+        None
     )
+    if old_repeat_message_id:
+        asyncio.create_task(
+            _delete_repeat_message_background(
+                query.message.chat_id,
+                old_repeat_message_id,
+                context.bot
+            )
+        )
 
     packages = get_vip_packages_cached()["packages"]
 
@@ -4531,6 +4542,16 @@ async def clear_last_repeat(chat_id: int, bot):
             )
         except Exception:
             pass
+
+
+async def _delete_repeat_message_background(chat_id: int, message_id: int, bot):
+    try:
+        await bot.delete_message(
+            chat_id=chat_id,
+            message_id=message_id
+        )
+    except Exception:
+        pass
 
 
 async def delete_messages_after_delay(
