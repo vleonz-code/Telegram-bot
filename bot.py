@@ -9416,41 +9416,43 @@ def main():
     ))
 
     logger.info("Bot is running...")
+
+    # ============================================================
+    # VIP NAV HTTP-LAYER DIAGNOSTIC — NO BEHAVIOR CHANGE
+    # Measures only the internal PTB HTTP request duration for
+    # editMessageCaption. The original request method is preserved.
+    # ============================================================
+    try:
+        from telegram.request import HTTPXRequest as _VIP_HTTPXRequest
+
+        _vip_original_do_request = _VIP_HTTPXRequest.do_request
+
+        async def _vip_timed_do_request(self, *args, **kwargs):
+            endpoint = str(args[0]) if args else str(kwargs.get("endpoint", ""))
+            if "editMessageCaption" not in endpoint:
+                return await _vip_original_do_request(self, *args, **kwargs)
+
+            _vip_http_t0 = time.perf_counter()
+            logger.info("[VIP HTTP DIAG] editMessageCaption request_start")
+            try:
+                result = await _vip_original_do_request(self, *args, **kwargs)
+                return result
+            finally:
+                _vip_http_t1 = time.perf_counter()
+                logger.info(
+                    f"[VIP HTTP DIAG] editMessageCaption request_done "
+                    f"elapsed={_vip_http_t1 - _vip_http_t0:.6f}s"
+                )
+
+        _VIP_HTTPXRequest.do_request = _vip_timed_do_request
+        logger.info("[VIP HTTP DIAG] HTTPXRequest instrumentation installed")
+    except Exception as _vip_http_diag_error:
+        logger.warning(
+            f"[VIP HTTP DIAG] instrumentation unavailable: {_vip_http_diag_error}"
+        )
+
     app.run_polling()
 
-# ============================================================
-# VIP NAV HTTP-LAYER DIAGNOSTIC — NO BEHAVIOR CHANGE
-# Measures only the internal PTB HTTP request duration for
-# editMessageCaption. The original request method is preserved.
-# ============================================================
-try:
-    from telegram.request import HTTPXRequest as _VIP_HTTPXRequest
-
-    _vip_original_do_request = _VIP_HTTPXRequest.do_request
-
-    async def _vip_timed_do_request(self, *args, **kwargs):
-        endpoint = str(args[0]) if args else str(kwargs.get("endpoint", ""))
-        if "editMessageCaption" not in endpoint:
-            return await _vip_original_do_request(self, *args, **kwargs)
-
-        _vip_http_t0 = time.perf_counter()
-        logger.info("[VIP HTTP DIAG] editMessageCaption request_start")
-        try:
-            result = await _vip_original_do_request(self, *args, **kwargs)
-            return result
-        finally:
-            _vip_http_t1 = time.perf_counter()
-            logger.info(
-                f"[VIP HTTP DIAG] editMessageCaption request_done "
-                f"elapsed={_vip_http_t1 - _vip_http_t0:.6f}s"
-            )
-
-    _VIP_HTTPXRequest.do_request = _vip_timed_do_request
-    logger.info("[VIP HTTP DIAG] HTTPXRequest instrumentation installed")
-except Exception as _vip_http_diag_error:
-    logger.warning(
-        f"[VIP HTTP DIAG] instrumentation unavailable: {_vip_http_diag_error}"
-    )
 
 
 if __name__ == "__main__":
