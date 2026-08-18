@@ -1865,14 +1865,15 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = int(query.data.split("_")[1])
 
-    # LOG ONLY — Fire-and-Forget baseline behavior is unchanged.
+    # LOG ONLY — Fire-and-Forget baseline behavior unchanged.
     _vip_log_t0 = time.perf_counter()
-    print("[VIP NAV LOG] CLICK")
+    logger.info("[VIP NAV LOG] CLICK")
 
     answer_task = asyncio.create_task(query.answer())
     _vip_log_t1 = time.perf_counter()
-    print(
-        f"[VIP NAV LOG] answer_task_scheduled={_vip_log_t1 - _vip_log_t0:.6f}s"
+    logger.info(
+        "[VIP NAV LOG] answer_task_scheduled=%.6fs",
+        _vip_log_t1 - _vip_log_t0,
     )
 
     packages = get_vip_packages_cached()["packages"]
@@ -1889,9 +1890,11 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     package = active_packages[idx]
 
     _vip_log_t2 = time.perf_counter()
-    print(
-        f"[VIP NAV LOG] before_edit page={idx + 1}/{total} "
-        f"local_after_schedule={_vip_log_t2 - _vip_log_t1:.6f}s"
+    logger.info(
+        "[VIP NAV LOG] before_edit page=%d/%d local_after_schedule=%.6fs",
+        idx + 1,
+        total,
+        _vip_log_t2 - _vip_log_t1,
     )
 
     _vip_log_edit_start = time.perf_counter()
@@ -1908,10 +1911,12 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     _vip_log_edit_end = time.perf_counter()
-    print(
-        f"[VIP NAV LOG] edit_done page={idx + 1}/{total} "
-        f"edit_media={_vip_log_edit_end - _vip_log_edit_start:.6f}s "
-        f"handler_total={_vip_log_edit_end - _vip_log_t0:.6f}s"
+    logger.info(
+        "[VIP NAV LOG] edit_done page=%d/%d edit_media=%.6fs handler_total=%.6fs",
+        idx + 1,
+        total,
+        _vip_log_edit_end - _vip_log_edit_start,
+        _vip_log_edit_end - _vip_log_t0,
     )
 
 
