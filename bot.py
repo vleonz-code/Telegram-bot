@@ -661,6 +661,92 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
         logger.error(f"Failed to deliver album to {chat_id}: {e}")
 
         return False
+async def deliver_preview_b(bot, chat_id: int, file_ids, auto_delete=False):
+    """Standalone PREV2 delivery path. Sends the same success notice without buttons."""
+    media = build_media_group(file_ids)
+
+    if not media:
+        logger.error("One or more PREV2 FILE_ID env vars are missing.")
+        return False
+
+    try:
+        progress = await bot.send_message(
+            chat_id,
+            f"📦 Mengirim Batch 1/1 ({len(media)} media)...\nMohon tunggu..."
+        )
+
+        if len(media) == 1:
+            single = media[0]
+            if isinstance(single, InputMediaVideo):
+                sent = await bot.send_video(chat_id, video=single.media)
+            else:
+                sent = await bot.send_photo(chat_id, photo=single.media)
+            media_messages = [sent]
+        else:
+            media_messages = await bot.send_media_group(
+                chat_id,
+                media=media
+            )
+
+        # PREV2 deliberately has no inline keyboard.
+        _, success_msg = await asyncio.gather(
+            progress.delete(),
+            bot.send_message(
+                chat_id,
+                (
+                    "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
+                    f"✅ Semua {len(media)} media terkirim!"
+                ),
+                parse_mode="HTML"
+            )
+        )
+
+        delivered = [
+            msg.message_id
+            for msg in media_messages
+        ]
+        delivered.append(success_msg.message_id)
+
+        if chat_id == ADMIN_ID:
+            return True
+
+        # Keep the same delivery bookkeeping as the existing preview flow.
+        last_delivered_messages[chat_id] = delivered
+
+        if chat_id != ADMIN_ID and auto_delete:
+            pending = read_pending_preview_deletions()
+            pending.append({
+                "chat_id": chat_id,
+                "message_ids": delivered.copy(),
+            })
+            save_pending_preview_deletions(pending)
+
+        if (
+            chat_id != ADMIN_ID
+            and auto_delete
+            and read_settings()["preview_auto_delete"]
+        ):
+            old_task = preview_delete_tasks.pop(chat_id, None)
+            if old_task:
+                old_task.cancel()
+
+            task = asyncio.create_task(
+                delete_messages_after_delay(
+                    chat_id,
+                    delivered.copy(),
+                    bot,
+                    read_settings()["preview_delete_delay"]
+                )
+            )
+            preview_delete_tasks[chat_id] = task
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to deliver PREV2 to {chat_id}: {e}")
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Approved users
 # ---------------------------------------------------------------------------
@@ -1369,12 +1455,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         not settings["preview_approval_enabled"]
         or payload == DEEP_LINK_B
     ):
-        ok = await deliver_album(
-             context.bot,
-             update.effective_chat.id,
-             selected_files,
-             auto_delete
-        )
+        if payload == DEEP_LINK_B:
+            ok = await deliver_preview_b(
+                context.bot,
+                update.effective_chat.id,
+                selected_files,
+                auto_delete
+            )
+        else:
+            ok = await deliver_album(
+                context.bot,
+                update.effective_chat.id,
+                selected_files,
+                auto_delete
+            )
 
         if ok:
             save_user_to_registry(user_id, full_name, username)
