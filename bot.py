@@ -86,9 +86,6 @@ def migrate_to_volume(filename):
 # In-memory cache for vip_packages.json (deep-copied on read/write since
 # callers mutate individual package dicts in place before saving).
 _vip_packages_cache = None
-# At most one local caption-edit task is kept per VIP message. A newer tap
-# supersedes the previous task instead of allowing an edit backlog to grow.
-_vip_nav_edit_tasks = {}
 
 
 def read_vip_packages():
@@ -1917,39 +1914,13 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # are edited, so Telegram does not have to perform an editMessageMedia.
     # This tests whether the remaining roughness comes from re-processing
     # the media even when the banner itself is identical.
-    nav_key = (query.message.chat_id, query.message.message_id)
-    previous_edit_task = _vip_nav_edit_tasks.get(nav_key)
-    if previous_edit_task and not previous_edit_task.done():
-        previous_edit_task.cancel()
-        logger.info(
-            "[VIP NAV LOG] previous_edit_cancelled page=%d/%d",
-            idx + 1,
-            total,
-        )
-
-    current_edit_task = asyncio.create_task(
-        query.edit_message_caption(
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-            reply_markup=build_vip_package_keyboard(
-                idx, total, package["id"]
-            ),
-        )
+    await query.edit_message_caption(
+        caption=build_vip_package_text(package),
+        parse_mode="HTML",
+        reply_markup=build_vip_package_keyboard(
+            idx, total, package["id"]
+        ),
     )
-    _vip_nav_edit_tasks[nav_key] = current_edit_task
-
-    try:
-        await current_edit_task
-    except asyncio.CancelledError:
-        logger.info(
-            "[VIP NAV LOG] edit_superseded page=%d/%d",
-            idx + 1,
-            total,
-        )
-        return
-    finally:
-        if _vip_nav_edit_tasks.get(nav_key) is current_edit_task:
-            _vip_nav_edit_tasks.pop(nav_key, None)
 
     _vip_diag_after_edit = time.perf_counter()
     logger.info(
