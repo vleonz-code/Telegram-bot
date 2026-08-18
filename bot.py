@@ -2155,7 +2155,7 @@ async def send_qris_message(chat_id, context, package, package_id):
             f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
             "<blockquote>❝ Scan kode QR di atas untuk melakukan pembayaran, "
-            "bayar sesuai nominal paket, setelah transfer berhasil, tekan "
+            "bayar sesuai nominal paket, setelah berhasil, tekan "
             "“Sudah Transfer” untuk mengirim bukti pembayaran berupa "
             "screenshot/foto.\n\n"
             "Jika tidak jadi melakukan pembayaran, tekan “Batalkan”. ❞</blockquote>\n\n"
