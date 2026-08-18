@@ -1869,7 +1869,12 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _vip_log_t0 = time.perf_counter()
     logger.info("[VIP NAV LOG] CLICK")
 
+    _vip_diag_t0 = time.perf_counter()
     answer_task = asyncio.create_task(query.answer())
+    _vip_diag_t1 = time.perf_counter()
+    logger.info(
+        f"[VIP NAV DIAG] answer_task_created delta={_vip_diag_t1 - _vip_diag_t0:.6f}s"
+    )
     _vip_log_t1 = time.perf_counter()
     logger.info(
         "[VIP NAV LOG] answer_task_scheduled=%.6fs",
@@ -1898,6 +1903,11 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     _vip_log_edit_start = time.perf_counter()
+    _vip_diag_before_edit = time.perf_counter()
+    logger.info(
+        f"[VIP NAV DIAG] before_caption_edit "
+        f"since_answer_task={_vip_diag_before_edit - _vip_diag_t1:.6f}s"
+    )
 
     # SAME-BANNER TEST:
     # The media is intentionally kept unchanged. Only caption + keyboard
@@ -1910,6 +1920,12 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=build_vip_package_keyboard(
             idx, total, package["id"]
         ),
+    )
+    _vip_diag_after_edit = time.perf_counter()
+    logger.info(
+        f"[VIP NAV DIAG] caption_edit_done "
+        f"api_elapsed={_vip_diag_after_edit - _vip_diag_before_edit:.6f}s "
+        f"handler_since_task={_vip_diag_after_edit - _vip_diag_t1:.6f}s"
     )
 
     _vip_log_edit_end = time.perf_counter()
