@@ -464,12 +464,6 @@ admin_request_counts = {}     # user_id -> jumlah percobaan
 
 last_delivered_messages = {}
 preview_delete_tasks = {}
-# Token per-chat_id untuk cegah race condition navigasi VIP (bukan lock —
-# cuma penanda "tap mana yang paling baru", dicek sebelum kirim edit).
-vip_nav_latest = {}
-# Latest-tap cancellation: one replaceable edit task per chat.
-# No lock, queue, debounce, or wait between taps.
-vip_nav_tasks = {}
 qris_expiry_tasks = {}
 admin_order_reminder_tasks = {}
 livechat_sessions = {}
@@ -1666,13 +1660,12 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 
     if total > 1:
         # Keep the same three-button layout on every page.
-        # Navigation stops at both boundaries: page 1 cannot go backward
-        # and the last page cannot go forward. Boundary arrows are no-op.
+        # Boundary arrows remain visible but become no-op buttons.
         prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
+            f"vipnav_{idx - 1}" if idx > 0 else f"vipnav_{total - 1}"
         )
         next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_0"
         )
 
         keyboard.append([
@@ -1860,81 +1853,40 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
 
 
-async def _vipnav_edit_latest(intent, chat_id):
-    """Execute the newest VIP navigation edit; newer taps cancel this task."""
-    idx = intent["idx"]
-    total = intent["total"]
-    package = intent["package"]
-    driver_query = intent["query"]
-    _vip_log_t0 = intent["log_t0"]
-    _vip_diag_t1 = intent["diag_t1"]
-    _vip_log_edit_start = intent["log_edit_start"]
-    _vip_diag_before_edit = intent["diag_before_edit"]
-    token = intent["token"]
-
-    if vip_nav_latest.get(chat_id) != token:
-        logger.info("[VIP NAV LOG] STALE_SKIPPED page=%d/%d", idx + 1, total)
-        return
-
-    try:
-        await driver_query.edit_message_caption(
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-            reply_markup=build_vip_package_keyboard(idx, total, package["id"]),
-        )
-    except asyncio.CancelledError:
-        logger.info("[VIP NAV LOG] CANCELLED page=%d/%d", idx + 1, total)
-        raise
-    except telegram.error.BadRequest as exc:
-        if "message is not modified" in str(exc).lower():
-            logger.info("[VIP NAV LOG] duplicate edit suppressed page=%d/%d", idx + 1, total)
-            return
-        logger.exception("[VIP NAV LOG] edit_failed page=%d/%d", idx + 1, total)
-        return
-    except Exception:
-        logger.exception("[VIP NAV LOG] edit_failed page=%d/%d", idx + 1, total)
-        return
-
-    _vip_diag_after_edit = time.perf_counter()
-    logger.info(
-        f"[VIP NAV DIAG] caption_edit_done "
-        f"api_elapsed={_vip_diag_after_edit - _vip_diag_before_edit:.6f}s "
-        f"handler_since_task={_vip_diag_after_edit - _vip_diag_t1:.6f}s"
-    )
-    _vip_log_edit_end = time.perf_counter()
-    logger.info(
-        "[VIP NAV LOG] edit_done page=%d/%d edit_media=%.6fs handler_total=%.6fs",
-        idx + 1, total,
-        _vip_log_edit_end - _vip_log_edit_start,
-        _vip_log_edit_end - _vip_log_t0,
-    )
-
-
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
     if not read_settings()["join_vip_enabled"]:
-        await query.answer("⚠️ Order VIP sedang OFF.", show_alert=True)
+        await query.answer(
+            "⚠️ Order VIP sedang OFF.",
+            show_alert=True
+        )
         return
 
     idx = int(query.data.split("_")[1])
-    _vip_nav_chat_id = query.message.chat_id
-    _vip_nav_token = time.perf_counter_ns()
-    vip_nav_latest[_vip_nav_chat_id] = _vip_nav_token
 
+    # LOG ONLY — Fire-and-Forget baseline behavior unchanged.
     _vip_log_t0 = time.perf_counter()
     logger.info("[VIP NAV LOG] CLICK")
+
     _vip_diag_t0 = time.perf_counter()
-    asyncio.create_task(query.answer())
+    answer_task = asyncio.create_task(query.answer())
     _vip_diag_t1 = time.perf_counter()
     logger.info(
         f"[VIP NAV DIAG] answer_task_created delta={_vip_diag_t1 - _vip_diag_t0:.6f}s"
     )
     _vip_log_t1 = time.perf_counter()
-    logger.info("[VIP NAV LOG] answer_task_scheduled=%.6fs", _vip_log_t1 - _vip_log_t0)
+    logger.info(
+        "[VIP NAV LOG] answer_task_scheduled=%.6fs",
+        _vip_log_t1 - _vip_log_t0,
+    )
 
     packages = get_vip_packages_cached()["packages"]
-    active_packages = [p for p in packages if p.get("aktif", True)]
+    active_packages = [
+        package for package in packages
+        if package.get("aktif", True)
+    ]
+
     if not active_packages:
         return
 
@@ -1945,8 +1897,11 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _vip_log_t2 = time.perf_counter()
     logger.info(
         "[VIP NAV LOG] before_edit page=%d/%d local_after_schedule=%.6fs",
-        idx + 1, total, _vip_log_t2 - _vip_log_t1,
+        idx + 1,
+        total,
+        _vip_log_t2 - _vip_log_t1,
     )
+
     _vip_log_edit_start = time.perf_counter()
     _vip_diag_before_edit = time.perf_counter()
     logger.info(
@@ -1954,34 +1909,34 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"since_answer_task={_vip_diag_before_edit - _vip_diag_t1:.6f}s"
     )
 
-    intent = {
-        "token": _vip_nav_token,
-        "idx": idx,
-        "total": total,
-        "package": package,
-        "query": query,
-        "log_t0": _vip_log_t0,
-        "diag_t1": _vip_diag_t1,
-        "log_edit_start": _vip_log_edit_start,
-        "diag_before_edit": _vip_diag_before_edit,
-    }
+    # SAME-BANNER TEST:
+    # The media is intentionally kept unchanged. Only caption + keyboard
+    # are edited, so Telegram does not have to perform an editMessageMedia.
+    # This tests whether the remaining roughness comes from re-processing
+    # the media even when the banner itself is identical.
+    await query.edit_message_caption(
+        caption=build_vip_package_text(package),
+        parse_mode="HTML",
+        reply_markup=build_vip_package_keyboard(
+            idx, total, package["id"]
+        ),
+    )
+    _vip_diag_after_edit = time.perf_counter()
+    logger.info(
+        f"[VIP NAV DIAG] caption_edit_done "
+        f"api_elapsed={_vip_diag_after_edit - _vip_diag_before_edit:.6f}s "
+        f"handler_since_task={_vip_diag_after_edit - _vip_diag_t1:.6f}s"
+    )
 
-    previous_task = vip_nav_tasks.get(_vip_nav_chat_id)
-    if previous_task is not None and not previous_task.done():
-        previous_task.cancel()
-        logger.info(
-            "[VIP NAV LOG] CANCEL_PREVIOUS chat=%s page=%d/%d",
-            _vip_nav_chat_id, idx + 1, total,
-        )
+    _vip_log_edit_end = time.perf_counter()
+    logger.info(
+        "[VIP NAV LOG] edit_done page=%d/%d edit_media=%.6fs handler_total=%.6fs",
+        idx + 1,
+        total,
+        _vip_log_edit_end - _vip_log_edit_start,
+        _vip_log_edit_end - _vip_log_t0,
+    )
 
-    new_task = asyncio.create_task(_vipnav_edit_latest(intent, _vip_nav_chat_id))
-    vip_nav_tasks[_vip_nav_chat_id] = new_task
-
-    def _vipnav_task_done(done_task, chat_id=_vip_nav_chat_id):
-        if vip_nav_tasks.get(chat_id) is done_task:
-            vip_nav_tasks.pop(chat_id, None)
-
-    new_task.add_done_callback(_vipnav_task_done)
 
 
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
