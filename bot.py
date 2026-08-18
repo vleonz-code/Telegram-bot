@@ -1086,8 +1086,9 @@ async def update_media_access_notification_deleted(
 
 async def notify_admin_prev2(bot, full_name: str, username: str, user_id: int):
     text = (
-        f"📱 *Aplikasi VIP Diakses*\n"
-        f"👤 {full_name} 🆔 `{user_id}`"
+        f"📱 *APK VIP Diakses*\n\n"
+        f"👤 Nama: {full_name}\n"
+        f"🆔 User ID: `{user_id}`"
     )
     try:
         await bot.send_message(
