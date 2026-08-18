@@ -25,6 +25,35 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+
+# VIP NAV race-condition guard.
+# Per-message state prevents duplicate/stale callbacks from issuing a second
+# identical edit, while preserving the existing fire-and-forget answer path.
+_vip_nav_states = {}
+
+def _vip_nav_state_for(query):
+    message = query.message
+    key = (message.chat_id, message.message_id)
+    state = _vip_nav_states.get(key)
+    if state is None:
+        current_idx = None
+        markup = getattr(message, "reply_markup", None)
+        for row in getattr(markup, "inline_keyboard", []) or []:
+            for button in row:
+                match = re.fullmatch(r"(\d+)/(\d+)", str(getattr(button, "text", "")))
+                if match:
+                    current_idx = int(match.group(1)) - 1
+                    break
+            if current_idx is not None:
+                break
+        state = {
+            "current_idx": current_idx,
+            "seq": 0,
+            "lock": asyncio.Lock(),
+        }
+        _vip_nav_states[key] = state
+    return key, state
+
 DATA_DIR = "/data"
 APP_DIR = os.path.dirname(__file__)
 
@@ -1866,6 +1895,18 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = int(query.data.split("_")[1])
 
+    nav_key, nav_state = _vip_nav_state_for(query)
+    if nav_state["current_idx"] == idx:
+        logger.info(
+            "[VIP NAV RACE] duplicate/stale target page=%d ignored",
+            idx + 1,
+        )
+        asyncio.create_task(query.answer())
+        return
+
+    nav_state["seq"] += 1
+    nav_seq = nav_state["seq"]
+
     # LOG ONLY — Fire-and-Forget baseline behavior unchanged.
     _vip_log_t0 = time.perf_counter()
     logger.info("[VIP NAV LOG] CLICK")
@@ -1913,15 +1954,36 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # SAME-BANNER TEST:
     # The media is intentionally kept unchanged. Only caption + keyboard
     # are edited, so Telegram does not have to perform an editMessageMedia.
-    # This tests whether the remaining roughness comes from re-processing
-    # the media even when the banner itself is identical.
-    await query.edit_message_caption(
-        caption=build_vip_package_text(package),
-        parse_mode="HTML",
-        reply_markup=build_vip_package_keyboard(
-            idx, total, package["id"]
-        ),
-    )
+    # Serialize only the actual edit and discard callbacks that became stale
+    # while another navigation was being processed.
+    async with nav_state["lock"]:
+        if nav_seq != nav_state["seq"]:
+            logger.info(
+                "[VIP NAV RACE] stale callback discarded target_page=%d seq=%d latest=%d",
+                idx + 1, nav_seq, nav_state["seq"],
+            )
+            return
+
+        try:
+            await query.edit_message_caption(
+                caption=build_vip_package_text(package),
+                parse_mode="HTML",
+                reply_markup=build_vip_package_keyboard(
+                    idx, total, package["id"]
+                ),
+            )
+        except telegram.error.BadRequest as exc:
+            if "message is not modified" in str(exc).lower():
+                nav_state["current_idx"] = idx
+                logger.info(
+                    "[VIP NAV RACE] duplicate edit suppressed page=%d",
+                    idx + 1,
+                )
+                return
+            raise
+
+        nav_state["current_idx"] = idx
+
     _vip_diag_after_edit = time.perf_counter()
     logger.info(
         f"[VIP NAV DIAG] caption_edit_done "
