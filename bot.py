@@ -67,7 +67,6 @@ PENDING_ORDERS_FILE = os.path.join(DATA_DIR, "pending_orders.json")
 PAYMENT_LOCK_FILE = os.path.join(DATA_DIR, "payment_lock.json")
 VIP_ACTIVITY_FILE = os.path.join(DATA_DIR, "vip_activity.json")
 PENDING_PREVIEW_DELETIONS_FILE = os.path.join(DATA_DIR, "pending_preview_deletions.json")
-PREVIEW_ADMIN_ACTIVITY_FILE = os.path.join(DATA_DIR, "preview_admin_activity.json")
 FILE_MANAGER_BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 DEFAULT_VIP_MENU_DESCRIPTION = (
     "✨ Pilih paket VIP yang kamu suka.\n"
@@ -624,15 +623,10 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
 
         if chat_id != ADMIN_ID and auto_delete:
             pending = read_pending_preview_deletions()
-            pending_entry = {
+            pending.append({
                 "chat_id": chat_id,
                 "message_ids": preview_messages,
-            }
-            if settings["preview_auto_delete"]:
-                pending_entry["delete_at"] = (
-                    time.time() + settings["preview_delete_delay"]
-                )
-            pending.append(pending_entry)
+            })
             save_pending_preview_deletions(pending)
 
         if (
@@ -716,7 +710,9 @@ async def deliver_preview_b(bot, chat_id: int, file_ids, auto_delete=False):
         if chat_id == ADMIN_ID:
             return True
 
-        # PREV2 is deliberately isolated from Deeplink A delivery state.
+        # Keep the same delivery bookkeeping as the existing preview flow.
+        last_delivered_messages[chat_id] = delivered
+
         if chat_id != ADMIN_ID and auto_delete:
             pending = read_pending_preview_deletions()
             pending.append({
@@ -1042,16 +1038,14 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
         f"Time: {now}"
     )
     try:
-        msg = await bot.send_message(
+        await bot.send_message(
             chat_id=ADMIN_ID,
             text=text,
             parse_mode="Markdown",
             disable_notification=True
         )
-        return msg.message_id
     except Exception as e:
         logger.error(f"Failed to notify admin: {e}")
-        return None
 
 
 async def notify_admin_prev2(bot, full_name: str, username: str, user_id: int):
@@ -1068,92 +1062,6 @@ async def notify_admin_prev2(bot, full_name: str, username: str, user_id: int):
         )
     except Exception as e:
         logger.error(f"Failed to notify admin PREV2: {e}")
-
-
-def read_preview_admin_activity() -> dict:
-    try:
-        if not os.path.exists(PREVIEW_ADMIN_ACTIVITY_FILE):
-            return {}
-        with open(PREVIEW_ADMIN_ACTIVITY_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, dict) else {}
-    except Exception as e:
-        logger.warning(f"Preview admin activity read error: {e}")
-        return {}
-
-
-def save_preview_admin_activity(data: dict):
-    try:
-        tmp = PREVIEW_ADMIN_ACTIVITY_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, PREVIEW_ADMIN_ACTIVITY_FILE)
-    except Exception as e:
-        logger.warning(f"Preview admin activity write error: {e}")
-
-
-def save_preview_admin_activity_record(
-    chat_id: int,
-    admin_message_id: int,
-    message_ids: list,
-    full_name: str,
-    username: str,
-    user_id: int,
-    accessed_at: str,
-):
-    data = read_preview_admin_activity()
-    data[str(chat_id)] = {
-        "admin_message_id": admin_message_id,
-        "message_ids": list(message_ids),
-        "full_name": full_name,
-        "username": username,
-        "user_id": user_id,
-        "accessed_at": accessed_at,
-        "status": "active",
-    }
-    save_preview_admin_activity(data)
-
-
-async def mark_preview_admin_activity_deleted(
-    bot, chat_id: int, message_ids=None
-):
-    data = read_preview_admin_activity()
-    record = data.get(str(chat_id))
-    if not record or record.get("status") == "deleted":
-        return False
-
-    stored_ids = record.get("message_ids") or []
-    if message_ids is not None:
-        if set(stored_ids) != set(message_ids):
-            return False
-
-    admin_message_id = record.get("admin_message_id")
-    if admin_message_id:
-        text = (
-            "📮 *Album Dihapus*\n\n"
-            f"👤 Name: {record.get('full_name', '-')}\n"
-            f"🔗 Username: {record.get('username', '-')}\n"
-            f"🆔 User ID: `{record.get('user_id', '-')}`\n\n"
-            f"Time: {record.get('accessed_at', '-') }"
-        )
-        try:
-            await bot.edit_message_text(
-                chat_id=ADMIN_ID,
-                message_id=admin_message_id,
-                text=text,
-                parse_mode="Markdown",
-                disable_web_page_preview=True,
-            )
-        except Exception as e:
-            logger.warning(
-                f"Failed to update preview admin activity "
-                f"for {chat_id}: {e}"
-            )
-
-    record["status"] = "deleted"
-    data[str(chat_id)] = record
-    save_preview_admin_activity(data)
-    return True
 
 # In-memory cache for VIP admin activity.
 # Keeps the existing workflow and persistent JSON storage intact.
@@ -1393,7 +1301,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     settings = read_settings()
 
     # Already approved
-    if user_id in read_approved() and payload == DEEP_LINK_A:
+    if user_id in read_approved():
 
         if user_id not in admin_request_counts:
             admin_request_counts[user_id] = 1
@@ -1496,11 +1404,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
             if old_messages:
-                await mark_preview_admin_activity_deleted(
-                    context.bot,
-                    update.effective_chat.id,
-                    old_messages,
-                )
                 for message_id in old_messages:
                     try:
                         await context.bot.delete_message(
@@ -1575,25 +1478,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     context.bot, full_name, username, user_id
                 )
             else:
-                admin_message_id = await notify_admin(
+                await notify_admin(
                     context.bot, full_name, username, user_id
                 )
-                if admin_message_id:
-                    accessed_at = datetime.now(WIB).strftime(
-                        "%d %b %Y, %H:%M:%S WIB"
-                    )
-                    delivered_ids = last_delivered_messages.get(
-                        update.effective_chat.id, []
-                    )
-                    save_preview_admin_activity_record(
-                        update.effective_chat.id,
-                        admin_message_id,
-                        delivered_ids,
-                        full_name,
-                        username,
-                        user_id,
-                        accessed_at,
-                    )
 
             if payload == DEEP_LINK_A:
                 approved = read_approved()
@@ -2042,11 +1929,6 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
     old_messages = last_delivered_messages.pop(chat_id, None)
     if old_messages:
-        await mark_preview_admin_activity_deleted(
-            context.bot,
-            chat_id,
-            old_messages,
-        )
         try:
             await context.bot.delete_messages(
                 chat_id=chat_id,
@@ -4598,22 +4480,13 @@ async def delete_messages_after_delay(
 
         await asyncio.sleep(delay)
 
-        await asyncio.gather(
-            *[
-                bot.delete_message(
-                    chat_id=chat_id,
-                    message_id=message_id
-                )
-                for message_id in message_ids
-            ],
-            return_exceptions=True
-        )
-
-        await mark_preview_admin_activity_deleted(
-            bot,
-            chat_id,
-            message_ids,
-        )
+        try:
+            await bot.delete_messages(
+                chat_id=chat_id,
+                message_ids=message_ids
+            )
+        except Exception:
+            pass
 
         try:
             pending = read_pending_preview_deletions()
@@ -8922,54 +8795,6 @@ async def set_admin_commands(app):
     )
 
 
-async def restore_preview_delete_tasks(bot):
-    """Restore active A preview deletion timers after a bot restart."""
-    settings = read_settings()
-    if not settings["preview_auto_delete"]:
-        return
-
-    pending = read_pending_preview_deletions()
-    grouped = {}
-    now = time.time()
-
-    for entry in pending:
-        chat_id = entry.get("chat_id")
-        message_ids = entry.get("message_ids")
-        if not chat_id or not message_ids:
-            continue
-
-        delete_at = entry.get("delete_at")
-        if delete_at is None:
-            delete_at = now + settings["preview_delete_delay"]
-            entry["delete_at"] = delete_at
-
-        grouped.setdefault(chat_id, []).append((message_ids, delete_at))
-
-    save_pending_preview_deletions(pending)
-
-    for chat_id, groups in grouped.items():
-        if chat_id in preview_delete_tasks:
-            continue
-
-        combined_message_ids = []
-        earliest_delete_at = None
-        for message_ids, delete_at in groups:
-            combined_message_ids.extend(message_ids)
-            if earliest_delete_at is None or delete_at < earliest_delete_at:
-                earliest_delete_at = delete_at
-
-        remaining = max(0, (earliest_delete_at or now) - time.time())
-        preview_delete_tasks[chat_id] = asyncio.create_task(
-            delete_messages_after_delay(
-                chat_id,
-                combined_message_ids,
-                bot,
-                remaining,
-                pending_message_groups=[group[0] for group in groups],
-            )
-        )
-
-
 def main():
     token = os.environ.get("BOT_TOKEN")
     if not token:
@@ -8991,7 +8816,6 @@ def main():
                 schedule_qris_expiry(app, _order_id, float(_expires_at))
 
         await set_admin_commands(app)
-        await restore_preview_delete_tasks(app.bot)
         app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
         app.bot_data["pre_upload_cleanup_tasks"] = [
             asyncio.create_task(pre_upload_cleanup_worker(app.bot))
