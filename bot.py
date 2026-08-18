@@ -1885,17 +1885,36 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     idx = max(0, min(idx, total - 1))
     package = active_packages[idx]
 
-    # Keep the existing media replacement unchanged.
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=get_vip_package_banner(package),
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-        ),
-        reply_markup=build_vip_package_keyboard(
-            idx, total, package["id"]
-        ),
+    target_banner = get_vip_package_banner(package)
+    new_caption = build_vip_package_text(package)
+    new_keyboard = build_vip_package_keyboard(
+        idx, total, package["id"]
     )
+
+    # If this page uses the same Telegram photo already displayed, avoid the
+    # heavier media replacement and update only caption + keyboard.
+    current_photo = (
+        query.message.photo[-1].file_id
+        if query.message.photo
+        else None
+    )
+
+    if current_photo and current_photo == target_banner:
+        await query.edit_message_caption(
+            caption=new_caption,
+            parse_mode="HTML",
+            reply_markup=new_keyboard,
+        )
+    else:
+        # Different banner: retain the existing media-change path.
+        await query.edit_message_media(
+            media=InputMediaPhoto(
+                media=target_banner,
+                caption=new_caption,
+                parse_mode="HTML",
+            ),
+            reply_markup=new_keyboard,
+        )
 
 
 
