@@ -1660,12 +1660,13 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 
     if total > 1:
         # Keep the same three-button layout on every page.
-        # Boundary arrows remain visible but become no-op buttons.
+        # Navigation stops at both boundaries: page 1 cannot go backward
+        # and the last page cannot go forward. Boundary arrows are no-op.
         prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else f"vipnav_{total - 1}"
+            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
         )
         next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_0"
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
         )
 
         keyboard.append([
