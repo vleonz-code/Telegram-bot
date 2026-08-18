@@ -1662,10 +1662,10 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
         # Keep the same three-button layout on every page.
         # Boundary arrows remain visible but become no-op buttons.
         prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
+            f"vipnav_{idx - 1}" if idx > 0 else f"vipnav_{total - 1}"
         )
         next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_0"
         )
 
         keyboard.append([
@@ -1865,12 +1865,15 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = int(query.data.split("_")[1])
 
-    # Acknowledge the callback immediately. Telegram keeps the button
-    # loading indicator visible until answerCallbackQuery completes.
-    # TEMPORARY DIAGNOSTIC ONLY — behavior unchanged.
-    _vip_t0 = time.perf_counter()
-    await query.answer()
-    _vip_t1 = time.perf_counter()
+    # LOG ONLY — Fire-and-Forget baseline behavior is unchanged.
+    _vip_log_t0 = time.perf_counter()
+    print("[VIP NAV LOG] CLICK")
+
+    answer_task = asyncio.create_task(query.answer())
+    _vip_log_t1 = time.perf_counter()
+    print(
+        f"[VIP NAV LOG] answer_task_scheduled={_vip_log_t1 - _vip_log_t0:.6f}s"
+    )
 
     packages = get_vip_packages_cached()["packages"]
     active_packages = [
@@ -1882,13 +1885,16 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     total = len(active_packages)
-    # Do not wrap navigation: first page cannot go backward,
-    # and last page cannot go forward. Buttons remain visible;
-    # boundary buttons use the existing no-op callback.
-    idx = max(0, min(idx, total - 1))
+    idx = idx % total
     package = active_packages[idx]
 
-    _vip_t2 = time.perf_counter()
+    _vip_log_t2 = time.perf_counter()
+    print(
+        f"[VIP NAV LOG] before_edit page={idx + 1}/{total} "
+        f"local_after_schedule={_vip_log_t2 - _vip_log_t1:.6f}s"
+    )
+
+    _vip_log_edit_start = time.perf_counter()
 
     await query.edit_message_media(
         media=InputMediaPhoto(
@@ -1901,14 +1907,11 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ),
     )
 
-    _vip_t3 = time.perf_counter()
-
+    _vip_log_edit_end = time.perf_counter()
     print(
-        "[VIP FULL TIMING] "
-        f"answer={_vip_t1 - _vip_t0:.3f}s | "
-        f"local_after_answer={_vip_t2 - _vip_t1:.3f}s | "
-        f"edit_media={_vip_t3 - _vip_t2:.3f}s | "
-        f"handler_total={_vip_t3 - _vip_t0:.3f}s"
+        f"[VIP NAV LOG] edit_done page={idx + 1}/{total} "
+        f"edit_media={_vip_log_edit_end - _vip_log_edit_start:.6f}s "
+        f"handler_total={_vip_log_edit_end - _vip_log_t0:.6f}s"
     )
 
 
@@ -8615,26 +8618,126 @@ async def _save_pending_order_state(order_id):
             return
 
 
-def _cancel_admin_order_reminder(order_id):
-    task = admin_order_reminder_tasks.pop(order_id, None)
-    if task and not task.done():
-        task.cancel()
+async def admin_order_reminder_manager(app):
+    """Single lightweight reminder manager for all pending admin orders."""
+    try:
+        while True:
+            await asyncio.sleep(ADMIN_ORDER_ALERT_INTERVAL)
+
+            for order_id, data in list(upload_waiting.items()):
+                if not data or not (
+                    data.get("photo_uploaded") is True
+                    and data.get("photo_file_id")
+                    and (
+                        data.get("processing") is True
+                        or data.get("admin_verification_message_id")
+                        or data.get("qris_msg_id")
+                    )
+                ):
+                    continue
+
+                message_id = data.get("admin_verification_message_id")
+                keyboard = InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("✅ Terima", callback_data=f"pay_ok|{order_id}"),
+                        InlineKeyboardButton("📷 Foto Ulang", callback_data=f"pay_no|{order_id}"),
+                    ],
+                    [InlineKeyboardButton("🚫 Ban User", callback_data=f"pay_ban|{order_id}")],
+                ])
+
+                try:
+                    timestamp = datetime.now(WIB).strftime("%H:%M:%S WIB")
+                    if message_id:
+                        try:
+                            await app.bot.edit_message_text(
+                                chat_id=ADMIN_ID,
+                                message_id=message_id,
+                                text=(
+                                    "📨 <b>Order Masuk</b>\n\n"
+                                    f"🔔 Pengingat • {timestamp}"
+                                ),
+                                parse_mode="HTML",
+                                reply_markup=keyboard,
+                            )
+                            continue
+                        except Exception:
+                            pass
+
+                    msg = await app.bot.send_message(
+                        chat_id=ADMIN_ID,
+                        text=(
+                            "📨 <b>Order Masuk</b>\n\n"
+                            f"🔔 Pengingat • {timestamp}"
+                        ),
+                        parse_mode="HTML",
+                        reply_markup=keyboard,
+                    )
+                    data["admin_verification_message_id"] = msg.message_id
+                    await _save_pending_order_state(order_id)
+
+                except Exception:
+                    # Failure for one order must never stop the manager.
+                    continue
+
+    except asyncio.CancelledError:
+        raise
 
 
 def start_admin_order_reminder(app, order_id):
-    # Periodic admin-order reminder intentionally disabled.
+    # Compatibility shim: the single manager handles all pending orders.
     return
 
 
 def _cancel_admin_order_reminder(order_id):
-    # Periodic admin-order reminder intentionally disabled.
+    # Compatibility shim for existing payment callbacks.
     return
 
 
+async def ensure_admin_order_reminders(app):
+    """Ensure every still-pending proof order has one live reminder watcher.
 
-# ---------------------------------------------------------------------------
-# AUTO CHANNEL POST
-# ---------------------------------------------------------------------------
+    This is intentionally idempotent: it does not restart an existing watcher.
+    It also repairs orders that were persisted before a restart, or whose initial
+    admin notification failed before the watcher could be started.
+    """
+    for order_id, data in list(upload_waiting.items()):
+        if not (
+            data.get("photo_uploaded") is True
+            and data.get("photo_file_id")
+            and (
+                data.get("processing") is True
+                or data.get("admin_verification_message_id")
+                or data.get("qris_msg_id")
+            )
+        ):
+            continue
+
+        task = admin_order_reminder_tasks.get(order_id)
+        if task and not task.done():
+            continue
+
+        message_id = data.get("admin_verification_message_id")
+        if not message_id:
+            keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("✅ Terima", callback_data=f"pay_ok|{order_id}"),
+                    InlineKeyboardButton("📷 Foto Ulang", callback_data=f"pay_no|{order_id}"),
+                ],
+                [InlineKeyboardButton("🚫 Ban User", callback_data=f"pay_ban|{order_id}")],
+            ])
+            try:
+                msg = await app.bot.send_message(
+                    chat_id=ADMIN_ID,
+                    text="📨 <b>Order Masuk</b>",
+                    parse_mode="HTML",
+                    reply_markup=keyboard,
+                )
+                data["admin_verification_message_id"] = msg.message_id
+                await _save_pending_order_state(order_id)
+            except Exception:
+                continue
+
+        start_admin_order_reminder(app, order_id)
 
 
 async def channel_auto_post_loop(app):
@@ -8729,6 +8832,10 @@ def main():
             ):
                 schedule_qris_expiry(app, _order_id, float(_expires_at))
 
+        await ensure_admin_order_reminders(app)
+        app.bot_data["admin_order_reminder_manager_task"] = asyncio.create_task(
+            admin_order_reminder_manager(app)
+        )
         await set_admin_commands(app)
         app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
         app.bot_data["pre_upload_cleanup_tasks"] = [
@@ -8742,6 +8849,14 @@ def main():
             task.cancel()
             try:
                 await task
+            except asyncio.CancelledError:
+                pass
+
+        reminder_manager_task = app.bot_data.get("admin_order_reminder_manager_task")
+        if reminder_manager_task:
+            reminder_manager_task.cancel()
+            try:
+                await reminder_manager_task
             except asyncio.CancelledError:
                 pass
 
