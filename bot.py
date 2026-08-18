@@ -1662,10 +1662,10 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
         # Keep the same three-button layout on every page.
         # Boundary arrows remain visible but become no-op buttons.
         prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else f"vipnav_{total - 1}"
+            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
         )
         next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_0"
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
         )
 
         keyboard.append([
@@ -1865,21 +1865,9 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = int(query.data.split("_")[1])
 
-    # LOG ONLY — Fire-and-Forget baseline behavior unchanged.
-    _vip_log_t0 = time.perf_counter()
-    logger.info("[VIP NAV LOG] CLICK")
-
-    _vip_diag_t0 = time.perf_counter()
-    answer_task = asyncio.create_task(query.answer())
-    _vip_diag_t1 = time.perf_counter()
-    logger.info(
-        f"[VIP NAV DIAG] answer_task_created delta={_vip_diag_t1 - _vip_diag_t0:.6f}s"
-    )
-    _vip_log_t1 = time.perf_counter()
-    logger.info(
-        "[VIP NAV LOG] answer_task_scheduled=%.6fs",
-        _vip_log_t1 - _vip_log_t0,
-    )
+    # Acknowledge the callback immediately. Telegram keeps the button
+    # loading indicator visible until answerCallbackQuery completes.
+    await query.answer()
 
     packages = get_vip_packages_cached()["packages"]
     active_packages = [
@@ -1891,51 +1879,22 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     total = len(active_packages)
-    idx = idx % total
+    # Do not wrap navigation: first page cannot go backward,
+    # and last page cannot go forward. Buttons remain visible;
+    # boundary buttons use the existing no-op callback.
+    idx = max(0, min(idx, total - 1))
     package = active_packages[idx]
 
-    _vip_log_t2 = time.perf_counter()
-    logger.info(
-        "[VIP NAV LOG] before_edit page=%d/%d local_after_schedule=%.6fs",
-        idx + 1,
-        total,
-        _vip_log_t2 - _vip_log_t1,
-    )
-
-    _vip_log_edit_start = time.perf_counter()
-    _vip_diag_before_edit = time.perf_counter()
-    logger.info(
-        f"[VIP NAV DIAG] before_caption_edit "
-        f"since_answer_task={_vip_diag_before_edit - _vip_diag_t1:.6f}s"
-    )
-
-    # SAME-BANNER TEST:
-    # The media is intentionally kept unchanged. Only caption + keyboard
-    # are edited, so Telegram does not have to perform an editMessageMedia.
-    # This tests whether the remaining roughness comes from re-processing
-    # the media even when the banner itself is identical.
-    await query.edit_message_caption(
-        caption=build_vip_package_text(package),
-        parse_mode="HTML",
+    # Keep the existing media replacement unchanged.
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
+            parse_mode="HTML",
+        ),
         reply_markup=build_vip_package_keyboard(
             idx, total, package["id"]
         ),
-    )
-
-    _vip_diag_after_edit = time.perf_counter()
-    logger.info(
-        f"[VIP NAV DIAG] caption_edit_done "
-        f"api_elapsed={_vip_diag_after_edit - _vip_diag_before_edit:.6f}s "
-        f"handler_since_task={_vip_diag_after_edit - _vip_diag_t1:.6f}s"
-    )
-
-    _vip_log_edit_end = time.perf_counter()
-    logger.info(
-        "[VIP NAV LOG] edit_done page=%d/%d edit_media=%.6fs handler_total=%.6fs",
-        idx + 1,
-        total,
-        _vip_log_edit_end - _vip_log_edit_start,
-        _vip_log_edit_end - _vip_log_t0,
     )
 
 
@@ -8642,126 +8601,26 @@ async def _save_pending_order_state(order_id):
             return
 
 
-async def admin_order_reminder_manager(app):
-    """Single lightweight reminder manager for all pending admin orders."""
-    try:
-        while True:
-            await asyncio.sleep(ADMIN_ORDER_ALERT_INTERVAL)
-
-            for order_id, data in list(upload_waiting.items()):
-                if not data or not (
-                    data.get("photo_uploaded") is True
-                    and data.get("photo_file_id")
-                    and (
-                        data.get("processing") is True
-                        or data.get("admin_verification_message_id")
-                        or data.get("qris_msg_id")
-                    )
-                ):
-                    continue
-
-                message_id = data.get("admin_verification_message_id")
-                keyboard = InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton("✅ Terima", callback_data=f"pay_ok|{order_id}"),
-                        InlineKeyboardButton("📷 Foto Ulang", callback_data=f"pay_no|{order_id}"),
-                    ],
-                    [InlineKeyboardButton("🚫 Ban User", callback_data=f"pay_ban|{order_id}")],
-                ])
-
-                try:
-                    timestamp = datetime.now(WIB).strftime("%H:%M:%S WIB")
-                    if message_id:
-                        try:
-                            await app.bot.edit_message_text(
-                                chat_id=ADMIN_ID,
-                                message_id=message_id,
-                                text=(
-                                    "📨 <b>Order Masuk</b>\n\n"
-                                    f"🔔 Pengingat • {timestamp}"
-                                ),
-                                parse_mode="HTML",
-                                reply_markup=keyboard,
-                            )
-                            continue
-                        except Exception:
-                            pass
-
-                    msg = await app.bot.send_message(
-                        chat_id=ADMIN_ID,
-                        text=(
-                            "📨 <b>Order Masuk</b>\n\n"
-                            f"🔔 Pengingat • {timestamp}"
-                        ),
-                        parse_mode="HTML",
-                        reply_markup=keyboard,
-                    )
-                    data["admin_verification_message_id"] = msg.message_id
-                    await _save_pending_order_state(order_id)
-
-                except Exception:
-                    # Failure for one order must never stop the manager.
-                    continue
-
-    except asyncio.CancelledError:
-        raise
+def _cancel_admin_order_reminder(order_id):
+    task = admin_order_reminder_tasks.pop(order_id, None)
+    if task and not task.done():
+        task.cancel()
 
 
 def start_admin_order_reminder(app, order_id):
-    # Compatibility shim: the single manager handles all pending orders.
+    # Periodic admin-order reminder intentionally disabled.
     return
 
 
 def _cancel_admin_order_reminder(order_id):
-    # Compatibility shim for existing payment callbacks.
+    # Periodic admin-order reminder intentionally disabled.
     return
 
 
-async def ensure_admin_order_reminders(app):
-    """Ensure every still-pending proof order has one live reminder watcher.
 
-    This is intentionally idempotent: it does not restart an existing watcher.
-    It also repairs orders that were persisted before a restart, or whose initial
-    admin notification failed before the watcher could be started.
-    """
-    for order_id, data in list(upload_waiting.items()):
-        if not (
-            data.get("photo_uploaded") is True
-            and data.get("photo_file_id")
-            and (
-                data.get("processing") is True
-                or data.get("admin_verification_message_id")
-                or data.get("qris_msg_id")
-            )
-        ):
-            continue
-
-        task = admin_order_reminder_tasks.get(order_id)
-        if task and not task.done():
-            continue
-
-        message_id = data.get("admin_verification_message_id")
-        if not message_id:
-            keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("✅ Terima", callback_data=f"pay_ok|{order_id}"),
-                    InlineKeyboardButton("📷 Foto Ulang", callback_data=f"pay_no|{order_id}"),
-                ],
-                [InlineKeyboardButton("🚫 Ban User", callback_data=f"pay_ban|{order_id}")],
-            ])
-            try:
-                msg = await app.bot.send_message(
-                    chat_id=ADMIN_ID,
-                    text="📨 <b>Order Masuk</b>",
-                    parse_mode="HTML",
-                    reply_markup=keyboard,
-                )
-                data["admin_verification_message_id"] = msg.message_id
-                await _save_pending_order_state(order_id)
-            except Exception:
-                continue
-
-        start_admin_order_reminder(app, order_id)
+# ---------------------------------------------------------------------------
+# AUTO CHANNEL POST
+# ---------------------------------------------------------------------------
 
 
 async def channel_auto_post_loop(app):
@@ -8856,10 +8715,6 @@ def main():
             ):
                 schedule_qris_expiry(app, _order_id, float(_expires_at))
 
-        await ensure_admin_order_reminders(app)
-        app.bot_data["admin_order_reminder_manager_task"] = asyncio.create_task(
-            admin_order_reminder_manager(app)
-        )
         await set_admin_commands(app)
         app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
         app.bot_data["pre_upload_cleanup_tasks"] = [
@@ -8873,14 +8728,6 @@ def main():
             task.cancel()
             try:
                 await task
-            except asyncio.CancelledError:
-                pass
-
-        reminder_manager_task = app.bot_data.get("admin_order_reminder_manager_task")
-        if reminder_manager_task:
-            reminder_manager_task.cancel()
-            try:
-                await reminder_manager_task
             except asyncio.CancelledError:
                 pass
 
@@ -9075,8 +8922,7 @@ def main():
     app.add_handler(
     CallbackQueryHandler(
         vipnav_callback,
-        pattern=r"^vipnav_\d+$",
-        block=False
+        pattern=r"^vipnav_\d+$"
     ))
     app.add_handler(
     CallbackQueryHandler(
@@ -9418,74 +9264,7 @@ def main():
     ))
 
     logger.info("Bot is running...")
-
-    # ============================================================
-    # VIP NAV HTTP-LAYER DIAGNOSTIC — NO BEHAVIOR CHANGE
-    # Measures only the internal PTB HTTP request duration for
-    # editMessageCaption. The original request method is preserved.
-    # ============================================================
-    try:
-        from telegram.request import HTTPXRequest as _VIP_HTTPXRequest
-
-        _vip_original_do_request = _VIP_HTTPXRequest.do_request
-
-        async def _vip_timed_do_request(
-            self,
-            url,
-            method,
-            request_data=None,
-            read_timeout=None,
-            write_timeout=None,
-            connect_timeout=None,
-            pool_timeout=None,
-        ):
-            endpoint = str(url)
-
-            if "editmessagecaption" not in endpoint.lower():
-                return await _vip_original_do_request(
-                    self,
-                    url,
-                    method,
-                    request_data,
-                    read_timeout,
-                    write_timeout,
-                    connect_timeout,
-                    pool_timeout,
-                )
-
-            _vip_http_t0 = time.perf_counter()
-            logger.info(
-                f"[VIP HTTP DIAG] editMessageCaption request_start "
-                f"url={endpoint}"
-            )
-            try:
-                return await _vip_original_do_request(
-                    self,
-                    url,
-                    method,
-                    request_data,
-                    read_timeout,
-                    write_timeout,
-                    connect_timeout,
-                    pool_timeout,
-                )
-            finally:
-                _vip_http_t1 = time.perf_counter()
-                logger.info(
-                    f"[VIP HTTP DIAG] editMessageCaption request_done "
-                    f"elapsed={_vip_http_t1 - _vip_http_t0:.6f}s"
-                )
-
-        _VIP_HTTPXRequest.do_request = _vip_timed_do_request
-        logger.info("[VIP HTTP DIAG] HTTPXRequest instrumentation installed")
-    except Exception as _vip_http_diag_error:
-        logger.warning(
-            f"[VIP HTTP DIAG] instrumentation unavailable: {_vip_http_diag_error}"
-        )
-
     app.run_polling()
-
-
 
 if __name__ == "__main__":
     main()
