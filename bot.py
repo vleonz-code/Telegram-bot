@@ -8316,7 +8316,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 chat_id=user_id,
                 text=(
                     "<strong>🎉 PEMBAYARAN BERHASIL!</strong>\n\n"
-                    "✨ Akses VIP kamu sudah siap.\n\n"
+                    "✨ VIP kamu berhasil dibuat.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
                     "⚠️ Jangan bagikan akses ini."
                 ),
