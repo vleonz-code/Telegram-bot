@@ -4738,7 +4738,7 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         "</pre>"
     )
 
-    keyboard = get_adminvip_main_keyboard_prebuilt()
+    keyboard = build_adminvip_keyboard()
 
     await query.edit_message_caption(
             caption=admin_panel_text,
@@ -7578,15 +7578,6 @@ def build_adminvip_keyboard():
     _adminvip_main_keyboard_cache = InlineKeyboardMarkup(keyboard)
     return _adminvip_main_keyboard_cache
     
-_ADMINVIP_MAIN_KEYBOARD_PREBUILT = None
-
-def get_adminvip_main_keyboard_prebuilt():
-    global _ADMINVIP_MAIN_KEYBOARD_PREBUILT
-    if _ADMINVIP_MAIN_KEYBOARD_PREBUILT is None:
-        _ADMINVIP_MAIN_KEYBOARD_PREBUILT = build_adminvip_keyboard()
-    return _ADMINVIP_MAIN_KEYBOARD_PREBUILT
-
-
 def build_payment_keyboard():
     global _payment_keyboard_cache
     if _payment_keyboard_cache is not None:
@@ -8894,7 +8885,7 @@ def main():
 
     restore_pending_orders()
 
-    app = ApplicationBuilder().token(token).build()
+    app = ApplicationBuilder().token(token).concurrent_updates(2).build()
 
     async def start_background(app):
         for _order_id, _order in upload_waiting.items():
