@@ -2063,7 +2063,6 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     _vip_diag_t0 = time.perf_counter()
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
     _vip_diag_t1 = time.perf_counter()
     logger.info(
         "[VIP NAV DIAG] answer_task_started delta=%.6fs",
@@ -2886,7 +2885,6 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
@@ -2949,7 +2947,6 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
 async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     await query.edit_message_caption(
             caption="💳 <b>PEMBAYARAN</b>",
@@ -3310,7 +3307,6 @@ async def incoming_vip_detail_callback(
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     admin_channel_waiting.discard(query.from_user.id)
 
@@ -3382,7 +3378,6 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
 async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     settings = read_settings()
     settings["channel_auto_post"] = not settings["channel_auto_post"]
@@ -4340,7 +4335,6 @@ async def adminvip_backup_callback(update: Update, context: ContextTypes.DEFAULT
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
@@ -4354,7 +4348,6 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -4443,7 +4436,6 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -4515,10 +4507,13 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        await query.edit_message_caption(
         caption=caption,
         parse_mode="HTML",
         reply_markup=keyboard
+    ),
     )
 
 
@@ -4719,7 +4714,6 @@ async def sweep_pending_preview_deletions(bot):
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
@@ -4834,7 +4828,6 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
 async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     settings = read_settings()
     settings["join_vip_enabled"] = not settings["join_vip_enabled"]
@@ -4852,7 +4845,6 @@ async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DE
 async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     settings = read_settings()
     settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
@@ -4870,7 +4862,6 @@ async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes
 async def adminvip_toggle_livechat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     settings = read_settings()
     settings["live_chat_enabled"] = not settings["live_chat_enabled"]
@@ -6905,7 +6896,6 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -7004,7 +6994,6 @@ def build_filemgr_detail_view(idx, icon, name, note=None):
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
     if query.from_user.id != ADMIN_ID:
         return
 
