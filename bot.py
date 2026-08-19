@@ -1456,14 +1456,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
             if old_messages:
-                for message_id in old_messages:
-                    try:
-                        await context.bot.delete_message(
-                            chat_id=update.effective_chat.id,
-                            message_id=message_id
-                        )
-                    except Exception:
-                        pass
+                try:
+                    await context.bot.delete_messages(
+                        chat_id=update.effective_chat.id,
+                        message_ids=old_messages
+                    )
+                except Exception:
+                    pass
 
             await clear_last_repeat(
                 update.effective_chat.id,
