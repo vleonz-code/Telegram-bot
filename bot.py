@@ -2063,6 +2063,7 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     _vip_diag_t0 = time.perf_counter()
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
     _vip_diag_t1 = time.perf_counter()
     logger.info(
         "[VIP NAV DIAG] answer_task_started delta=%.6fs",
@@ -3378,6 +3379,7 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
 async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     settings = read_settings()
     settings["channel_auto_post"] = not settings["channel_auto_post"]
@@ -4339,6 +4341,8 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
 
+    from telegram import InputMediaPhoto
+
     await query.edit_message_caption(
             caption="⚙️ Pengaturan",
             reply_markup=keyboard
@@ -4509,7 +4513,7 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
 
     await asyncio.gather(
         answer_task,
-        await query.edit_message_caption(
+        query.edit_message_caption(
         caption=caption,
         parse_mode="HTML",
         reply_markup=keyboard
@@ -4828,6 +4832,7 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
 async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     settings = read_settings()
     settings["join_vip_enabled"] = not settings["join_vip_enabled"]
@@ -4845,6 +4850,7 @@ async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DE
 async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     settings = read_settings()
     settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
@@ -4862,6 +4868,7 @@ async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes
 async def adminvip_toggle_livechat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     settings = read_settings()
     settings["live_chat_enabled"] = not settings["live_chat_enabled"]
@@ -9073,9 +9080,7 @@ def main():
     CallbackQueryHandler(
         payment_admin_callback,
         pattern=r"^(pay_ok|pay_no|pay_ban|pay_ban_yes|pay_ban_cancel)\|"
-    ),
-        block=False
-    )
+    ))
     app.add_handler(
     CallbackQueryHandler(
         vipmenu_callback,
@@ -9101,16 +9106,12 @@ def main():
     CallbackQueryHandler(
         adminvip_packages_callback,
         pattern=r"^adminvip_packages$"
-    ),
-        block=False
-    )
+    ))
     app.add_handler(
     CallbackQueryHandler(
         adminvip_payment_callback,
         pattern=r"^adminvip_payment$"
-    ),
-        block=False
-    )
+    ))
     app.add_handler(
     CallbackQueryHandler(
         incoming_vip_callback,
@@ -9130,9 +9131,7 @@ def main():
     CallbackQueryHandler(
         adminvip_channel_callback,
         pattern=r"^adminvip_channel$"
-    ),
-        block=False
-    )
+    ))
     app.add_handler(
     CallbackQueryHandler(
         channel_edit_callback,
@@ -9232,9 +9231,7 @@ def main():
     CallbackQueryHandler(
         adminvip_settings_callback,
         pattern=r"^adminvip_settings$"
-    ),
-        block=False
-    )
+    ))
     app.add_handler(
     CallbackQueryHandler(
         adminvip_backup_callback,
@@ -9244,9 +9241,7 @@ def main():
     CallbackQueryHandler(
         adminvip_stats_callback,
         pattern=r"^adminvip_stats$"
-    ),
-        block=False
-    )
+    ))
     app.add_handler(
     CallbackQueryHandler(
         stats_view_callback,
@@ -9261,9 +9256,7 @@ def main():
     CallbackQueryHandler(
         adminvip_server_status_callback,
         pattern=r"^adminvip_server_status$"
-    ),
-        block=False
-    )
+    ))
     app.add_handler(
     CallbackQueryHandler(
         adminvip_packages_back_callback,
@@ -9283,9 +9276,7 @@ def main():
     CallbackQueryHandler(
         adminvip_back_callback,
         pattern=r"^adminvip_back$"
-    ),
-        block=False
-    )
+    ))
     app.add_handler(
     CallbackQueryHandler(
         adminvip_name_callback,
