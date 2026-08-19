@@ -1822,10 +1822,10 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
         # Keep the same three-button layout on every page.
         # Boundary arrows remain visible but become no-op buttons.
         prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
+            f"vipnav_{idx - 1}" if idx > 0 else f"vipnav_{total - 1}"
         )
         next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_0"
         )
 
         keyboard.append([
@@ -6960,20 +6960,6 @@ FILE_MANAGER_FILES = [
 ]
 
 
-def split_text_into_chunks(text: str, limit: int = 3500):
-    chunks = []
-    current = ""
-    for line in text.split("\n"):
-        candidate = f"{current}\n{line}" if current else line
-        if len(candidate) > limit:
-            if current:
-                chunks.append(current)
-            current = line
-        else:
-            current = candidate
-    if current:
-        chunks.append(current)
-    return chunks
 
 
 def create_file_manager_backup(name: str, path: str):
@@ -7732,15 +7718,6 @@ async def do_reset_stats(chat_id: int, bot):
     last_stats_message[chat_id] = msg.message_id
 
 
-async def resetstats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    if update.effective_user.id != ADMIN_ID:
-        return
-
-    await do_reset_stats(
-        update.effective_chat.id,
-        context.bot
-    )
 # ---------------------------------------------------------------------------
 # /getid — admin tool to retrieve Telegram file_id from any media
 # ---------------------------------------------------------------------------
@@ -8739,18 +8716,6 @@ async def getid_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #---------------------------------------------------------------------------
 # POST DARI BOT
 #---------------------------------------------------------------------------
-async def channeltest(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.effective_user.id != ADMIN_ID:
-        return
-
-    await context.bot.send_message(
-        chat_id=CHANNEL_ID,
-        text="✅ Test post dari bot."
-    )
-
-    await update.message.reply_text(
-        "Berhasil mengirim ke channel."
-    )
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -8969,15 +8934,11 @@ def main():
 
     app.add_handler(CommandHandler("getid", getid_start))
     app.add_handler(CommandHandler("cancel", getid_cancel))
-    app.add_handler(CommandHandler("channeltest", channeltest))
 
     app.add_handler(CommandHandler("start",      start))
     app.add_handler(CommandHandler("adminvip",   adminvip))
-    app.add_handler(CommandHandler("stats",      stats))
-    app.add_handler(CommandHandler("resetstats", resetstats))
     app.add_handler(CommandHandler("ban",        ban))
     app.add_handler(CommandHandler("unban",      unban))
-    app.add_handler(CommandHandler("banned",     banned))
     # High-frequency customer callbacks registered first so they are matched
     # with the fewest possible regex checks (order impacts routing latency).
     app.add_handler(
