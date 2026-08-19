@@ -4539,8 +4539,10 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("💾 Backup Bot", callback_data="adminvip_backup")],
-        [InlineKeyboardButton("➿ Refresh", callback_data="adminvip_server_status")],
-        [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")]
+        [
+            InlineKeyboardButton("➿ Refresh", callback_data="adminvip_server_status"),
+            InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")
+        ]
     ])
 
     await asyncio.gather(
