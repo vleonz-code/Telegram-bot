@@ -2892,19 +2892,11 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
 
     packages = get_vip_packages_cached()["packages"]
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["PACKAGE_BANNER_FILE_ID"],
-            caption=(
-                "Pilih paket yang ingin dikelola:"
-            ),
+    await query.edit_message_caption(
+            caption="Pilih paket yang ingin dikelola:",
             parse_mode="HTML",
-        ),
-        reply_markup=build_adminvip_packages_keyboard(packages),
-    ),
-    )
+            reply_markup=build_adminvip_packages_keyboard(packages)
+        )
 
 
 def build_adminvip_packages_keyboard(packages):
@@ -2957,17 +2949,11 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["PAYMENT_BANNER_FILE_ID"],
+    await query.edit_message_caption(
             caption="💳 <b>PEMBAYARAN</b>",
             parse_mode="HTML",
-        ),
-        reply_markup=build_payment_keyboard(),
-    ),
-    )
+            reply_markup=build_payment_keyboard()
+        )
 
 
 INCOMING_VIP_PAGE_SIZE = 10
@@ -3356,26 +3342,18 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
     ]
     ])
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["CHANNEL_POST_BANNER_FILE_ID"],
-            caption=(
-                "📢 Channel Post\n\n"
-                f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
-                f"Interval : {settings['channel_interval']} menit\n\n"
-                "<pre>"
-                "Pesan\n"
-                "────────────────────\n"
-                f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
-                "</pre>"
-            ),
+    await query.edit_message_caption(
+            caption="📢 Channel Post\n\n"
+                    f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
+                    f"Interval : {settings['channel_interval']} menit\n\n"
+                    "<pre>"
+                    "Pesan\n"
+                    "────────────────────\n"
+                    f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
+                    "</pre>",
             parse_mode="HTML",
-        ),
-        reply_markup=keyboard
-    ),
-    )
+            reply_markup=keyboard
+        )
 
 
 async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4365,16 +4343,10 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
 
     from telegram import InputMediaPhoto
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["SETTINGS_BANNER_FILE_ID"],
-            caption="⚙️ Pengaturan"
-        ),
-        reply_markup=keyboard
-    ),
-    )
+    await query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=keyboard
+        )
 
 
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4400,17 +4372,11 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["STATISTIC_BANNER_FILE_ID"],
+    await query.edit_message_caption(
             caption="📊 Statistik",
             parse_mode="HTML",
-        ),
-        reply_markup=keyboard
-    ),
-    )
+            reply_markup=keyboard
+        )
 
 
 async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4774,17 +4740,11 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = build_adminvip_keyboard()
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["ADMIN_BANNER_FILE_ID"],
+    await query.edit_message_caption(
             caption=admin_panel_text,
             parse_mode="HTML",
-        ),
-        reply_markup=keyboard,
-    ),
-    )
+            reply_markup=keyboard
+        )
 
 
     await clear_last_stats(
