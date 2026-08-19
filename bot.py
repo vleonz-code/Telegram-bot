@@ -9475,7 +9475,8 @@ def main():
     # ============================================================
     # VIP NAV HTTP-LAYER DIAGNOSTIC — NO BEHAVIOR CHANGE
     # Measures only the internal PTB HTTP request duration for
-    # editMessageCaption. The original request method is preserved.
+    # answerCallbackQuery and editMessageCaption. The original
+    # request method is preserved.
     # ============================================================
     try:
         from telegram.request import HTTPXRequest as _VIP_HTTPXRequest
@@ -9494,7 +9495,11 @@ def main():
         ):
             endpoint = str(url)
 
-            if "editmessagecaption" not in endpoint.lower():
+            endpoint_lower = endpoint.lower()
+            is_vip_answer = "answercallbackquery" in endpoint_lower
+            is_vip_caption_edit = "editmessagecaption" in endpoint_lower
+
+            if not is_vip_answer and not is_vip_caption_edit:
                 return await _vip_original_do_request(
                     self,
                     url,
@@ -9507,8 +9512,13 @@ def main():
                 )
 
             _vip_http_t0 = time.perf_counter()
+            _vip_endpoint_label = (
+                "answerCallbackQuery"
+                if is_vip_answer
+                else "editMessageCaption"
+            )
             logger.info(
-                f"[VIP HTTP DIAG] editMessageCaption request_start "
+                f"[VIP HTTP DIAG] {_vip_endpoint_label} request_start "
                 f"url={endpoint}"
             )
             try:
@@ -9525,7 +9535,7 @@ def main():
             finally:
                 _vip_http_t1 = time.perf_counter()
                 logger.info(
-                    f"[VIP HTTP DIAG] editMessageCaption request_done "
+                    f"[VIP HTTP DIAG] {_vip_endpoint_label} request_done "
                     f"elapsed={_vip_http_t1 - _vip_http_t0:.6f}s"
                 )
 
