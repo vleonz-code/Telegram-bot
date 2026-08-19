@@ -1815,6 +1815,26 @@ def get_vip_package_banner(package):
     return package.get("banner_file_id") or os.environ["PACKAGE_BANNER_FILE_ID"]
 
 
+async def _prewarm_vip_nav_render_cache(active_packages):
+    """Prebuild all VIP pagination caption/keyboard renders off the tap path.
+
+    This only warms the existing cache; it does not change pagination behavior
+    or Telegram API calls.
+    """
+    await asyncio.sleep(0)
+    total = len(active_packages)
+    if total <= 0:
+        return
+
+    for idx, package in enumerate(active_packages):
+        cache_key = (idx, total, package["id"])
+        if cache_key not in _vip_nav_render_cache:
+            _vip_nav_render_cache[cache_key] = (
+                build_vip_package_text(package),
+                build_vip_package_keyboard(idx, total, package["id"]),
+            )
+
+
 def build_vip_package_keyboard(idx: int, total: int, package_id):
     keyboard = []
 
@@ -1901,6 +1921,9 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
         )
+        asyncio.create_task(
+            _prewarm_vip_nav_render_cache(active_packages)
+        )
         await answer_task
         asyncio.create_task(
             notify_admin_vip_menu(
@@ -1978,6 +2001,9 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
             caption=build_vip_package_text(package),
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
+        )
+        asyncio.create_task(
+            _prewarm_vip_nav_render_cache(active_packages)
         )
         asyncio.create_task(
             notify_admin_vip_menu(
