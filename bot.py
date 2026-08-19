@@ -8881,7 +8881,6 @@ async def set_admin_commands(app):
     await app.bot.set_my_commands(
         [
             BotCommand("adminvip", "Buka Admin VIP"),
-            BotCommand("banned", "Kelola Blacklist"),
         ],
         scope=BotCommandScopeChat(chat_id=ADMIN_ID),
     )
