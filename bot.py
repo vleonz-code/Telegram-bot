@@ -2278,7 +2278,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
+    await query.answer()
 
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
@@ -2286,9 +2286,7 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
 
     packages = read_vip_packages()["packages"]
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
+    await query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["PACKAGE_BANNER_FILE_ID"],
             caption=(
@@ -2297,7 +2295,6 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
             parse_mode="HTML",
         ),
         reply_markup=build_adminvip_packages_keyboard(packages),
-        )
     )
 
 
@@ -3285,28 +3282,25 @@ def build_settings_keyboard(settings):
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
+    await query.answer()
 
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
 
     from telegram import InputMediaPhoto
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
+    await query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["SETTINGS_BANNER_FILE_ID"],
             caption="⚙️ Pengaturan"
         ),
         reply_markup=keyboard
-        )
     )
 
 
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
+    await query.answer()
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -3327,16 +3321,13 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
+    await query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["STATISTIC_BANNER_FILE_ID"],
             caption="📊 Statistik",
             parse_mode="HTML",
         ),
         reply_markup=keyboard
-        )
     )
 
 
@@ -3401,12 +3392,12 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
+    await query.answer()
 
     if query.from_user.id != ADMIN_ID:
         return
 
-    cpu_task = asyncio.create_task(asyncio.to_thread(psutil.cpu_percent, 0.4))
+    cpu_percent = await asyncio.to_thread(psutil.cpu_percent, 0.4)
     mem = psutil.virtual_memory()
     disk = psutil.disk_usage("/")
 
@@ -3447,8 +3438,6 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
     jam_str = now.strftime("%H:%M:%S")
     py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
-    cpu_percent = await cpu_task
-
     caption = (
         "<b>🖥 STATUS SERVER</b>\n"
         "<pre>"
@@ -3472,13 +3461,10 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         ]
     ])
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_caption(
+    await query.edit_message_caption(
         caption=caption,
         parse_mode="HTML",
         reply_markup=keyboard
-        )
     )
 
 
@@ -3631,16 +3617,14 @@ async def sweep_pending_preview_deletions(bot):
 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
+    await query.answer()
 
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
 
-    asyncio.create_task(
-        clear_last_stats(
+    await clear_last_stats(
         query.message.chat_id,
         context.bot
-        )
     )
 
     settings = read_settings()
@@ -3661,16 +3645,13 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = build_adminvip_keyboard()
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_media(
+    await query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["ADMIN_BANNER_FILE_ID"],
             caption=admin_panel_text,
             parse_mode="HTML",
         ),
         reply_markup=keyboard,
-        )
     )
 
 
