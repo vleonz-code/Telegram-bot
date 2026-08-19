@@ -7639,7 +7639,7 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_photo(
-        photo=os.environ["ADMIN_BANNER_FILE_ID"],
+        photo=os.path.join(APP_DIR, "adminvip_general_banner.png"),
         caption=admin_panel_text,
         reply_markup=build_adminvip_keyboard(),
         parse_mode="HTML",
