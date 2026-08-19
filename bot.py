@@ -89,6 +89,8 @@ _vip_packages_cache = None
 # VIP navigation render cache. Keeps the hot tap path free from repeated
 # caption/keyboard construction. Invalidated whenever VIP packages are saved.
 _vip_nav_render_cache = {}
+_vip_nav_page_cache = {}
+_vip_nav_total = 0
 
 
 def read_vip_packages():
@@ -102,12 +104,16 @@ def read_vip_packages():
 
 
 def save_vip_packages(data):
-    global _vip_packages_cache, _vip_nav_render_cache
+    global _vip_packages_cache, _vip_nav_render_cache, _vip_nav_page_cache, _vip_nav_total
     with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     _vip_packages_cache = copy.deepcopy(data)
     # Package content changed; never serve an old VIP navigation render.
     _vip_nav_render_cache.clear()
+    _vip_nav_page_cache.clear()
+    _vip_nav_total = 0
+    if "build_vip_package_text" in globals() and "build_vip_package_keyboard" in globals():
+        _prewarm_vip_nav_cache()
 
 
 def get_vip_packages_cached():
@@ -2040,6 +2046,34 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
 
 
+def _prewarm_vip_nav_cache():
+    """Pre-render every active VIP page once so navigation only reads RAM."""
+    global _vip_nav_total, _vip_nav_render_cache, _vip_nav_page_cache
+
+    packages = get_vip_packages_cached()["packages"]
+    active_packages = [
+        package for package in packages
+        if package.get("aktif", True)
+    ]
+    total = len(active_packages)
+
+    _vip_nav_render_cache.clear()
+    _vip_nav_page_cache.clear()
+    _vip_nav_total = total
+
+    if not total:
+        return
+
+    for idx, package in enumerate(active_packages):
+        render = (
+            build_vip_package_text(package),
+            build_vip_package_keyboard(idx, total, package["id"]),
+        )
+        _vip_nav_render_cache[(idx, total, package["id"])] = render
+        _vip_nav_page_cache[(idx, total)] = render
+
+
+
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
@@ -2075,30 +2109,24 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _vip_log_t1 - _vip_log_t0,
     )
 
-    packages = get_vip_packages_cached()["packages"]
-    active_packages = [
-        package for package in packages
-        if package.get("aktif", True)
-    ]
-
-    if not active_packages:
+    total = _vip_nav_total
+    if not total:
         # The acknowledgement task was already started; no page exists.
         return
 
-    total = len(active_packages)
     idx = idx % total
-    package = active_packages[idx]
-
-    # Hot-path render cache. The package editor invalidates this cache via
-    # save_vip_packages(), so normal admin edits cannot leave stale UI behind.
-    cache_key = (idx, total, package["id"])
-    cached_render = _vip_nav_render_cache.get(cache_key)
+    cached_render = _vip_nav_page_cache.get((idx, total))
     if cached_render is None:
-        cached_render = (
-            build_vip_package_text(package),
-            build_vip_package_keyboard(idx, total, package["id"]),
-        )
-        _vip_nav_render_cache[cache_key] = cached_render
+        # Safety fallback if the cache was invalidated between callbacks.
+        _prewarm_vip_nav_cache()
+        total = _vip_nav_total
+        if not total:
+            return
+        idx = idx % total
+        cached_render = _vip_nav_page_cache.get((idx, total))
+
+    if cached_render is None:
+        return
 
     caption, reply_markup = cached_render
 
@@ -9534,6 +9562,7 @@ def main():
             f"[VIP HTTP DIAG] instrumentation unavailable: {_vip_http_diag_error}"
         )
 
+    _prewarm_vip_nav_cache()
     app.run_polling()
 
 
