@@ -4329,6 +4329,7 @@ def build_settings_keyboard(settings):
                 callback_data="adminvip_prv_list"
             )
         ],
+        [InlineKeyboardButton("💾 Backup Bot", callback_data="adminvip_backup")],
         [
             InlineKeyboardButton(
                 "🔙 Kembali",
@@ -4336,6 +4337,24 @@ def build_settings_keyboard(settings):
             )
         ]
     ])
+
+
+async def adminvip_backup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if query.from_user.id != ADMIN_ID:
+        await query.answer()
+        return
+    answer_task = asyncio.create_task(query.answer())
+    source_path = os.path.abspath(__file__)
+    await asyncio.gather(
+        answer_task,
+        context.bot.send_document(
+            chat_id=ADMIN_ID,
+            document=source_path,
+            filename=os.path.basename(source_path),
+            caption="💾 Backup source bot"
+        )
+    )
 
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -9239,6 +9258,11 @@ def main():
     CallbackQueryHandler(
         adminvip_settings_callback,
         pattern=r"^adminvip_settings$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_backup_callback,
+        pattern=r"^adminvip_backup$"
     ))
     app.add_handler(
     CallbackQueryHandler(
