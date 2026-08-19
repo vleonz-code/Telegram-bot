@@ -6,12 +6,17 @@ import asyncio
 import time
 import copy
 import html
+import re
 import psutil
 psutil.cpu_percent(interval=None)  # priming baseline, hindari 0.0% di pembacaan pertama - BOT STABLE
 import sys
 import telegram
 from datetime import datetime, timezone, timedelta
 from telegram import Update, InputMediaVideo, InputMediaPhoto, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand, BotCommandScopeChat
+try:
+    from telegram import CopyTextButton
+except ImportError:
+    CopyTextButton = None
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 
@@ -81,6 +86,10 @@ def migrate_to_volume(filename):
 # callers mutate individual package dicts in place before saving).
 _vip_packages_cache = None
 
+# VIP navigation render cache. Keeps the hot tap path free from repeated
+# caption/keyboard construction. Invalidated whenever VIP packages are saved.
+_vip_nav_render_cache = {}
+
 
 def read_vip_packages():
     global _vip_packages_cache
@@ -93,10 +102,12 @@ def read_vip_packages():
 
 
 def save_vip_packages(data):
-    global _vip_packages_cache
+    global _vip_packages_cache, _vip_nav_render_cache
     with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     _vip_packages_cache = copy.deepcopy(data)
+    # Package content changed; never serve an old VIP navigation render.
+    _vip_nav_render_cache.clear()
 
 
 def get_vip_packages_cached():
@@ -458,6 +469,8 @@ admin_request_counts = {}     # user_id -> jumlah percobaan
 
 last_delivered_messages = {}
 preview_delete_tasks = {}
+qris_expiry_tasks = {}
+livechat_sessions = {}
 admin_reply_waiting = {}
 blocked_notified = set()
 file_manager_edit_waiting = {}     # user_id -> FILE_MANAGER_FILES index
@@ -491,6 +504,19 @@ FILE_IDS_A = load_preview_media()
 # ---------------------------------------------------------------------------
 # Media helpers
 # ---------------------------------------------------------------------------
+
+
+def _reset_counter_file_sync(path):
+    with open(path, "w") as f:
+        json.dump({"count": 0}, f)
+
+
+def _read_os_release_sync(path):
+    with open(path) as f:
+        return dict(
+            line.strip().split("=", 1)
+            for line in f if "=" in line
+        )
 
 
 def build_media_group(file_ids):
@@ -546,6 +572,23 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
                 media=media
             )
 
+        settings = read_settings()
+
+        success_keyboard = None
+        if chat_id != ADMIN_ID and settings["join_vip_enabled"]:
+            success_keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "📦 Lihat Paket",
+                        callback_data="vipmenu_preview"
+                    ),
+                    InlineKeyboardButton(
+                        "🆘 Bantuan",
+                        url="https://t.me/BocilVIP511"
+                    )
+                ]
+            ])
+
         _, success_msg = await asyncio.gather(
             progress.delete(),
             bot.send_message(
@@ -554,7 +597,8 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
                     "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
                     f"✅ Semua {len(media)} media terkirim!"
                 ),
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=success_keyboard
             )
         )
 
@@ -576,8 +620,6 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
         last_delivered_messages[
             chat_id
         ] = delivered
-
-        settings = read_settings()
 
         if chat_id != ADMIN_ID and auto_delete:
             pending = read_pending_preview_deletions()
@@ -619,6 +661,92 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
         logger.error(f"Failed to deliver album to {chat_id}: {e}")
 
         return False
+async def deliver_preview_b(bot, chat_id: int, file_ids, auto_delete=False):
+    """Standalone PREV2 delivery path. Sends the same success notice without buttons."""
+    media = build_media_group(file_ids)
+
+    if not media:
+        logger.error("One or more PREV2 FILE_ID env vars are missing.")
+        return False
+
+    try:
+        progress = await bot.send_message(
+            chat_id,
+            f"📦 Mengirim Batch 1/1 ({len(media)} media)...\nMohon tunggu..."
+        )
+
+        if len(media) == 1:
+            single = media[0]
+            if isinstance(single, InputMediaVideo):
+                sent = await bot.send_video(chat_id, video=single.media)
+            else:
+                sent = await bot.send_photo(chat_id, photo=single.media)
+            media_messages = [sent]
+        else:
+            media_messages = await bot.send_media_group(
+                chat_id,
+                media=media
+            )
+
+        # PREV2 deliberately has no inline keyboard.
+        _, success_msg = await asyncio.gather(
+            progress.delete(),
+            bot.send_message(
+                chat_id,
+                (
+                    "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
+                    f"✅ Semua {len(media)} media terkirim!"
+                ),
+                parse_mode="HTML"
+            )
+        )
+
+        delivered = [
+            msg.message_id
+            for msg in media_messages
+        ]
+        delivered.append(success_msg.message_id)
+
+        if chat_id == ADMIN_ID:
+            return True
+
+        # Keep the same delivery bookkeeping as the existing preview flow.
+        last_delivered_messages[chat_id] = delivered
+
+        if chat_id != ADMIN_ID and auto_delete:
+            pending = read_pending_preview_deletions()
+            pending.append({
+                "chat_id": chat_id,
+                "message_ids": delivered.copy(),
+            })
+            save_pending_preview_deletions(pending)
+
+        if (
+            chat_id != ADMIN_ID
+            and auto_delete
+            and read_settings()["preview_auto_delete"]
+        ):
+            old_task = preview_delete_tasks.pop(chat_id, None)
+            if old_task:
+                old_task.cancel()
+
+            task = asyncio.create_task(
+                delete_messages_after_delay(
+                    chat_id,
+                    delivered.copy(),
+                    bot,
+                    read_settings()["preview_delete_delay"]
+                )
+            )
+            preview_delete_tasks[chat_id] = task
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Failed to deliver PREV2 to {chat_id}: {e}")
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Approved users
 # ---------------------------------------------------------------------------
@@ -721,6 +849,21 @@ def read_blacklist() -> dict:
         return {}
 
 
+async def deny_if_banned_callback(query) -> bool:
+    """Block customer callback actions for users currently in the blacklist.
+
+    This is intentionally checked at callback time so a user who was banned
+    after opening a menu cannot continue using already-rendered buttons.
+    """
+    if query.from_user.id in read_blacklist():
+        await query.answer(
+            "❌ Akses Anda dibatasi.",
+            show_alert=True
+        )
+        return True
+    return False
+
+
 def write_blacklist(bl: dict):
     global _blacklist_cache
     try:
@@ -746,6 +889,46 @@ def write_blacklist(bl: dict):
     except Exception as e:
         logger.error(f"Blacklist write error: {e}")
 
+
+
+def parse_package_price(raw_price) -> str:
+    """Extract a stable integer price from common package-price formats."""
+    text = str(raw_price or "").strip()
+
+    # Prefer IDR when both IDR and MYR are displayed, because Total
+    # Pendapatan is displayed in Rupiah.
+    patterns = [
+        r"(?i)\b(?:Rp|IDR)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(K|RB|RIBU|M|JT|JUTA)?",
+        r"(?i)\b(?:RM|MYR)\s*[:=]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(K|RB|RIBU|M|JT|JUTA)?",
+        r"(?<!\d)([0-9]+(?:[.,][0-9]+)?)\s*(K|RB|RIBU|M|JT|JUTA)(?![A-Za-z])",
+        r"(?<!\d)([0-9][0-9.,]*)(?!\d)",
+    ]
+
+    match = re.search(patterns[0], text)
+    if not match:
+        match = re.search(patterns[1], text)
+    if not match:
+        match = re.search(patterns[2], text)
+    if not match:
+        match = re.search(patterns[3], text)
+
+    if not match:
+        return ""
+
+    number = match.group(1)
+    suffix = (match.group(2) or "").upper() if match.lastindex and match.lastindex >= 2 else ""
+
+    if not suffix:
+        return number.replace(".", "").replace(",", "")
+
+    normalized = number.replace(",", ".")
+    try:
+        value = float(normalized)
+    except ValueError:
+        return ""
+
+    multiplier = 1_000 if suffix in {"K", "RB", "RIBU"} else 1_000_000
+    return str(int(value * multiplier))
 
 def get_package(package_id: int):
 
@@ -870,6 +1053,59 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
         f"Time: {now}"
     )
     try:
+        message = await bot.send_message(
+            chat_id=ADMIN_ID,
+            text=text,
+            parse_mode="Markdown",
+            disable_notification=True
+        )
+        return {
+            "message_id": message.message_id,
+            "full_name": full_name or "-",
+            "username": username or "-",
+            "user_id": user_id,
+            "time": now,
+        }
+    except Exception as e:
+        logger.error(f"Failed to notify admin: {e}")
+        return None
+
+
+async def update_media_access_notification_deleted(
+    bot,
+    notification: dict
+):
+    if not notification or not notification.get("message_id"):
+        return
+
+    text = (
+        f"📮 *Album Dihapus*\n\n"
+        f"👤 Name: {notification.get('full_name') or '-'}\n"
+        f"🔗 Username: {notification.get('username') or '-'}\n"
+        f"🆔 User ID: `{notification.get('user_id')}`\n\n"
+        f"Time: {notification.get('time') or '-'}"
+    )
+    try:
+        await bot.edit_message_text(
+            chat_id=ADMIN_ID,
+            message_id=notification["message_id"],
+            text=text,
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        logger.error(
+            f"Failed to update media access notification for "
+            f"user {notification.get('user_id')}: {e}"
+        )
+
+
+async def notify_admin_prev2(bot, full_name: str, username: str, user_id: int):
+    text = (
+        f"📱 *APK VIP Diakses*\n\n"
+        f"👤 Nama: {full_name}\n"
+        f"🆔 User ID: `{user_id}`"
+    )
+    try:
         await bot.send_message(
             chat_id=ADMIN_ID,
             text=text,
@@ -877,7 +1113,7 @@ async def notify_admin(bot, full_name: str, username: str, user_id: int):
             disable_notification=True
         )
     except Exception as e:
-        logger.error(f"Failed to notify admin: {e}")
+        logger.error(f"Failed to notify admin PREV2: {e}")
 
 # In-memory cache for VIP admin activity.
 # Keeps the existing workflow and persistent JSON storage intact.
@@ -927,13 +1163,13 @@ async def update_vip_activity(
         activity.setdefault("packages", [])
 
         if stage == "package":
-            if package_name:
-                activity["packages"] = [package_name]
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
         elif stage == "qris":
-            if package_name:
-                activity["packages"] = [package_name]
+            if package_name and package_name not in activity["packages"]:
+                activity["packages"].append(package_name)
             if "package" not in activity["steps"]:
                 activity["steps"].append("package")
             if "qris" not in activity["steps"]:
@@ -1220,14 +1456,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
             if old_messages:
-                for message_id in old_messages:
-                    try:
-                        await context.bot.delete_message(
-                            chat_id=update.effective_chat.id,
-                            message_id=message_id
-                        )
-                    except Exception:
-                        pass
+                try:
+                    await context.bot.delete_messages(
+                        chat_id=update.effective_chat.id,
+                        message_ids=old_messages
+                    )
+                except Exception:
+                    pass
 
             await clear_last_repeat(
                 update.effective_chat.id,
@@ -1238,14 +1473,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 keyboard = InlineKeyboardMarkup([
                     [
                         InlineKeyboardButton(
-                            "📚 Lihat VVIP",
+                            "🔮 Lihat Paket",
                             callback_data="vipmenu"
                         )
                     ],
                     [
                         InlineKeyboardButton(
-                            "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
+                            "🏠 Bantuan",
+                            callback_data="livechat_start"
                         )
                     ]
                 ])
@@ -1256,7 +1491,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 chat_id=update.effective_chat.id,
                 text=(
                     "📍 Permintaan ulang belum tersedia.\n\n"
-                    "⏳ Silahkan coba lagi nanti. ୨୧\n\n"
+                    "⏳ Silakan join lagi nanti. ୨୧\n\n"
                 ),
                 reply_markup=keyboard
             )
@@ -1271,23 +1506,49 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         not settings["preview_approval_enabled"]
         or payload == DEEP_LINK_B
     ):
-        ok = await deliver_album(
-             context.bot,
-             update.effective_chat.id,
-             selected_files,
-             auto_delete
-        )
+        if payload == DEEP_LINK_B:
+            ok = await deliver_preview_b(
+                context.bot,
+                update.effective_chat.id,
+                selected_files,
+                auto_delete
+            )
+        else:
+            ok = await deliver_album(
+                context.bot,
+                update.effective_chat.id,
+                selected_files,
+                auto_delete
+            )
 
         if ok:
             save_user_to_registry(user_id, full_name, username)
             increment_counter()
-            await notify_admin(context.bot, full_name, username, user_id)
+            if payload == DEEP_LINK_B:
+                await notify_admin_prev2(
+                    context.bot, full_name, username, user_id
+                )
+            else:
+                notification = await notify_admin(
+                    context.bot, full_name, username, user_id
+                )
+                if payload == DEEP_LINK_A and notification:
+                    pending = read_pending_preview_deletions()
+                    for entry in reversed(pending):
+                        if (
+                            entry.get("chat_id") == update.effective_chat.id
+                            and not entry.get("admin_notification")
+                        ):
+                            entry["admin_notification"] = notification
+                            break
+                    save_pending_preview_deletions(pending)
 
-            approved = read_approved()
+            if payload == DEEP_LINK_A:
+                approved = read_approved()
 
-            if user_id not in approved:
-               approved.add(user_id)
-               save_approved(approved)
+                if user_id not in approved:
+                   approved.add(user_id)
+                   save_approved(approved)
 
         return
 
@@ -1296,7 +1557,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Send waiting message to user
-    waiting_msg = await update.message.reply_text("⏳ Video preview sedang diproses…\n\nEstimasi waktu: 1–3 menit.")
+    waiting_msg = await update.message.reply_text("🔮 Permintaan sudah dikirim\n\nMohon tunggu sebentar ya. ୨୧")
 
     # Store pending request
     pending_requests[user_id] = {
@@ -1516,14 +1777,40 @@ async def approval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def build_vip_package_text(package):
-    return (
-        f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
-        f"💰 {html.escape(package['harga'])}\n"
-        "━━━━━━━━━━━━━━━\n"
-        f"{html.escape(package['deskripsi'])}"
-    )
+    # UI-only formatter. Kelola Paket tetap menyimpan deskripsi mentah apa adanya.
+    raw_description = str(package.get("deskripsi") or "").strip()
+    lines = [line.strip() for line in raw_description.splitlines() if line.strip()]
 
+    intro = lines[0] if lines else ""
+    benefits = lines[1:] if len(lines) > 1 else []
 
+    parts = [
+        f"💎 {html.escape(package['nama'])}",
+        f"💰 <b>{html.escape(package['harga'])}</b>",
+    ]
+
+    if intro:
+        # Compact box; keep the admin text exactly as entered.
+        intro_safe = html.escape(intro)
+        box_width = 14
+        parts.extend([
+            "",
+            "╭" + "─" * (box_width + 1) + "╮",
+            "<b>      " + intro_safe + "      </b>",
+            "",
+        ])
+
+    if benefits:
+        # Keep the detail directly under the compact intro box.
+        for line in benefits:
+            # Preserve admin wording, emoji, and bullet marker exactly as entered.
+            parts.append(f"  {html.escape(line)}")
+
+        parts.extend([
+            "╰" + "─" * (box_width + 1) + "╯",
+        ])
+
+    return "\n".join(parts)
 def get_vip_package_banner(package):
     return package.get("banner_file_id") or os.environ["PACKAGE_BANNER_FILE_ID"]
 
@@ -1535,10 +1822,10 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
         # Keep the same three-button layout on every page.
         # Boundary arrows remain visible but become no-op buttons.
         prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
+            f"vipnav_{idx - 1}" if idx > 0 else f"vipnav_{total - 1}"
         )
         next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_0"
         )
 
         keyboard.append([
@@ -1558,7 +1845,7 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 
     keyboard.append([
         InlineKeyboardButton(
-            "💸 Bayar Sekarang",
+            "💸 Bayar",
             callback_data=f"bayar_{package_id}"
         )
     ])
@@ -1569,9 +1856,21 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 
 async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
 
-    # Clear the stale deeplink-repeat notice before showing VIP Menu.
+    if await deny_if_banned_callback(query):
+        return
+
+    if not read_settings()["join_vip_enabled"]:
+        await query.answer(
+            "⚠️ Order VIP sedang OFF.",
+            show_alert=True
+        )
+        return
+
+    # Start acknowledgement immediately so the button feels responsive
+    # while the local VIP-menu preparation continues.
+    answer_task = asyncio.create_task(query.answer())
+
     await clear_last_repeat(
         query.message.chat_id,
         context.bot
@@ -1602,7 +1901,18 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
         )
+        await answer_task
+        asyncio.create_task(
+            notify_admin_vip_menu(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+            )
+        )
+        return
 
+    await answer_task
     await notify_admin_vip_menu(
         context.bot,
         user.full_name or "-",
@@ -1610,20 +1920,33 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user.id,
     )
 
-    # VIP Menu now opens directly on the first package slide.
-    if active_packages:
-        await notify_admin_vip_package(
-            context.bot,
-            user.full_name or "-",
-            f"@{user.username}" if user.username else "-",
-            user.id,
-            active_packages[0]["nama"],
-        )
 
-
-async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Khusus tombol 'Lihat Paket' di pesan sukses pengiriman preview.
+    Beda dengan vipmenu_callback biasa: menu VIP ditampilkan dulu di
+    bawah, baru album lama di atasnya dihapus setelahnya. Tidak berlaku
+    untuk tombol Lihat Paket lain (timer habis, repeat deeplink, dst)."""
     query = update.callback_query
-    idx = int(query.data.split("_")[1])
+
+    if await deny_if_banned_callback(query):
+        return
+
+    if not read_settings()["join_vip_enabled"]:
+        await query.answer(
+            "⚠️ Order VIP sedang OFF.",
+            show_alert=True
+        )
+        return
+
+    chat_id = query.message.chat_id
+
+    await asyncio.gather(
+        query.answer(),
+        clear_last_repeat(
+            chat_id,
+            context.bot
+        )
+    )
 
     packages = get_vip_packages_cached()["packages"]
 
@@ -1632,35 +1955,201 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if package.get("aktif", True)
     ]
 
+    user = query.from_user
+
     if not active_packages:
-        await query.answer()
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="Belum ada paket VIP yang tersedia saat ini.",
+        )
+        await notify_admin_vip_menu(
+            context.bot,
+            user.full_name or "-",
+            f"@{user.username}" if user.username else "-",
+            user.id,
+        )
+    else:
+        total = len(active_packages)
+        package = active_packages[0]
+
+        await context.bot.send_photo(
+            chat_id=chat_id,
+            photo=get_vip_package_banner(package),
+            caption=build_vip_package_text(package),
+            reply_markup=build_vip_package_keyboard(0, total, package["id"]),
+            parse_mode="HTML",
+        )
+        asyncio.create_task(
+            notify_admin_vip_menu(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+            )
+        )
+
+    # Menu VIP sudah tampil di bawah -- baru sekarang album lama di
+    # atasnya dibereskan, supaya tidak ada jeda "chat kosong".
+    old_task = preview_delete_tasks.pop(chat_id, None)
+    if old_task:
+        old_task.cancel()
+
+    old_messages = last_delivered_messages.pop(chat_id, None)
+    if old_messages:
+        notification = None
+        delete_ok = False
+        try:
+            pending = read_pending_preview_deletions()
+            for entry in pending:
+                if (
+                    entry.get("chat_id") == chat_id
+                    and entry.get("message_ids") == old_messages
+                ):
+                    notification = entry.get("admin_notification")
+                    break
+        except Exception:
+            pending = []
+
+        try:
+            await context.bot.delete_messages(
+                chat_id=chat_id,
+                message_ids=old_messages
+            )
+            delete_ok = True
+        except Exception:
+            pass
+
+        if delete_ok:
+            await update_media_access_notification_deleted(
+                context.bot,
+                notification
+            )
+
+        try:
+            pending = read_pending_preview_deletions()
+            pending = [
+                entry for entry in pending
+                if not (
+                    entry.get("chat_id") == chat_id
+                    and entry.get("message_ids") == old_messages
+                )
+            ]
+            save_pending_preview_deletions(pending)
+        except Exception:
+            pass
+
+
+
+async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    if await deny_if_banned_callback(query):
+        return
+
+    if not read_settings()["join_vip_enabled"]:
+        await query.answer(
+            "⚠️ Order VIP sedang OFF.",
+            show_alert=True
+        )
+        return
+
+    idx = int(query.data.split("_")[1])
+
+    # Fire-and-forget acknowledgement: schedule it first, then yield once so
+    # the event loop can start the Telegram acknowledgement request immediately.
+    # This is specifically for the button spinner/loading indicator.
+    _vip_log_t0 = time.perf_counter()
+    logger.info("[VIP NAV LOG] CLICK")
+
+    _vip_diag_t0 = time.perf_counter()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
+    _vip_diag_t1 = time.perf_counter()
+    logger.info(
+        "[VIP NAV DIAG] answer_task_started delta=%.6fs",
+        _vip_diag_t1 - _vip_diag_t0,
+    )
+    _vip_log_t1 = time.perf_counter()
+    logger.info(
+        "[VIP NAV LOG] answer_task_scheduled=%.6fs",
+        _vip_log_t1 - _vip_log_t0,
+    )
+
+    packages = get_vip_packages_cached()["packages"]
+    active_packages = [
+        package for package in packages
+        if package.get("aktif", True)
+    ]
+
+    if not active_packages:
+        # The acknowledgement task was already started; no page exists.
         return
 
     total = len(active_packages)
     idx = idx % total
     package = active_packages[idx]
 
-    await query.answer()
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=get_vip_package_banner(package),
-            caption=build_vip_package_text(package),
-            parse_mode="HTML",
-        ),
-        reply_markup=build_vip_package_keyboard(
-            idx, total, package["id"]
-        ),
+    # Hot-path render cache. The package editor invalidates this cache via
+    # save_vip_packages(), so normal admin edits cannot leave stale UI behind.
+    cache_key = (idx, total, package["id"])
+    cached_render = _vip_nav_render_cache.get(cache_key)
+    if cached_render is None:
+        cached_render = (
+            build_vip_package_text(package),
+            build_vip_package_keyboard(idx, total, package["id"]),
+        )
+        _vip_nav_render_cache[cache_key] = cached_render
+
+    caption, reply_markup = cached_render
+
+    _vip_log_t2 = time.perf_counter()
+    logger.info(
+        "[VIP NAV LOG] before_edit page=%d/%d local_after_schedule=%.6fs",
+        idx + 1,
+        total,
+        _vip_log_t2 - _vip_log_t1,
     )
 
-    # Keep Buyer Details synchronized with the package currently shown.
-    user = query.from_user
-    await notify_admin_vip_package(
-        context.bot,
-        user.full_name or "-",
-        f"@{user.username}" if user.username else "-",
-        user.id,
-        package["nama"],
+    _vip_log_edit_start = time.perf_counter()
+    _vip_diag_before_edit = time.perf_counter()
+    logger.info(
+        "[VIP NAV DIAG] before_caption_edit since_answer_task=%.6fs",
+        _vip_diag_before_edit - _vip_diag_t1,
     )
+
+    # Keep the existing media in place. VIP pagination only changes caption
+    # and keyboard, which is the cheapest Telegram-side edit for this UI.
+    try:
+        await query.edit_message_caption(
+            caption=caption,
+            parse_mode="HTML",
+            reply_markup=reply_markup,
+        )
+    except telegram.error.BadRequest as exc:
+        # Only suppress Telegram's harmless duplicate-edit response. Other
+        # BadRequest errors must remain visible so real regressions are not
+        # silently hidden.
+        if "message is not modified" in str(exc).lower():
+            logger.debug("[VIP NAV] duplicate caption edit ignored")
+            return
+        raise
+
+    _vip_diag_after_edit = time.perf_counter()
+    logger.info(
+        "[VIP NAV DIAG] caption_edit_done api_elapsed=%.6fs handler_since_task=%.6fs",
+        _vip_diag_after_edit - _vip_diag_before_edit,
+        _vip_diag_after_edit - _vip_diag_t1,
+    )
+
+    _vip_log_edit_end = time.perf_counter()
+    logger.info(
+        "[VIP NAV LOG] edit_done page=%d/%d edit_media=%.6fs handler_total=%.6fs",
+        idx + 1,
+        total,
+        _vip_log_edit_end - _vip_log_edit_start,
+        _vip_log_edit_end - _vip_log_t0,
+    )
+
 
 
 async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1670,7 +2159,16 @@ async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
-        await query.answer()
+
+        if await deny_if_banned_callback(query):
+            return
+
+        if not read_settings()["join_vip_enabled"]:
+            await query.answer(
+                "⚠️ Order VIP sedang OFF.",
+                show_alert=True
+            )
+            return
 
         package_id = int(query.data.split("_")[1])
         package = get_package(package_id)
@@ -1682,18 +2180,10 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         user = query.from_user
-        await notify_admin_vip_package(
-            context.bot,
-            user.full_name or "-",
-            f"@{user.username}" if user.username else "-",
-            user.id,
-            package["nama"],
-        )
-
         keyboard = InlineKeyboardMarkup([
     [
         InlineKeyboardButton(
-            "💸 Bayar Sekarang",
+            "💸 Bayar",
             callback_data=f"bayar_{package_id}"
         )
     ],
@@ -1705,15 +2195,28 @@ async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 ])
 
-        await query.edit_message_text(
-            f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
-            f"━━━━━━━━━━━━━━\n\n"
-            f"<blockquote>❝ {html.escape(package['deskripsi'])} ❞</blockquote>\n\n"
-            f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n"
-            f"━━━━━━━━━━━━━━",
-            reply_markup=keyboard,
-            parse_mode="HTML"
+        await asyncio.gather(
+            query.answer(),
+            query.edit_message_text(
+                f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
+                f"━━━━━━━━━━━━━━\n\n"
+                f"<blockquote>❝ {html.escape(package['deskripsi'])} ❞</blockquote>\n\n"
+                f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n"
+                f"━━━━━━━━━━━━━━",
+                reply_markup=keyboard,
+                parse_mode="HTML"
+            )
         )
+        asyncio.create_task(
+            notify_admin_vip_package(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+                package["nama"],
+            )
+        )
+
 
 
 async def send_qris_message(chat_id, context, package, package_id):
@@ -1741,17 +2244,20 @@ async def send_qris_message(chat_id, context, package, package_id):
         photo=qris_file_id,
 
         caption=(
-            "<b>💳 PEMBAYARAN GROUP BOCIL</b>\n"
-            "━━━━━━━━━━━━━━\n\n"
+            "<b>✅ QRIS telah dibuat</b>\n"
+            "⏳ 20 menit\n"
+            "╭───────────────╮\n"
             f"🎟️ <b>{html.escape(package['nama'])}</b>\n"
             f"💰 Harga : <b>{html.escape(package['harga'])}</b>\n\n"
             "<blockquote>❝ Scan kode QR di atas untuk melakukan pembayaran, "
-            "bayar sesuai nominal paket, lalu kirim screenshot/foto bukti "
-            "transfer di sini. ❞</blockquote>\n\n"
-            "💠 <b>Pembayaran via :</b>\n"
+            "bayar sesuai nominal paket, setelah berhasil, tekan "
+            "“Sudah Transfer” untuk mengirim bukti pembayaran berupa "
+            "screenshot/foto.\n\n"
+            "Jika tidak jadi melakukan pembayaran, tekan “Batalkan”. ❞</blockquote>\n\n"
+            "<b>Pembayaran via :</b>\n"
             "🟣 OVO · 🔵 Dana · 🟠 ShopeePay\n"
             "🟢 GoPay · 📱 TNG · 🏦 Maybank\n"
-            "━━━━━━━━━━━━━━"
+            "╰───────────────╯"
         ),
         parse_mode="HTML",
 
@@ -1789,19 +2295,24 @@ async def send_qris_message(chat_id, context, package, package_id):
     return True
 
 
+
 async def show_qris_loading_message(chat_id, context):
     loading_msg = await context.bot.send_message(
         chat_id=chat_id,
         text="⏳ Membuat QRIS..."
     )
-    await asyncio.sleep(1)
-    try:
-        await context.bot.delete_message(
-            chat_id=chat_id,
-            message_id=loading_msg.message_id
-        )
-    except Exception:
-        pass
+
+    async def _remove_loading():
+        await asyncio.sleep(1)
+        try:
+            await context.bot.delete_message(
+                chat_id=chat_id,
+                message_id=loading_msg.message_id
+            )
+        except Exception:
+            pass
+
+    return asyncio.create_task(_remove_loading())
 
 
 def cleanup_failed_qris_order(order_id, user_id):
@@ -1819,6 +2330,19 @@ def cleanup_failed_qris_order(order_id, user_id):
 
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+
+    if await deny_if_banned_callback(query):
+        return
+
+    if (
+        not read_settings()["join_vip_enabled"]
+        and not get_payment_lock(query.from_user.id)
+    ):
+        await query.answer(
+            "⚠️ Order VIP sedang OFF.",
+            show_alert=True
+        )
+        return
 
     if get_payment_lock(query.from_user.id):
         await query.answer(
@@ -1846,34 +2370,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     uploaded_order = data
                 break
 
-        # Sinkronkan ulang notifikasi VIP untuk user yang masih terkena
-        # payment lock. Cabang ini sebelumnya bisa keluar lebih awal sebelum
-        # status Paket/QRIS masuk ke pesan aktivitas admin.
-        if package is not None:
-            user = query.from_user
-            await notify_admin_vip_menu(
-                context.bot,
-                user.full_name or "-",
-                f"@{user.username}" if user.username else "-",
-                user.id,
-            )
-            if active_order is not None and active_order.get("qris_msg_id"):
-                await notify_admin_vip_qris(
-                    context.bot,
-                    user.full_name or "-",
-                    f"@{user.username}" if user.username else "-",
-                    user.id,
-                    package["nama"],
-                )
-            else:
-                await notify_admin_vip_package(
-                    context.bot,
-                    user.full_name or "-",
-                    f"@{user.username}" if user.username else "-",
-                    user.id,
-                    package["nama"],
-                )
-
         if uploaded_order is not None:
             previous_notice_msg_id = uploaded_order.get(
                 "payment_received_notice_msg_id"
@@ -1899,6 +2395,34 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "payment_notice_msg_ids",
                 []
             ).append(notice_msg.message_id)
+
+            # Keep the user-facing response independent from the admin
+            # activity refresh so the user does not wait for that update.
+            if package is not None:
+                user = query.from_user
+                await notify_admin_vip_menu(
+                    context.bot,
+                    user.full_name or "-",
+                    f"@{user.username}" if user.username else "-",
+                    user.id,
+                )
+                if active_order is not None and active_order.get("qris_msg_id"):
+                    await notify_admin_vip_qris(
+                        context.bot,
+                        user.full_name or "-",
+                        f"@{user.username}" if user.username else "-",
+                        user.id,
+                        package["nama"],
+                    )
+                else:
+                    await notify_admin_vip_package(
+                        context.bot,
+                        user.full_name or "-",
+                        f"@{user.username}" if user.username else "-",
+                        user.id,
+                        package["nama"],
+                    )
+
             return
 
         if package is None:
@@ -1919,7 +2443,13 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         qris_loading_users.add(query.from_user.id)
         try:
-            await show_qris_loading_message(
+            old_qris_msg_id = (
+                active_order.get("qris_msg_id")
+                if active_order is not None
+                else None
+            )
+
+            loading_task = await show_qris_loading_message(
                 query.message.chat_id,
                 context
             )
@@ -1931,6 +2461,18 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 package_id
             )
             if qris_created:
+                if old_qris_msg_id:
+                    try:
+                        await context.bot.delete_message(
+                            chat_id=query.message.chat_id,
+                            message_id=old_qris_msg_id
+                        )
+                    except Exception:
+                        pass
+
+                if not loading_task.done():
+                    await loading_task
+
                 user = query.from_user
                 await notify_admin_vip_qris(
                     context.bot,
@@ -1940,6 +2482,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     package["nama"],
                 )
         finally:
+            if 'loading_task' in locals() and not loading_task.done():
+                await loading_task
             qris_loading_users.discard(query.from_user.id)
 
         return
@@ -1947,6 +2491,26 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     global next_order_id
+
+    pending = read_pending_orders()
+    history = read_order_history()
+    used_order_ids = set()
+
+    for order in pending.get("orders", []):
+        try:
+            used_order_ids.add(int(order["order_id"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    for order in history.get("orders", []):
+        try:
+            used_order_ids.add(int(order["order_id"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    next_order_id = max(used_order_ids, default=0) + 1
+    while next_order_id in used_order_ids:
+        next_order_id += 1
 
     package_id = int(query.data.split("_")[1])
     package = get_package(package_id)
@@ -1994,7 +2558,7 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     qris_loading_users.add(query.from_user.id)
     try:
-        await show_qris_loading_message(
+        loading_task = await show_qris_loading_message(
             query.message.chat_id,
             context
         )
@@ -2005,12 +2569,29 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             package,
             package_id
         )
+        if not loading_task.done():
+            await loading_task
+
         if not qris_created:
             cleanup_failed_qris_order(
                 order_id,
                 query.from_user.id
             )
         else:
+            upload_waiting[order_id]["expires_at"] = time.time() + (20 * 60)
+
+            pending = read_pending_orders()
+            for i, order in enumerate(pending["orders"]):
+                if order["order_id"] == order_id:
+                    pending["orders"][i] = upload_waiting[order_id].copy()
+                    break
+            save_pending_orders(pending)
+
+            schedule_qris_expiry(
+                context,
+                order_id,
+                upload_waiting[order_id]["expires_at"]
+            )
             user = query.from_user
             await notify_admin_vip_qris(
                 context.bot,
@@ -2020,6 +2601,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 package["nama"],
             )
     except Exception:
+        if 'loading_task' in locals() and not loading_task.done():
+            await loading_task
         cleanup_failed_qris_order(
             order_id,
             query.from_user.id
@@ -2029,8 +2612,11 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         qris_loading_users.discard(query.from_user.id)
 
 
+
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if await deny_if_banned_callback(query):
+        return
     await query.answer()
 
     user = query.from_user
@@ -2122,6 +2708,8 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if await deny_if_banned_callback(query):
+        return
     await query.answer()
 
     user_id = query.from_user.id
@@ -2138,53 +2726,68 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     save_pending_orders(pending)
 
+    messages_to_delete = set()
+
     for order_id, data in list(upload_waiting.items()):
 
         if data["user_id"] == user_id:
 
+            task = qris_expiry_tasks.pop(order_id, None)
+            if task and not task.done():
+                task.cancel()
+
             if data.get("upload_msg_id"):
-                try:
-                    await context.bot.delete_message(
-                        chat_id=query.message.chat_id,
-                        message_id=data["upload_msg_id"]
-                    )
-                except Exception:
-                    pass
+                messages_to_delete.add(data["upload_msg_id"])
+
+            messages_to_delete.update(
+                data.get("pre_upload_notice_msg_ids", [])
+            )
+            data["pre_upload_notice_msg_ids"] = []
 
             if data.get("qris_msg_id"):
-                try:
-                    await context.bot.delete_message(
-                        chat_id=query.message.chat_id,
-                        message_id=data["qris_msg_id"]
-                    )
-                except Exception:
-                    pass
+                messages_to_delete.add(data["qris_msg_id"])
 
-            # Also remove the pre-upload warning shown before
-            # "📤 Sudah Transfer" was pressed.
-            for notice_msg_id in data.get("pre_upload_notice_msg_ids", []):
-                try:
-                    await context.bot.delete_message(
-                        chat_id=query.message.chat_id,
-                        message_id=notice_msg_id
-                    )
-                except Exception:
-                    pass
+            if data.get("payment_format_notice_msg_id"):
+                messages_to_delete.add(data["payment_format_notice_msg_id"])
 
-            data["pre_upload_notice_msg_ids"] = []
             upload_waiting.pop(order_id)
 
-    await query.message.reply_text(
-        "❌ Order berhasil dibatalkan.\n\n"
-    )
+    async def _safe_delete_cancel_message(message_id):
+        try:
+            await context.bot.delete_message(
+                chat_id=query.message.chat_id,
+                message_id=message_id
+            )
+        except Exception:
+            pass
+
+    cleanup_task = None
+    if messages_to_delete:
+        cleanup_task = asyncio.gather(
+            *(_safe_delete_cancel_message(message_id)
+              for message_id in messages_to_delete)
+        )
 
     user = query.from_user
-    await notify_admin_vip_cancelled(
-        context.bot,
-        user.full_name or "-",
-        f"@{user.username}" if user.username else "-",
-        user.id,
+    user_cancel_task = asyncio.create_task(
+        query.message.reply_text(
+            "❌ Order berhasil dibatalkan.\n\n"
+        )
     )
+    admin_cancel_task = asyncio.create_task(
+        notify_admin_vip_cancelled(
+            context.bot,
+            user.full_name or "-",
+            f"@{user.username}" if user.username else "-",
+            user.id,
+        )
+    )
+
+    await user_cancel_task
+    await asyncio.gather(
+        *(task for task in (cleanup_task, admin_cancel_task) if task is not None)
+    )
+
 # ---------------------------------------------------------------------------
 # Admin commands
 # ---------------------------------------------------------------------------
@@ -2192,7 +2795,7 @@ async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_add_waiting[query.from_user.id] = {
         "step": "nama"
@@ -2206,19 +2809,22 @@ async def adminvip_add_callback(update: Update, context: ContextTypes.DEFAULT_TY
             )
         ]
     ])
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "➕ <b>Tambah Paket</b>\n\n"
             "Silakan masukkan nama paket baru."
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     # Hentikan mode Edit Paket jika admin menekan Batal atau kembali
     # ke detail paket tanpa mengirim perubahan.
@@ -2252,9 +2858,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         InlineKeyboardButton(
             "🖼 Edit Banner",
             callback_data=f"adminvip_banner_{package_id}"
-        )
-    ],
-    [
+        ),
         InlineKeyboardButton(
             "🗑️ Hapus Paket",
             callback_data=f"adminvip_delete_{package_id}"
@@ -2267,26 +2871,30 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
         )
 ]
     ])
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"{package['nama']}\n\n"
             f"💰 {package['harga']}"
         ),
         reply_markup=keyboard
+    ),
     )
 
 
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
+    answer_task = asyncio.create_task(query.answer())
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
 
-    packages = read_vip_packages()["packages"]
+    packages = get_vip_packages_cached()["packages"]
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["PACKAGE_BANNER_FILE_ID"],
             caption=(
@@ -2295,6 +2903,7 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
             parse_mode="HTML",
         ),
         reply_markup=build_adminvip_packages_keyboard(packages),
+    ),
     )
 
 
@@ -2346,15 +2955,18 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["PAYMENT_BANNER_FILE_ID"],
             caption="💳 <b>PEMBAYARAN</b>",
             parse_mode="HTML",
         ),
         reply_markup=build_payment_keyboard(),
+    ),
     )
 
 
@@ -2709,7 +3321,7 @@ async def incoming_vip_detail_callback(
 
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_channel_waiting.discard(query.from_user.id)
 
@@ -2744,7 +3356,9 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
     ]
     ])
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["CHANNEL_POST_BANNER_FILE_ID"],
             caption=(
@@ -2760,16 +3374,19 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
             parse_mode="HTML",
         ),
         reply_markup=keyboard
+    ),
     )
 
 
 async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_channel_waiting.add(query.from_user.id)
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "📝 Edit Channel Post\n\n"
             "Silakan kirim teks Channel Post baru."
@@ -2777,25 +3394,61 @@ async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TY
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_channel")]
         ])
+    ),
     )
 
 
 async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     settings = read_settings()
-
     settings["channel_auto_post"] = not settings["channel_auto_post"]
-
     save_settings(settings)
 
-    await adminvip_channel_callback(update, context)
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📝 Edit Pesan", callback_data="channel_edit"),
+            InlineKeyboardButton("⏱ Edit Interval", callback_data="channel_interval")
+        ],
+        [
+            InlineKeyboardButton(
+                f"{'🟢' if settings['channel_auto_post'] else '🔴'} Auto Post",
+                callback_data="channel_toggle"
+            ),
+            InlineKeyboardButton("📤 Kirim", callback_data="channel_send")
+        ],
+        [
+            InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_back")
+        ]
+    ])
+
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
+            media=InputMediaPhoto(
+                media=os.environ["CHANNEL_POST_BANNER_FILE_ID"],
+                caption=(
+                    "📢 Channel Post\n\n"
+                    f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
+                    f"Interval : {settings['channel_interval']} menit\n\n"
+                    "<pre>"
+                    "Pesan\n"
+                    "────────────────────\n"
+                    f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
+                    "</pre>"
+                ),
+                parse_mode="HTML",
+            ),
+            reply_markup=keyboard
+        )
+    )
 
 
 async def channel_interval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("1 Menit", callback_data="channel_set_1")],
@@ -2809,9 +3462,12 @@ async def channel_interval_callback(update: Update, context: ContextTypes.DEFAUL
         [InlineKeyboardButton("🔙 Kembali", callback_data="adminvip_channel")]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption="⏱ Interval Channel Post",
         reply_markup=keyboard
+    ),
     )
 
 
@@ -2908,13 +3564,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         if not package:
             continue
 
-        harga = (
-            package["harga"]
-            .replace("Rp", "")
-            .replace(".", "")
-            .replace(",", "")
-            .strip()
-        )
+        harga = parse_package_price(package["harga"].split("|", 1)[0])
 
         if harga.isdigit():
             total_pendapatan += int(harga)
@@ -2955,27 +3605,41 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         )
     ])
 
-    await query.edit_message_caption(
-        caption=(
-            "📋 <b>ORDER HISTORY</b>\n\n"
+    await query.edit_message_media(
+        media=InputMediaPhoto(
+            media=os.environ["PAYMENT_BANNER_FILE_ID"],
+            caption=(
+                "📋 <b>ORDER HISTORY</b>\n\n"
 
-            f"💰 Total Pendapatan\n"
-            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+                f"💰 Total Pendapatan\n"
+                f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
 
-            f"📦 Total Order : {total_order}\n\n"
+                f"📦 Total Order : {total_order}\n\n"
 
-            "Pilih tanggal transaksi di bawah ini."
+                "Pilih tanggal transaksi di bawah ini."
+            ),
+            parse_mode="HTML",
         ),
         reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="HTML",
     )
 
 
 async def payment_history_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
-    tanggal = query.data.replace("history_", "")
+    callback_data = query.data
+
+    if callback_data.startswith("history_page_"):
+        page_data = callback_data.replace("history_page_", "", 1)
+        tanggal, page_str = page_data.rsplit("_", 1)
+        try:
+            page = int(page_str)
+        except ValueError:
+            page = 0
+    else:
+        tanggal = callback_data.replace("history_", "", 1)
+        page = 0
 
     history = read_order_history()
 
@@ -2994,65 +3658,567 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
         )
         return
 
-    text = f"📅 {tanggal}\n\n"
+    if page < 0 or page >= len(orders):
+        page = 0
 
-    for i, order in enumerate(orders, start=1):
+    order = orders[page]
 
-        package = get_package(order["package_id"])
+    package = get_package(order["package_id"])
 
-        jam = order["time"].split(",")[1].strip()
+    jam = order["time"].split(",")[1].strip()
 
-        harga = (
-            package["harga"]
-            if package
-            else "-"
+    harga = (
+        package["harga"]
+        if package
+        else "-"
+    )
+
+    order_number = order.get("order_id", page + 1)
+
+    raw_time = str(order.get("time", "-"))
+    try:
+        order_time = datetime.strptime(
+            raw_time,
+            "%d %b %Y, %H:%M:%S WIB"
+        ).strftime("%d/%m/%Y %I:%M %p")
+    except ValueError:
+        order_time = raw_time.replace(", ", " ", 1)
+
+    text = (
+        "📥 <b>BUKTI TRANSFER</b>\n\n"
+        f"🧾 <b>Order ID</b> : #{html.escape(str(order_number))}\n"
+        f"👤 <b>Nama</b> : {html.escape(str(order.get('full_name', '-')))}\n"
+        f"🔗 <b>Username</b> : {html.escape(str(order.get('username', '-')))}\n"
+        f"🆔 <b>User ID</b> : {order.get('user_id', '-')}\n\n"
+        f"📦 <b>Paket</b> : {html.escape(str(package['nama'] if package else '-'))}\n"
+        f"💰 <b>Harga</b> : {html.escape(str(harga))}\n"
+        f"🕒 <b>Waktu</b> : {html.escape(order_time)}"
+    )
+
+    keyboard = []
+
+
+    navigation_row = [
+        InlineKeyboardButton(
+            "‹",
+            callback_data=(
+                f"history_page_{tanggal}_{page - 1}"
+                if page > 0 else "history_nav_noop"
+            )
+        ),
+        InlineKeyboardButton(
+            f"{page + 1}/{len(orders)}",
+            callback_data="history_nav_noop"
+        ),
+        InlineKeyboardButton(
+            "›",
+            callback_data=(
+                f"history_page_{tanggal}_{page + 1}"
+                if page < len(orders) - 1 else "history_nav_noop"
+            )
         )
+    ]
+    keyboard.append(navigation_row)
 
-        text += (
-            f"📋 Order #{i}\n\n"
-            f"👤 {order['full_name']}\n"
-            f"🆔 {order['user_id']}\n"
-            f"🔗 {order['username']}\n\n"
-            f"📦 {package['nama'] if package else '-'}\n"
-            f"💰 {harga}\n\n"
-            f"🕒 {jam}\n\n"
+    keyboard.append([
+        InlineKeyboardButton(
+            "🗑️ Hapus",
+            callback_data=f"history_delete_{tanggal}_{page}"
         )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="payment_history"
+        )
+    ])
+
+    history_media = InputMediaPhoto(
+        media=(
+            order["photo_file_id"]
+            if order.get("photo_file_id")
+            else os.environ["PAYMENT_BANNER_FILE_ID"]
+        ),
+        caption=text,
+        parse_mode="HTML",
+    )
+
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
+            media=history_media,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        ),
+    )
+
+
+async def history_nav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.callback_query.answer()
+
+
+async def payment_history_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    delete_data = query.data.replace("history_delete_", "", 1)
+    tanggal, page_str = delete_data.rsplit("_", 1)
+
+    try:
+        page = int(page_str)
+    except ValueError:
+        await query.answer("❌ Data order tidak valid.", show_alert=True)
+        return
+
+    history = read_order_history()
+    orders = [
+        order
+        for order in history["orders"]
+        if order["time"].startswith(tanggal)
+    ]
+
+    if page < 0 or page >= len(orders):
+        await query.answer("❌ Order tidak ditemukan.", show_alert=True)
+        return
+
+    order = orders[page]
+    package = get_package(order["package_id"])
+    harga = package["harga"] if package else "-"
 
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "🗑 Hapus Tanggal Ini",
-                callback_data=f"history_delete_{tanggal}"
-            )
-        ],
-        [
+                "❌ Batal",
+                callback_data=f"history_page_{tanggal}_{page}"
+            ),
             InlineKeyboardButton(
-                "🔙 Kembali",
-                callback_data="payment_history"
+                "🗑️ Hapus",
+                callback_data=f"history_delete_yes_{tanggal}_{page}"
             )
         ]
     ])
 
     await query.edit_message_caption(
-        caption=text,
+        caption=(
+            "⚠️ Hapus Order\n\n"
+            f"👤 {order['full_name']}\n"
+            f"🆔 {order['user_id']}\n\n"
+            f"📦 {package['nama'] if package else '-'}\n"
+            f"💰 {harga}\n\n"
+            "Hanya order ini yang akan dihapus.\n"
+            "Order lainnya tetap aman."
+        ),
         reply_markup=keyboard,
     )
+
+
+async def payment_history_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    delete_data = query.data.replace("history_delete_yes_", "", 1)
+    tanggal, page_str = delete_data.rsplit("_", 1)
+
+    try:
+        page = int(page_str)
+    except ValueError:
+        await query.answer("❌ Data order tidak valid.", show_alert=True)
+        return
+
+    history = read_order_history()
+    matching_indices = [
+        index
+        for index, order in enumerate(history["orders"])
+        if order["time"].startswith(tanggal)
+    ]
+
+    if page < 0 or page >= len(matching_indices):
+        await query.answer("❌ Order sudah tidak tersedia.", show_alert=True)
+        return
+
+    del history["orders"][matching_indices[page]]
+    save_order_history(history)
+
+    remaining_orders = [
+        order
+        for order in history["orders"]
+        if order["time"].startswith(tanggal)
+    ]
+
+    if not remaining_orders:
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "🔙 Order History",
+                    callback_data="payment_history"
+                )
+            ]
+        ])
+        await query.edit_message_media(
+            media=InputMediaPhoto(
+                media=os.environ["PAYMENT_BANNER_FILE_ID"],
+                caption="✅ Order berhasil dihapus.\n\nTidak ada order lain pada tanggal ini.",
+            ),
+            reply_markup=keyboard,
+        )
+        return
+
+    if page >= len(remaining_orders):
+        page = len(remaining_orders) - 1
+
+    order = remaining_orders[page]
+    package = get_package(order["package_id"])
+    harga = package["harga"] if package else "-"
+
+    order_number = order.get("order_id", page + 1)
+
+    raw_time = str(order.get("time", "-"))
+    try:
+        order_time = datetime.strptime(
+            raw_time,
+            "%d %b %Y, %H:%M:%S WIB"
+        ).strftime("%d/%m/%Y %I:%M %p")
+    except ValueError:
+        order_time = raw_time.replace(", ", " ", 1)
+
+    text = (
+        "📥 <b>BUKTI TRANSFER</b>\n\n"
+        f"🧾 <b>Order ID</b> : #{html.escape(str(order_number))}\n"
+        f"👤 <b>Nama</b> : {html.escape(str(order.get('full_name', '-')))}\n"
+        f"🔗 <b>Username</b> : {html.escape(str(order.get('username', '-')))}\n"
+        f"🆔 <b>User ID</b> : {order.get('user_id', '-')}\n\n"
+        f"📦 <b>Paket</b> : {html.escape(str(package['nama'] if package else '-'))}\n"
+        f"💰 <b>Harga</b> : {html.escape(str(harga))}\n"
+        f"🕒 <b>Waktu</b> : {html.escape(order_time)}"
+    )
+
+    keyboard = []
+
+    navigation_row = [
+        InlineKeyboardButton(
+            "‹",
+            callback_data=(
+                f"history_page_{tanggal}_{page - 1}"
+                if page > 0 else "history_nav_noop"
+            )
+        ),
+        InlineKeyboardButton(
+            f"{page + 1}/{len(remaining_orders)}",
+            callback_data="history_nav_noop"
+        ),
+        InlineKeyboardButton(
+            "›",
+            callback_data=(
+                f"history_page_{tanggal}_{page + 1}"
+                if page < len(remaining_orders) - 1 else "history_nav_noop"
+            )
+        )
+    ]
+    keyboard.append(navigation_row)
+    keyboard.append([
+        InlineKeyboardButton(
+            "🗑️ Hapus",
+            callback_data=f"history_delete_{tanggal}_{page}"
+        )
+    ])
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="payment_history"
+        )
+    ])
+
+    history_media = InputMediaPhoto(
+        media=(
+            order["photo_file_id"]
+            if order.get("photo_file_id")
+            else os.environ["PAYMENT_BANNER_FILE_ID"]
+        ),
+        caption=text,
+        parse_mode="HTML",
+    )
+
+    await query.edit_message_media(
+        media=history_media,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+
+
+async def payment_history_proof_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    proof_data = query.data.replace("history_proof_", "", 1)
+    tanggal, page_str = proof_data.rsplit("_", 1)
+
+    try:
+        page = int(page_str)
+    except ValueError:
+        await query.answer("❌ Data bukti tidak valid.", show_alert=True)
+        return
+
+    history = read_order_history()
+
+    orders = []
+
+    for order in history["orders"]:
+
+        if order["time"].startswith(tanggal):
+
+            orders.append(order)
+
+    if page < 0 or page >= len(orders):
+        await query.answer("❌ Order tidak ditemukan.", show_alert=True)
+        return
+
+    order = orders[page]
+    photo_file_id = order.get("photo_file_id")
+
+    if not photo_file_id:
+        await query.answer("❌ Bukti transfer tidak tersedia.", show_alert=True)
+        return
+
+    try:
+        await context.bot.send_photo(
+            chat_id=query.message.chat_id,
+            photo=photo_file_id,
+            caption=f"📎 Bukti Transfer\nOrder #{page + 1}\n{tanggal}",
+        )
+    except Exception as e:
+        logger.error(f"Send payment history proof error: {e}")
+        await query.answer("❌ Gagal menampilkan bukti transfer.", show_alert=True)
 
 
 async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "📅 Hapus Tanggal",
+                callback_data="payment_clear_date"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🗑 Hapus Semua Order",
+                callback_data="payment_clear_all"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data="adminvip_payment"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "⚠️ Clear Order\n\n"
+            "Silahkan pilih:"
+        ),
+        reply_markup=keyboard,
+    )
+
+
+async def payment_clear_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    callback_data = query.data
+
+    if callback_data.startswith("payment_clear_date_page_"):
+        try:
+            page = int(callback_data.replace("payment_clear_date_page_", "", 1))
+        except ValueError:
+            page = 0
+    else:
+        page = 0
+
     history = read_order_history()
 
+    tanggal_order = {}
+    for order in history["orders"]:
+        tanggal = order["time"].split(",")[0]
+        tanggal_order[tanggal] = tanggal_order.get(tanggal, 0) + 1
+
+    dates = sorted(tanggal_order.items(), reverse=True)
+
+    if not dates:
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "🔙 Kembali",
+                    callback_data="payment_clear"
+                )
+            ]
+        ])
+        await query.edit_message_caption(
+            caption=(
+                "📅 Hapus Order Berdasarkan Tanggal\n\n"
+                "Belum ada Order History."
+            ),
+            reply_markup=keyboard,
+        )
+        return
+
+    per_page = 6
+    total_pages = (len(dates) + per_page - 1) // per_page
+
+    if page < 0 or page >= total_pages:
+        page = 0
+
+    start_index = page * per_page
+    page_dates = dates[start_index:start_index + per_page]
+
+    keyboard = []
+
+    for tanggal, jumlah in page_dates:
+        keyboard.append([
+            InlineKeyboardButton(
+                f"📅 {tanggal} ({jumlah})",
+                callback_data=f"payment_clear_date_select_{tanggal}"
+            )
+        ])
+
+    navigation_row = []
+
+    if page > 0:
+        navigation_row.append(
+            InlineKeyboardButton(
+                "◀️",
+                callback_data=f"payment_clear_date_page_{page - 1}"
+            )
+        )
+
+    navigation_row.append(
+        InlineKeyboardButton(
+            f"{page + 1}/{total_pages}",
+            callback_data=f"payment_clear_date_page_{page}"
+        )
+    )
+
+    if page < total_pages - 1:
+        navigation_row.append(
+            InlineKeyboardButton(
+                "▶️",
+                callback_data=f"payment_clear_date_page_{page + 1}"
+            )
+        )
+
+    keyboard.append(navigation_row)
+    keyboard.append([
+        InlineKeyboardButton(
+            "🔙 Kembali",
+            callback_data="payment_clear"
+        )
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "📅 Hapus Order Berdasarkan Tanggal\n\n"
+            "Silahkan pilih tanggal:"
+        ),
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+async def payment_clear_date_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    tanggal = query.data.replace("payment_clear_date_select_", "", 1)
+    history = read_order_history()
+
+    total_order = 0
+    total_pendapatan = 0
+
+    for order in history["orders"]:
+        if not order["time"].startswith(tanggal):
+            continue
+
+        total_order += 1
+
+        package = get_package(order["package_id"])
+        if not package:
+            continue
+
+        harga = parse_package_price(package["harga"].split("|", 1)[0])
+        if harga.isdigit():
+            total_pendapatan += int(harga)
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data="payment_clear_date"
+            ),
+            InlineKeyboardButton(
+                "✅ Ya, Hapus",
+                callback_data=f"payment_clear_date_yes_{tanggal}"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption=(
+            "⚠️ Hapus Order Tanggal Ini\n\n"
+            f"📅 {tanggal}\n\n"
+            f"📦 Total Order\n"
+            f"{total_order}\n\n"
+            f"💰 Total Pendapatan\n"
+            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+            "Data tidak dapat dikembalikan."
+        ),
+        reply_markup=keyboard,
+    )
+
+
+async def payment_clear_date_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    tanggal = query.data.replace("payment_clear_date_yes_", "", 1)
+    history = read_order_history()
+
+    history["orders"] = [
+        order
+        for order in history["orders"]
+        if not order["time"].startswith(tanggal)
+    ]
+
+    save_order_history(history)
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔙 Clear Order",
+                callback_data="payment_clear"
+            )
+        ]
+    ])
+
+    await query.edit_message_caption(
+        caption="✅ Transaksi tanggal berhasil dihapus.",
+        reply_markup=keyboard,
+    )
+
+
+async def payment_clear_all_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    history = read_order_history()
     total_order = len(history["orders"])
 
     total_pendapatan = 0
-
     packages = read_vip_packages()["packages"]
 
     for order in history["orders"]:
-
         package = next(
             (
                 p for p in packages
@@ -3064,14 +4230,7 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
         if not package:
             continue
 
-        harga = (
-            package["harga"]
-            .replace("Rp", "")
-            .replace(".", "")
-            .replace(",", "")
-            .strip()
-        )
-
+        harga = parse_package_price(package["harga"].split("|", 1)[0])
         if harga.isdigit():
             total_pendapatan += int(harga)
 
@@ -3079,33 +4238,30 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
         [
             InlineKeyboardButton(
                 "❌ Batal",
-                callback_data="adminvip_payment"
+                callback_data="payment_clear"
             ),
             InlineKeyboardButton(
-                "✅ Ya, Clear",
-                callback_data="payment_clear_yes"
+                "✅ Ya, Hapus Semua",
+                callback_data="payment_clear_all_yes"
             )
         ]
     ])
 
     await query.edit_message_caption(
         caption=(
-            "⚠️ Clear Order\n\n"
+            "⚠️ Hapus Semua Order\n\n"
             "Seluruh Order History akan dihapus.\n\n"
-
             f"📦 Total Order\n"
             f"{total_order}\n\n"
-
             f"💰 Total Pendapatan\n"
             f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
-
             "Data tidak dapat dikembalikan."
         ),
         reply_markup=keyboard,
     )
 
 
-async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def payment_clear_all_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
@@ -3124,104 +4280,6 @@ async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAU
 
     await query.edit_message_caption(
         caption="✅ Order History berhasil dibersihkan.",
-        reply_markup=keyboard,
-    )
-
-
-async def payment_history_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    tanggal = query.data.replace("history_delete_", "")
-
-    history = read_order_history()
-
-    packages = read_vip_packages()["packages"]
-
-    total_order = 0
-    total_pendapatan = 0
-
-    for order in history["orders"]:
-
-        if not order["time"].startswith(tanggal):
-            continue
-
-        total_order += 1
-
-        package = get_package(order["package_id"])
-
-        if not package:
-            continue
-
-        harga = (
-            package["harga"]
-            .replace("Rp", "")
-            .replace(".", "")
-            .replace(",", "")
-            .strip()
-        )
-
-        if harga.isdigit():
-            total_pendapatan += int(harga)
-
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "✅ Ya, Hapus",
-                callback_data=f"history_delete_yes_{tanggal}"
-            ),
-            InlineKeyboardButton(
-                "❌ Batal",
-                callback_data=f"history_{tanggal}"
-            )
-        ]
-    ])
-
-    await query.edit_message_caption(
-        caption=(
-            "⚠️ Hapus Tanggal Ini\n\n"
-
-            f"📅 {tanggal}\n\n"
-
-            f"📦 Total Order\n"
-            f"{total_order}\n\n"
-
-            f"💰 Total Pendapatan\n"
-            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
-
-            "Data tidak dapat dikembalikan."
-        ),
-        reply_markup=keyboard,
-    )
-
-
-async def payment_history_delete_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    tanggal = query.data.replace("history_delete_yes_", "")
-
-    history = read_order_history()
-
-    history["orders"] = [
-        order
-        for order in history["orders"]
-        if not order["time"].startswith(tanggal)
-    ]
-
-    save_order_history(history)
-
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "🔙 Order History",
-                callback_data="payment_history"
-            )
-        ]
-    ])
-
-    await query.edit_message_caption(
-        caption="✅ Transaksi tanggal berhasil dihapus.",
         reply_markup=keyboard,
     )
 
@@ -3282,25 +4340,28 @@ def build_settings_keyboard(settings):
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
 
     from telegram import InputMediaPhoto
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["SETTINGS_BANNER_FILE_ID"],
             caption="⚙️ Pengaturan"
         ),
         reply_markup=keyboard
+    ),
     )
 
 
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -3321,13 +4382,16 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["STATISTIC_BANNER_FILE_ID"],
             caption="📊 Statistik",
             parse_mode="HTML",
         ),
         reply_markup=keyboard
+    ),
     )
 
 
@@ -3368,8 +4432,7 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     global _counter_cache
     try:
-        with open(COUNTER_FILE, "w") as f:
-            json.dump({"count": 0}, f)
+        await asyncio.to_thread(_reset_counter_file_sync, COUNTER_FILE)
         _counter_cache = 0
     except Exception as e:
         logger.error(f"Failed to reset counter: {e}")
@@ -3392,12 +4455,14 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
         return
 
-    cpu_percent = await asyncio.to_thread(psutil.cpu_percent, 0.4)
+    cpu_task = asyncio.create_task(
+        asyncio.to_thread(psutil.cpu_percent, 0.4)
+    )
     mem = psutil.virtual_memory()
     disk = psutil.disk_usage("/")
 
@@ -3420,11 +4485,9 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         uptime_str = f"{minutes} menit"
 
     try:
-        with open("/etc/os-release") as f:
-            os_release = dict(
-                line.strip().split("=", 1)
-                for line in f if "=" in line
-            )
+        os_release = await asyncio.to_thread(
+            _read_os_release_sync, "/etc/os-release"
+        )
         os_name = os_release.get("PRETTY_NAME", "Unknown").strip('"')
     except Exception:
         os_name = "Unknown"
@@ -3437,6 +4500,8 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
     tanggal_str = f"{now.day:02d} {bulan_id[now.month]} {now.year}"
     jam_str = now.strftime("%H:%M:%S")
     py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+    cpu_percent = await cpu_task
 
     caption = (
         "<b>🖥 STATUS SERVER</b>\n"
@@ -3461,10 +4526,13 @@ async def adminvip_server_status_callback(update: Update, context: ContextTypes.
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=caption,
         parse_mode="HTML",
         reply_markup=keyboard
+    ),
     )
 
 
@@ -3502,7 +4570,8 @@ async def delete_messages_after_delay(
     chat_id,
     message_ids,
     bot,
-    delay=6
+    delay=6,
+    pending_message_groups=None
 ):
     try:
         current_task = asyncio.current_task()
@@ -3512,16 +4581,40 @@ async def delete_messages_after_delay(
 
         await asyncio.sleep(delay)
 
-        await asyncio.gather(
-            *[
-                bot.delete_message(
+        notification_list = []
+        groups = pending_message_groups or [message_ids]
+        group_keys = {tuple(group) for group in groups}
+
+        try:
+            pending_before_delete = read_pending_preview_deletions()
+            for entry in pending_before_delete:
+                if (
+                    entry.get("chat_id") == chat_id
+                    and tuple(entry.get("message_ids") or []) in group_keys
+                    and entry.get("admin_notification")
+                ):
+                    notification_list.append(entry["admin_notification"])
+        except Exception:
+            pass
+
+        delete_ok = True
+        for group in groups:
+            if not group:
+                continue
+            try:
+                await bot.delete_messages(
                     chat_id=chat_id,
-                    message_id=message_id
+                    message_ids=group
                 )
-                for message_id in message_ids
-            ],
-            return_exceptions=True
-        )
+            except Exception:
+                delete_ok = False
+
+        if delete_ok:
+            for notification in notification_list:
+                await update_media_access_notification_deleted(
+                    bot,
+                    notification
+                )
 
         try:
             pending = read_pending_preview_deletions()
@@ -3529,7 +4622,7 @@ async def delete_messages_after_delay(
                 entry for entry in pending
                 if not (
                     entry.get("chat_id") == chat_id
-                    and entry.get("message_ids") == message_ids
+                    and tuple(entry.get("message_ids") or []) in group_keys
                 )
             ]
             save_pending_preview_deletions(pending)
@@ -3556,14 +4649,28 @@ async def delete_messages_after_delay(
             else:
                 keyboard = None
 
+            preview_keyboard = []
+            if settings["join_vip_enabled"]:
+                preview_keyboard.append([
+                    InlineKeyboardButton(
+                        "🔮 Lihat Paket",
+                        callback_data="vipmenu"
+                    )
+                ])
+                preview_keyboard.append([
+                    InlineKeyboardButton(
+                        "🏠 Bantuan",
+                        callback_data="livechat_start"
+                    )
+                ])
+
             msg = await bot.send_message(
                 chat_id=chat_id,
                 text=(
                     "⏰ Masa Preview sudah selesai.\n\n"
-                    "Koleksi selengkapnya ada di grup VIP.\n\n"
-                    "Chat Admin: @BocilVIP511 👈"
+                    "⏳ Silakan join lagi nanti. ୨୧\n\n"
                 ),
-                reply_markup=keyboard
+                reply_markup=InlineKeyboardMarkup(preview_keyboard)
             )
 
             last_repeat_message[
@@ -3583,7 +4690,6 @@ async def delete_messages_after_delay(
                 None
             )
 
-
 async def sweep_pending_preview_deletions(bot):
     """Jadwalkan ulang penghapusan untuk semua pengiriman preview yang
     belum sempat kena Auto Delete (terkirim saat toggle sedang OFF).
@@ -3593,22 +4699,31 @@ async def sweep_pending_preview_deletions(bot):
     settings = read_settings()
     pending = read_pending_preview_deletions()
 
+    # A chat can have multiple preview albums pending while Auto Delete is OFF.
+    # Group them into one timer per chat, while retaining every album's message IDs.
+    grouped = {}
     for entry in pending:
         chat_id = entry.get("chat_id")
         message_ids = entry.get("message_ids")
-
         if not chat_id or not message_ids:
             continue
+        grouped.setdefault(chat_id, []).append(message_ids)
 
+    for chat_id, groups in grouped.items():
         if chat_id in preview_delete_tasks:
             continue
+
+        combined_message_ids = []
+        for group in groups:
+            combined_message_ids.extend(group)
 
         task = asyncio.create_task(
             delete_messages_after_delay(
                 chat_id,
-                message_ids,
+                combined_message_ids,
                 bot,
-                settings["preview_delete_delay"]
+                settings["preview_delete_delay"],
+                pending_message_groups=groups
             )
         )
 
@@ -3617,15 +4732,10 @@ async def sweep_pending_preview_deletions(bot):
 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
-
-    await clear_last_stats(
-        query.message.chat_id,
-        context.bot
-    )
 
     settings = read_settings()
 
@@ -3633,8 +4743,8 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
-        f"👥 Users       : {len(read_user_registry())}\n"
-        f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
+        f"👥 Users       : {len(_users_cache if _users_cache is not None else read_user_registry())}\n"
+        f"📦 Packages    : {len(get_vip_packages_cached()['packages'])}\n"
         f"📥 Incoming    : {len(get_incoming_vip_orders())}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
@@ -3645,13 +4755,22 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = build_adminvip_keyboard()
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["ADMIN_BANNER_FILE_ID"],
             caption=admin_panel_text,
             parse_mode="HTML",
         ),
         reply_markup=keyboard,
+    ),
+    )
+
+
+    await clear_last_stats(
+        query.message.chat_id,
+        context.bot
     )
 
 
@@ -3704,7 +4823,7 @@ async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     admin_qris_waiting.add(query.from_user.id)
 
@@ -3717,7 +4836,9 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "📷 <b>EDIT QRIS</b>\n\n"
             "Silakan kirim foto QRIS baru.\n\n"
@@ -3725,61 +4846,66 @@ async def adminvip_qris_change_callback(update: Update, context: ContextTypes.DE
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_toggle_join_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     settings = read_settings()
-
     settings["join_vip_enabled"] = not settings["join_vip_enabled"]
-
     save_settings(settings)
 
-    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=build_settings_keyboard(settings)
+        )
     )
 
 
 async def adminvip_toggle_preview_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     settings = read_settings()
     settings["preview_approval_enabled"] = not settings["preview_approval_enabled"]
     save_settings(settings)
 
-    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=build_settings_keyboard(settings)
+        )
     )
 
 
 async def adminvip_toggle_livechat_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     settings = read_settings()
-
     settings["live_chat_enabled"] = not settings["live_chat_enabled"]
-
     save_settings(settings)
 
-    # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=build_settings_keyboard(settings)
+        )
     )
+
 
 async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-
     settings = read_settings()
 
     was_off = not settings["preview_auto_delete"]
@@ -3802,10 +4928,14 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
         preview_delete_tasks.clear()
 
     # Hanya caption & keyboard yang berubah, banner Pengaturan tetap sama.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=build_settings_keyboard(settings)
+        )
     )
+
 
 
 async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3873,7 +5003,7 @@ async def preview_set_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def adminvip_preview_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     settings = read_settings()
 
@@ -3898,9 +5028,12 @@ async def adminvip_preview_settings_callback(update: Update, context: ContextTyp
         ]
     ])
 
-    await query.edit_message_text(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_text(
         "🖼 Preview",
         reply_markup=keyboard
+    ),
     )
 
 
@@ -4207,7 +5340,7 @@ async def adminvip_prv_add_cancel_callback(update: Update, context: ContextTypes
 
 async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     idx = int(query.data.split("_")[3])
 
@@ -4226,13 +5359,16 @@ async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAU
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "✏️ <b>Edit Preview</b>\n\n"
             "Kirim foto atau video baru untuk mengganti Preview ini."
         ),
         reply_markup=keyboard,
         parse_mode="HTML"
+    ),
     )
 
 
@@ -4254,7 +5390,7 @@ async def adminvip_prv_edit_cancel_callback(update: Update, context: ContextType
 
 async def adminvip_prv_del_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     idx = int(query.data.split("_")[3])
 
@@ -4271,13 +5407,16 @@ async def adminvip_prv_del_callback(update: Update, context: ContextTypes.DEFAUL
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "🗑️ <b>Hapus Preview</b>\n\n"
             "Preview ini akan dihapus. Lanjutkan?"
         ),
         reply_markup=keyboard,
         parse_mode="HTML"
+    ),
     )
 
 
@@ -4313,7 +5452,7 @@ async def adminvip_prv_delyes_callback(update: Update, context: ContextTypes.DEF
 
 async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     settings = read_settings()
 
@@ -4367,12 +5506,15 @@ async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAU
 
     from telegram import InputMediaPhoto
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["SETTINGS_BANNER_FILE_ID"],
             caption="⚙️ Pengaturan"
         ),
         reply_markup=keyboard
+    ),
     )
 
 
@@ -4432,7 +5574,7 @@ async def preview_media_receive(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4452,7 +5594,9 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
             )
         ]
     ])
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"📝 <b>Edit Nama</b>\n\n"
             f"Nama saat ini:\n"
@@ -4461,12 +5605,13 @@ async def adminvip_name_callback(update: Update, context: ContextTypes.DEFAULT_T
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4487,7 +5632,9 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"💰 <b>Edit Harga</b>\n\n"
             f"Harga saat ini:\n"
@@ -4496,12 +5643,13 @@ async def adminvip_price_callback(update: Update, context: ContextTypes.DEFAULT_
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4513,16 +5661,36 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         "message_id": query.message.message_id
     }
 
-    keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "❌ Batal",
-                callback_data=f"adminvip_{package_id}"
-            )
-        ]
-    ])
+    description_text = package["deskripsi"] or ""
 
-    await query.edit_message_caption(
+    if len(description_text) <= 256:
+        if CopyTextButton is not None:
+            copy_button = InlineKeyboardButton(
+                "📋 Salin Deskripsi",
+                copy_text=CopyTextButton(text=description_text)
+            )
+        else:
+            copy_button = InlineKeyboardButton(
+                "📋 Salin Deskripsi",
+                api_kwargs={"copy_text": {"text": description_text}}
+            )
+    else:
+        copy_button = None
+
+    keyboard_rows = []
+    if copy_button is not None:
+        keyboard_rows.append([copy_button])
+    keyboard_rows.append([
+        InlineKeyboardButton(
+            "❌ Batal",
+            callback_data=f"adminvip_{package_id}"
+        )
+    ])
+    keyboard = InlineKeyboardMarkup(keyboard_rows)
+
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"📄 <b>Edit Deskripsi</b>\n\n"
             f"Deskripsi saat ini:\n"
@@ -4531,12 +5699,13 @@ async def adminvip_desc_callback(update: Update, context: ContextTypes.DEFAULT_T
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4558,7 +5727,9 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"🔗 <b>Edit Link VIP</b>\n\n"
             f"Link saat ini:\n"
@@ -4568,12 +5739,13 @@ async def adminvip_link_callback(update: Update, context: ContextTypes.DEFAULT_T
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_banner_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4594,7 +5766,9 @@ async def adminvip_banner_callback(update: Update, context: ContextTypes.DEFAULT
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "🖼 <b>Edit Banner Paket</b>\n\n"
             f"Paket: {html.escape(package['nama'])}\n\n"
@@ -4602,12 +5776,13 @@ async def adminvip_banner_callback(update: Update, context: ContextTypes.DEFAULT
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
 async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     package_id = int(query.data.split("_")[2])
     package = get_package(package_id)
@@ -4625,7 +5800,9 @@ async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"⚠️ <b>Yakin ingin menghapus paket ini?</b>\n\n"
             f"{package['nama']}\n"
@@ -4633,6 +5810,7 @@ async def adminvip_delete_callback(update: Update, context: ContextTypes.DEFAULT
         ),
         reply_markup=keyboard,
         parse_mode="HTML",
+    ),
     )
 
 
@@ -4956,9 +6134,7 @@ async def admin_vip_banner_receive(update: Update, context: ContextTypes.DEFAULT
                 InlineKeyboardButton(
                     "🖼 Edit Banner",
                     callback_data=f"adminvip_banner_{package['id']}"
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
                     "🗑️ Hapus Paket",
                     callback_data=f"adminvip_delete_{package['id']}"
@@ -5084,29 +6260,67 @@ async def livechat_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
 
+    # Do not forward ordinary user messages unless Live Support was opened.
+    if user_id not in livechat_sessions:
+        return
+
+    # Anti-spam: allow normal chat, but limit bursts forwarded to admin.
+    now = time.monotonic()
+    livechat_rate = context.application.bot_data.setdefault("livechat_rate_limit", {})
+    state = livechat_rate.setdefault(user_id, {"timestamps": [], "warned_until": 0.0})
+    timestamps = [ts for ts in state["timestamps"] if now - ts < 5.0]
+
+    if len(timestamps) >= 5:
+        state["timestamps"] = timestamps
+        if now >= state["warned_until"]:
+            state["warned_until"] = now + 5.0
+            await update.message.reply_text(
+                "⚠️ Pesan terlalu cepat. Mohon tunggu sebentar sebelum mengirim lagi."
+            )
+        return
+
+    timestamps.append(now)
+    state["timestamps"] = timestamps
+
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
                 "💬 Balas",
-                callback_data=f"reply|{update.effective_user.id}"
+                callback_data=f"reply|{user_id}"
+            ),
+            InlineKeyboardButton(
+                "🙈 Abaikan",
+                callback_data=f"livechat_ignore|{user_id}"
             )
         ]
     ])
 
     waktu = datetime.now(WIB).strftime("%d %b %Y • %H:%M WIB")
 
+    purchase_tag = (
+        "🛒 Status: Lunas"
+        if livechat_sessions.get(user_id, {}).get("source") == "purchase"
+        else ""
+    )
+
     await context.bot.send_message(
         chat_id=ADMIN_ID,
         text=(
-            "📩 Pesan Baru\n\n"
+            "📩 Pesan Live Support\n\n"
+            f"{purchase_tag + chr(10) if purchase_tag else ''}"
             f"👤 {update.effective_user.full_name}\n"
             f"🔗 @{update.effective_user.username if update.effective_user.username else '-'}\n"
-            f"🆔 {update.effective_user.id}\n"
+            f"🆔 {user_id}\n"
             f"🕒 {waktu}\n\n"
             f"💬 {update.message.text}"
         ),
         reply_markup=keyboard
     )
+
+    await update.message.reply_text(
+        "✅ Pesan terkirim ke admin."
+    )
+
 
 
 async def adminadd_save_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5306,6 +6520,236 @@ def build_blacklist_view(page: int = 1):
     return text, keyboard
 
 
+async def expire_qris_order_after_delay(context, order_id: int, expires_at: float):
+    try:
+        delay = max(0, expires_at - time.time())
+        await asyncio.sleep(delay)
+
+        data = upload_waiting.get(order_id)
+        if not data:
+            return
+
+        if data.get("photo_uploaded") or data.get("processing"):
+            return
+
+        user_id = data.get("user_id")
+        qris_msg_id = data.get("qris_msg_id")
+
+        if qris_msg_id and user_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=user_id,
+                    message_id=qris_msg_id
+                )
+            except Exception:
+                pass
+
+        format_notice_id = data.get("payment_format_notice_msg_id")
+        if format_notice_id and user_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=user_id,
+                    message_id=format_notice_id
+                )
+            except Exception:
+                pass
+
+        unlock_payment(user_id)
+        upload_waiting.pop(order_id, None)
+
+        pending = read_pending_orders()
+        pending["orders"] = [
+            order
+            for order in pending["orders"]
+            if order.get("order_id") != order_id
+        ]
+        save_pending_orders(pending)
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text="⚠️ Pembayaran expired. Silakan buat ulang pembayaran."
+        )
+
+        try:
+            await context.bot.send_message(
+                chat_id=ADMIN_ID,
+                text=(
+                    "⏰ <b>QRIS EXPIRED</b>\n\n"
+                    f"👤 <b>Nama</b> : {html.escape(data.get('full_name') or '-')}\n"
+                    f"🆔 <b>User ID</b> : {user_id}\n"
+                    f"📦 <b>Paket</b> : {html.escape(data.get('paket') or '-')}\n"
+                    f"💰 <b>Harga</b> : {html.escape(data.get('harga') or '-') }\n\n"
+                    "⚠️ <b>Tidak dibayar sebelum batas waktu.</b>"
+                ),
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.error(
+            f"QRIS expiry task failed for order_id={order_id}: {e}",
+            exc_info=True
+        )
+    finally:
+        qris_expiry_tasks.pop(order_id, None)
+
+def schedule_qris_expiry(context, order_id: int, expires_at: float):
+    old_task = qris_expiry_tasks.get(order_id)
+    if old_task and not old_task.done():
+        old_task.cancel()
+
+    qris_expiry_tasks[order_id] = asyncio.create_task(
+        expire_qris_order_after_delay(context, order_id, expires_at)
+    )
+
+async def livechat_start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if await deny_if_banned_callback(query):
+        return
+    user_id = query.from_user.id
+    settings = read_settings()
+
+    if not settings["live_chat_enabled"]:
+        await query.answer(
+            "⚠️ Live Support sedang tidak tersedia.",
+            show_alert=True
+        )
+        return
+
+    message_text = query.message.text or query.message.caption or ""
+    source = "deeplink"
+    vip_link = None
+
+    # Payment-success Help must return to the exact VIP link attached
+    # to the current payment-success message.
+    if message_text.startswith("🎉 PEMBAYARAN BERHASIL!"):
+        source = "purchase"
+        vip_button_text = None
+        if query.message.reply_markup:
+            for row in query.message.reply_markup.inline_keyboard:
+                for button in row:
+                    if button.url:
+                        vip_link = button.url
+                        vip_button_text = button.text
+                        break
+                if vip_link:
+                    break
+
+    previous = livechat_sessions.get(user_id, {})
+    livechat_sessions[user_id] = {
+        "source": source,
+        "return_text": message_text,
+        "vip_link": vip_link or previous.get("vip_link"),
+        "vip_button_text": vip_button_text if source == "purchase" else previous.get("vip_button_text"),
+    }
+
+    await query.answer()
+
+    await query.edit_message_text(
+        "🟢 Live Support Aktif\n\n"
+        "📝 Silakan kirim pesan Anda.\n"
+        "Admin akan membalas pesan Anda di sini.",
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "❌ Akhiri Chat",
+                    callback_data="livechat_end"
+                )
+            ]
+        ])
+    )
+
+async def livechat_end_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    user_id = query.from_user.id
+    session = livechat_sessions.pop(user_id, None)
+
+    # Invalidate any outstanding admin reply action for this user.
+    for admin_id, pending_user_id in list(admin_reply_waiting.items()):
+        if pending_user_id == user_id:
+            admin_reply_waiting.pop(admin_id, None)
+
+    await query.answer()
+
+    if session and session.get("source") == "purchase" and session.get("vip_link"):
+        await query.edit_message_text(
+            session.get("return_text", ""),
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        session.get("vip_button_text", "🔗 Open VIP"),
+                        url=session["vip_link"]
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "🏠 Bantuan",
+                        callback_data="livechat_start"
+                    )
+                ]
+            ])
+        )
+    else:
+        settings = read_settings()
+        livechat_return_keyboard = [[
+            InlineKeyboardButton(
+                "🏠 Bantuan",
+                callback_data="livechat_start"
+            )
+        ]]
+        if settings["join_vip_enabled"]:
+            livechat_return_keyboard.insert(0, [
+                InlineKeyboardButton(
+                    "🔮 Lihat Paket",
+                    callback_data="vipmenu"
+                )
+            ])
+
+        await query.edit_message_text(
+            session.get(
+                "return_text",
+                "📍 Permintaan ulang belum tersedia.\n\n"
+                "⏳ Silakan kembali lagi nanti. ୨୧"
+            ),
+            reply_markup=InlineKeyboardMarkup(livechat_return_keyboard)
+        )
+
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=(
+            "🔴 Live Support Diakhiri\n\n"
+            f"👤 {query.from_user.full_name}\n"
+            f"🆔 {user_id}\n\n"
+            "User telah mengakhiri chat."
+        )
+    )
+
+async def livechat_ignore_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    if query.from_user.id != ADMIN_ID:
+        await query.answer()
+        return
+
+    try:
+        user_id = int(query.data.split("|", 1)[1])
+    except (ValueError, IndexError):
+        await query.answer()
+        return
+
+    await query.answer("Diabaikan.")
+
+    try:
+        await query.edit_message_text(
+            "🙈 Pesan Live Support diabaikan."
+        )
+    except Exception:
+        pass
+
 async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != ADMIN_ID:
         return
@@ -5318,12 +6762,29 @@ async def banned_page_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
+
     page = int(query.data.replace("banned_page_", ""))
     text, keyboard = build_blacklist_view(page)
-    try:
-        await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
-    except Exception:
-        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+    async def render_page():
+        try:
+            await query.edit_message_caption(
+                caption=text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        except Exception:
+            await query.edit_message_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+
+    await asyncio.gather(
+        query.answer(),
+        render_page()
+    )
+
 
 
 async def banned_reset_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5463,17 +6924,24 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+
     if query.from_user.id != ADMIN_ID:
         return
+
     text, keyboard = build_blacklist_view(1)
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["BLACKLIST_BANNER_FILE_ID"],
+
+    # /adminvip selalu berupa photo message.
+    # Ubah caption + keyboard pada message yang sedang ditekan,
+    # bukan mengganti/membuat message baru.
+    await asyncio.gather(
+        query.answer(),
+        query.edit_message_caption(
             caption=text,
             parse_mode="HTML",
-        ),
-        reply_markup=keyboard
+            reply_markup=keyboard,
+        )
     )
+
 
 # ==================================================
 # FILE MANAGER
@@ -5572,27 +7040,42 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
         return
 
     dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
-    if dl_msg_id:
+    text, keyboard = build_filemgr_list_view()
+
+    async def cleanup_download():
+        if not dl_msg_id:
+            return
         try:
-            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
+            await context.bot.delete_message(
+                chat_id=query.message.chat_id,
+                message_id=dl_msg_id
+            )
         except Exception:
             pass
 
-    text, keyboard = build_filemgr_list_view()
-    try:
-        await query.edit_message_media(
-            media=InputMediaPhoto(
-                media=os.environ["FILE_MANAGER_BANNER_FILE_ID"],
+    async def render():
+        try:
+            await query.edit_message_media(
+                media=InputMediaPhoto(
+                    media=os.environ["FILE_MANAGER_BANNER_FILE_ID"],
+                    caption=text,
+                    parse_mode="HTML",
+                ),
+                reply_markup=keyboard
+            )
+        except Exception:
+            await query.edit_message_caption(
                 caption=text,
                 parse_mode="HTML",
-            ),
-            reply_markup=keyboard
-        )
-    except Exception:
-        try:
-            await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception:
-            pass
+                reply_markup=keyboard
+            )
+
+    await asyncio.gather(
+        query.answer(),
+        render(),
+        cleanup_download(),
+    )
+
 
 
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -5604,11 +7087,6 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
     file_manager_restore_waiting.pop(query.from_user.id, None)
 
     dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
-    if dl_msg_id:
-        try:
-            await context.bot.delete_message(chat_id=query.message.chat_id, message_id=dl_msg_id)
-        except Exception:
-            pass
 
     idx = int(query.data.replace("filemgr_open_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
@@ -5633,7 +7111,25 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
         ],
         [InlineKeyboardButton("🔙 Kembali", callback_data="filemgr_list")]
     ])
-    await query.edit_message_caption(caption=f"{icon} {name}\n\nPilih tindakan.", reply_markup=keyboard)
+    async def cleanup_download():
+        if not dl_msg_id:
+            return
+        try:
+            await context.bot.delete_message(
+                chat_id=query.message.chat_id,
+                message_id=dl_msg_id
+            )
+        except Exception:
+            pass
+
+    await asyncio.gather(
+        query.edit_message_caption(
+            caption=f"{icon} {name}\n\nPilih tindakan.",
+            reply_markup=keyboard
+        ),
+        cleanup_download(),
+    )
+
 
 
 async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -6079,8 +7575,8 @@ def build_adminvip_keyboard():
             callback_data="adminvip_stats"
         ),
         InlineKeyboardButton(
-            "📢 Channel Post",
-            callback_data="adminvip_channel"
+            "🖥 Status Server",
+            callback_data="adminvip_server_status"
         )
     ])
 
@@ -6090,8 +7586,8 @@ def build_adminvip_keyboard():
             callback_data="filemgr_list"
         ),
         InlineKeyboardButton(
-            "🖥 Status Server",
-            callback_data="adminvip_server_status"
+            "📢 Channel Post",
+            callback_data="adminvip_channel"
         )
     ])
 
@@ -6114,7 +7610,7 @@ def build_payment_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            "📥 Incoming VIP",
+            "📥 Order",
             callback_data="incoming_vip"
         ),
         InlineKeyboardButton(
@@ -6154,8 +7650,8 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
 
-        f"👥 Users       : {len(read_user_registry())}\n"
-        f"📦 Packages    : {len(read_vip_packages()['packages'])}\n"
+        f"👥 Users       : {len(_users_cache if _users_cache is not None else read_user_registry())}\n"
+        f"📦 Packages    : {len(get_vip_packages_cached()['packages'])}\n"
         f"📥 Incoming    : {len(get_incoming_vip_orders())}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
@@ -6470,17 +7966,49 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not update.message.photo:
 
-        notice_msg = await update.message.reply_text(
+        # Invalid uploads are removed immediately via the existing bounded
+        # cleanup queue, keeping the payment chat clean without blocking the
+        # user-facing warning.
+        try:
+            pre_upload_cleanup_queue.put_nowait(
+                (update.message.chat_id, update.message.message_id)
+            )
+        except asyncio.QueueFull:
+            logger.warning(
+                "Invalid payment upload cleanup queue full; leaving message in chat "
+                f"(chat_id={update.message.chat_id}, "
+                f"message_id={update.message.message_id}, order_id={order_id})"
+            )
 
-            "⚠️ Silakan kirim bukti transfer dalam bentuk foto."
-
+        warning_text = "⚠️ Silakan kirim bukti transfer dalam bentuk foto."
+        existing_notice_id = upload_waiting[order_id].get(
+            "payment_format_notice_msg_id"
         )
-        upload_waiting[order_id].setdefault(
-            "payment_notice_msg_ids",
-            []
-        ).append(notice_msg.message_id)
+
+        if existing_notice_id:
+            # Keep a single format warning visible. Repeated invalid uploads
+            # do not create a new notification on top of the existing one.
+            return
+
+        notice_msg = await update.message.reply_text(warning_text)
+        upload_waiting[order_id][
+            "payment_format_notice_msg_id"
+        ] = notice_msg.message_id
 
         return
+
+    format_notice_id = upload_waiting[order_id].pop(
+        "payment_format_notice_msg_id",
+        None,
+    )
+    if format_notice_id:
+        try:
+            await context.bot.delete_message(
+                chat_id=update.message.chat_id,
+                message_id=format_notice_id,
+            )
+        except Exception:
+            pass
 
     upload_waiting[order_id]["processing"] = True
 
@@ -6506,13 +8034,12 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
     order_time = datetime.now(WIB).strftime("%d/%m/%Y %I:%M %p")
 
     try:
-        await context.bot.send_photo(
+        admin_proof_task = asyncio.create_task(
+            context.bot.send_photo(
+                chat_id=ADMIN_ID,
+                photo=upload_waiting[order_id]["photo_file_id"],
 
-            chat_id=ADMIN_ID,
-
-            photo=upload_waiting[order_id]["photo_file_id"],
-
-            caption=(
+                caption=(
                 "📥 <b>BUKTI TRANSFER BARU</b>\n\n"
                 f"🧾 <b>Order ID</b> : #{order_id}\n"
                 f"👤 <b>Nama</b> : {html.escape(user.full_name)}\n"
@@ -6523,9 +8050,9 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"💰 <b>Harga</b> : "
                 f"{html.escape(str(upload_waiting[order_id]['harga']))}\n"
                 f"🕒 <b>Waktu</b> : {order_time}"
-            ),
-            parse_mode="HTML"
-
+                ),
+                parse_mode="HTML"
+            )
         )
     except Exception as e:
         logger.error(
@@ -6537,6 +8064,47 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             exc_info=True
         )
         raise
+    # User-facing status can be sent while the proof photo is being delivered to admin.
+    status_msg = None
+    reupload_prompt_msg_id = None
+    if not upload_waiting[order_id].get("reupload"):
+        status_msg = await update.message.reply_text(
+            "✅ Pembayaran kamu sedang diproses.\n"
+            "⏳ Estimasi waktu: 1–3 menit...\n\n"
+        )
+        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
+    else:
+        reupload_prompt_msg_id = upload_waiting[order_id].get(
+            "reupload_prompt_msg_id"
+        )
+        if reupload_prompt_msg_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.message.chat_id,
+                    message_id=reupload_prompt_msg_id
+                )
+            except Exception:
+                pass
+        status_msg = await update.message.reply_text(
+            "✅ Bukti transfer pengganti telah diterima.\n"
+            "⏳ Estimasi waktu: 1–3 menit...\n\n"
+        )
+        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
+        upload_waiting[order_id]["reupload"] = False
+
+    try:
+        await admin_proof_task
+    except Exception as e:
+        logger.error(
+            "PAYMENT_SEND_ADMIN_ERROR "
+            f"order_id={order_id} "
+            f"exception={repr(e)} "
+            f"update_id={update.update_id} "
+            f"photo_message_id={update.message.message_id}",
+            exc_info=True
+        )
+        raise
+
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -6563,38 +8131,6 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
-    if not upload_waiting[order_id].get("reupload"):
-
-        status_msg = await update.message.reply_text(
-            "✅ Pembayaran kamu sedang diproses.\n"
-            "⏳ Estimasi waktu: 1–3 menit...\n\n"
-        )
-
-        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
-
-    else:
-
-        reupload_prompt_msg_id = upload_waiting[order_id].get(
-            "reupload_prompt_msg_id"
-        )
-
-        if reupload_prompt_msg_id:
-            try:
-                await context.bot.delete_message(
-                    chat_id=update.message.chat_id,
-                    message_id=reupload_prompt_msg_id
-                )
-            except Exception:
-                pass
-
-        status_msg = await update.message.reply_text(
-            "✅ Bukti transfer pengganti telah diterima.\n"
-            "⏳ Estimasi waktu: 1–3 menit...\n\n"
-        )
-
-        upload_waiting[order_id]["status_msg_id"] = status_msg.message_id
-        upload_waiting[order_id]["reupload"] = False
-
     try:
         await update.message.delete()
         logger.info(
@@ -6606,6 +8142,7 @@ async def payment_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Gagal hapus foto bukti transfer (chat_id={update.message.chat_id}, "
             f"message_id={update.message.message_id}, order_id={order_id}): {e}"
         )
+
 
 
 async def admin_qris_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -6814,91 +8351,85 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         payment_message_ids.update(
             data.get("payment_notice_msg_ids", [])
         )
+        if data.get("payment_format_notice_msg_id"):
+            payment_message_ids.add(data["payment_format_notice_msg_id"])
         payment_message_ids.discard(None)
 
-        for payment_message_id in payment_message_ids:
+        if not data.get("processing_msg_id"):
+            payment_trace_logger.info(
+                "PAY_OK_DELETE_PROCESSING_SKIPPED "
+                f"order_id={order_id}"
+            )
+
+        async def _safe_delete_payment_message(payment_message_id):
+            is_status = payment_message_id == data.get("status_msg_id")
+            is_processing = payment_message_id == data.get("processing_msg_id")
+
+            if is_status:
+                payment_trace_logger.info(
+                    "PAY_OK_DELETE_STATUS_START "
+                    f"order_id={order_id} "
+                    f"message_id={payment_message_id}"
+                )
+            elif is_processing:
+                payment_trace_logger.info(
+                    "PAY_OK_DELETE_PROCESSING_START "
+                    f"order_id={order_id} "
+                    f"message_id={payment_message_id}"
+                )
+
             try:
                 await context.bot.delete_message(
                     chat_id=user_id,
                     message_id=payment_message_id
                 )
+                if is_status:
+                    payment_trace_logger.info(
+                        "PAY_OK_DELETE_STATUS_SUCCESS "
+                        f"order_id={order_id}"
+                    )
+                elif is_processing:
+                    payment_trace_logger.info(
+                        "PAY_OK_DELETE_PROCESSING_SUCCESS "
+                        f"order_id={order_id}"
+                    )
             except Exception as e:
-                payment_trace_logger.warning(
-                    "PAY_OK_PAYMENT_AREA_CLEANUP_FAILED "
-                    f"order_id={order_id} "
-                    f"message_id={payment_message_id} "
-                    f"exception={repr(e)}"
-                )
+                if is_status:
+                    payment_trace_logger.warning(
+                        "PAY_OK_DELETE_STATUS_FAILED "
+                        f"order_id={order_id} "
+                        f"exception={repr(e)}"
+                    )
+                elif is_processing:
+                    payment_trace_logger.warning(
+                        "PAY_OK_DELETE_PROCESSING_FAILED "
+                        f"order_id={order_id} "
+                        f"exception={repr(e)}"
+                    )
+                else:
+                    payment_trace_logger.warning(
+                        "PAY_OK_PAYMENT_AREA_CLEANUP_FAILED "
+                        f"order_id={order_id} "
+                        f"message_id={payment_message_id} "
+                        f"exception={repr(e)}"
+                    )
 
-        payment_trace_logger.info(
-            "PAY_OK_DELETE_STATUS_START "
-            f"order_id={order_id} "
-            f"message_id={data.get('status_msg_id')}"
+        final_edit_task = asyncio.create_task(
+            query.edit_message_text(
+                "✅ Pembayaran telah disetujui."
+            )
         )
-        try:
-            await context.bot.delete_message(
-                chat_id=user_id,
-                message_id=data["status_msg_id"]
-            )
-            payment_trace_logger.info(
-                "PAY_OK_DELETE_STATUS_SUCCESS "
-                f"order_id={order_id}"
-            )
-        except Exception as e:
-            payment_trace_logger.warning(
-                "PAY_OK_DELETE_STATUS_FAILED "
-                f"order_id={order_id} "
-                f"exception={repr(e)}"
-            )
-            pass
 
-        payment_trace_logger.info(
-            "PAY_OK_DELETE_PROCESSING_START "
-            f"order_id={order_id} "
-            f"message_id={data.get('processing_msg_id')}"
-        )
-        try:
-            if data.get("processing_msg_id"):
-                await context.bot.delete_message(
-                    chat_id=user_id,
-                    message_id=data["processing_msg_id"]
-                )
-                payment_trace_logger.info(
-                    "PAY_OK_DELETE_PROCESSING_SUCCESS "
-                    f"order_id={order_id}"
-                )
-            else:
-                payment_trace_logger.info(
-                    "PAY_OK_DELETE_PROCESSING_SKIPPED "
-                    f"order_id={order_id}"
-                )
-        except Exception as e:
-            payment_trace_logger.warning(
-                "PAY_OK_DELETE_PROCESSING_FAILED "
-                f"order_id={order_id} "
-                f"exception={repr(e)}"
+        if payment_message_ids:
+            await asyncio.gather(
+                *(_safe_delete_payment_message(message_id)
+                  for message_id in payment_message_ids)
             )
-            pass
 
         payment_trace_logger.info(
             "PAY_OK_FINAL_EDIT_START "
             f"order_id={order_id}"
         )
-        try:
-            await query.edit_message_text(
-                "✅ Pembayaran telah disetujui."
-            )
-            payment_trace_logger.info(
-                "PAY_OK_FINAL_EDIT_SUCCESS "
-                f"order_id={order_id}"
-            )
-        except Exception as e:
-            logger.error(f"Edit admin message error: {e}")
-            payment_trace_logger.error(
-                "PAY_OK_FINAL_EDIT_FAILED "
-                f"order_id={order_id} "
-                f"exception={repr(e)}"
-            )
 
         payment_trace_logger.info(
             "PAY_OK_USER_NOTICE_START "
@@ -6909,12 +8440,10 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             success_msg = await context.bot.send_message(
                 chat_id=user_id,
                 text=(
-                    "<b>🎉 PEMBAYARAN BERHASIL!</b>\n\n"
-                    "Pembayaran kamu telah diverifikasi.\n\n"
-                    f"Pilihan VIP: <b>{html.escape(package['nama'])}</b>\n\n"
-                    "✨ Akses VIP kamu sudah siap.\n\n"
+                    "<strong>🎉 PEMBAYARAN BERHASIL!</strong>\n\n"
+                    "✨ VIP kamu berhasil dibuat.\n\n"
                     "Tekan tombol di bawah untuk bergabung.\n"
-                    "⚠️ Mohon jangan bagikan akses ini."
+                    "⚠️ Jangan bagikan akses ini."
                 ),
                 parse_mode=ParseMode.HTML,
                 reply_markup=InlineKeyboardMarkup([
@@ -6926,8 +8455,8 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                     ],
                     [
                         InlineKeyboardButton(
-                            "🆘 Bantuan",
-                            url="https://t.me/BocilVIP511"
+                            "🏠 Bantuan",
+                            callback_data="livechat_start"
                         )
                     ]
                 ])
@@ -6944,6 +8473,20 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             )
             raise
 
+        try:
+            await final_edit_task
+            payment_trace_logger.info(
+                "PAY_OK_FINAL_EDIT_SUCCESS "
+                f"order_id={order_id}"
+            )
+        except Exception as e:
+            logger.error(f"Edit admin message error: {e}")
+            payment_trace_logger.error(
+                "PAY_OK_FINAL_EDIT_FAILED "
+                f"order_id={order_id} "
+                f"exception={repr(e)}"
+            )
+
         if user_id not in ORDER_HISTORY_EXCLUDED:
             payment_trace_logger.info(
                 "PAY_OK_HISTORY_SAVE_START "
@@ -6953,11 +8496,13 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             history = read_order_history()
 
             history["orders"].append({
+                "order_id": order_id,
                 "user_id": user_id,
                 "full_name": data["full_name"],
                 "username": data["username"],
                 "package_id": data["package_id"],
-                "time": datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB")
+                "time": datetime.now(WIB).strftime("%d %b %Y, %H:%M:%S WIB"),
+                "photo_file_id": data.get("photo_file_id")
             })
 
             save_order_history(history)
@@ -6970,6 +8515,10 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
                 "PAY_OK_HISTORY_SAVE_SKIPPED "
                 f"order_id={order_id}"
             )
+
+        task = qris_expiry_tasks.pop(order_id, None)
+        if task and not task.done():
+            task.cancel()
 
         upload_waiting.pop(order_id, None)
         payment_trace_logger.info(
@@ -7028,6 +8577,11 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             except Exception:
                 pass
 
+        admin_reupload_edit_task = asyncio.create_task(
+            query.edit_message_text(
+                "❌ Pembayaran ditolak."
+            )
+        )
         reupload_prompt = await context.bot.send_message(
             chat_id=user_id,
             text=(
@@ -7053,9 +8607,7 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
 
         save_pending_orders(pending)
 
-        await query.edit_message_text(
-            "❌ Pembayaran ditolak."
-        )
+        await admin_reupload_edit_task
 
         if data.get("incoming_admin_menu_message_id"):
             await delete_incoming_vip_admin_messages(context, data)
@@ -7109,7 +8661,6 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
             ),
             reply_markup=keyboard
         )
-
     elif action == "pay_ban_yes":
         blacklist = read_blacklist()
 
@@ -7119,6 +8670,10 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
         }
 
         write_blacklist(blacklist)
+
+        task = qris_expiry_tasks.pop(order_id, None)
+        if task and not task.done():
+            task.cancel()
 
         upload_waiting.pop(order_id, None)
         unlock_payment(user_id)
@@ -7133,19 +8688,24 @@ async def _payment_admin_callback_impl(update: Update, context: ContextTypes.DEF
 
         save_pending_orders(pending)
 
-        try:
-            await context.bot.send_message(
+        user_ban_notice_task = asyncio.create_task(
+            context.bot.send_message(
                 chat_id=user_id,
                 text=(
                     "🚫 Akses Anda telah dibatasi."
                 )
             )
-        except Exception:
-            pass
-
-        await query.edit_message_text(
-            "✅ User berhasil dibatasi."
         )
+
+        try:
+            await query.edit_message_text(
+                "✅ User berhasil dibatasi."
+            )
+        finally:
+            try:
+                await user_ban_notice_task
+            except Exception:
+                pass
 
         if data.get("incoming_admin_menu_message_id"):
             await delete_incoming_vip_admin_messages(context, data)
@@ -7157,6 +8717,10 @@ async def livechat_reply_callback(update: Update, context: ContextTypes.DEFAULT_
     await query.answer()
 
     user_id = int(query.data.split("|")[1])
+
+    if user_id not in livechat_sessions:
+        await query.answer("⚠️ Chat sudah diakhiri oleh user.", show_alert=True)
+        return
 
     admin_reply_waiting[query.from_user.id] = user_id
 
@@ -7202,11 +8766,56 @@ migrate_to_volume("vip_activity.json")
 migrate_vip_menu_description()
 
 
+def repair_order_history_ids():
+    """Ensure stored order IDs are unique without changing valid unique IDs."""
+    history = read_order_history()
+    pending = read_pending_orders()
+
+    used_ids = set()
+    for order in pending.get("orders", []):
+        if not isinstance(order, dict):
+            continue
+        try:
+            used_ids.add(int(order["order_id"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+
+    max_id = max(used_ids, default=0)
+    changed = False
+
+    for order in history.get("orders", []):
+        if not isinstance(order, dict):
+            continue
+
+        try:
+            order_id = int(order["order_id"])
+        except (KeyError, TypeError, ValueError):
+            order_id = 0
+
+        if order_id > 0 and order_id not in used_ids:
+            used_ids.add(order_id)
+            max_id = max(max_id, order_id)
+            order["order_id"] = order_id
+            continue
+
+        max_id += 1
+        while max_id in used_ids:
+            max_id += 1
+        order["order_id"] = max_id
+        used_ids.add(max_id)
+        changed = True
+
+    if changed:
+        save_order_history(history)
+
+
 def restore_pending_orders():
     global upload_waiting
     global next_order_id
 
+    repair_order_history_ids()
     pending = read_pending_orders()
+    history = read_order_history()
 
     upload_waiting = {}
 
@@ -7229,12 +8838,17 @@ def restore_pending_orders():
         if order_id > max_order_id:
             max_order_id = order_id
 
+    for order in history.get("orders", []):
+        if not isinstance(order, dict):
+            continue
+        try:
+            order_id = int(order["order_id"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if order_id > max_order_id:
+            max_order_id = order_id
+
     next_order_id = max_order_id + 1
-
-# ---------------------------------------------------------------------------
-# AUTO CHANNEL POST
-# ---------------------------------------------------------------------------
-
 
 async def channel_auto_post_loop(app):
     while True:
@@ -7318,6 +8932,16 @@ def main():
     app = ApplicationBuilder().token(token).build()
 
     async def start_background(app):
+        for _order_id, _order in upload_waiting.items():
+            _expires_at = _order.get("expires_at")
+            if (
+                _expires_at
+                and _order.get("qris_msg_id")
+                and not _order.get("photo_uploaded")
+                and not _order.get("processing")
+            ):
+                schedule_qris_expiry(app, _order_id, float(_expires_at))
+
         await set_admin_commands(app)
         app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
         app.bot_data["pre_upload_cleanup_tasks"] = [
@@ -7384,6 +9008,24 @@ def main():
         CallbackQueryHandler(
             livechat_reply_callback,
             pattern=r"^reply\|"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            livechat_start_callback,
+            pattern=r"^livechat_start$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            livechat_end_callback,
+            pattern=r"^livechat_end$"
+        )
+    )
+    app.add_handler(
+        CallbackQueryHandler(
+            livechat_ignore_callback,
+            pattern=r"^livechat_ignore\|"
         )
     )
     app.add_handler(
@@ -7494,8 +9136,14 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
+        vipmenu_from_preview_callback,
+        pattern=r"^vipmenu_preview$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
         vipnav_callback,
-        pattern=r"^vipnav_\d+$"
+        pattern=r"^vipnav_\d+$",
+        block=False
     ))
     app.add_handler(
     CallbackQueryHandler(
@@ -7574,8 +9222,38 @@ def main():
     ))
     app.add_handler(
     CallbackQueryHandler(
-        payment_clear_yes_callback,
-        pattern=r"^payment_clear_yes$"
+        payment_clear_date_callback,
+        pattern=r"^payment_clear_date(?:_page_\d+)?$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_clear_date_select_callback,
+        pattern=r"^payment_clear_date_select_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_clear_date_yes_callback,
+        pattern=r"^payment_clear_date_yes_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_clear_all_callback,
+        pattern=r"^payment_clear_all$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_clear_all_yes_callback,
+        pattern=r"^payment_clear_all_yes$"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_history_detail_callback,
+        pattern=r"^history_page_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        history_nav_noop_callback,
+        pattern=r"^history_nav_noop$"
     ))
     app.add_handler(
     CallbackQueryHandler(
@@ -7586,6 +9264,11 @@ def main():
     CallbackQueryHandler(
         payment_history_delete_callback,
         pattern=r"^history_delete_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        payment_history_proof_callback,
+        pattern=r"^history_proof_"
     ))
     app.add_handler(
     CallbackQueryHandler(
@@ -7802,7 +9485,74 @@ def main():
     ))
 
     logger.info("Bot is running...")
+
+    # ============================================================
+    # VIP NAV HTTP-LAYER DIAGNOSTIC — NO BEHAVIOR CHANGE
+    # Measures only the internal PTB HTTP request duration for
+    # editMessageCaption. The original request method is preserved.
+    # ============================================================
+    try:
+        from telegram.request import HTTPXRequest as _VIP_HTTPXRequest
+
+        _vip_original_do_request = _VIP_HTTPXRequest.do_request
+
+        async def _vip_timed_do_request(
+            self,
+            url,
+            method,
+            request_data=None,
+            read_timeout=None,
+            write_timeout=None,
+            connect_timeout=None,
+            pool_timeout=None,
+        ):
+            endpoint = str(url)
+
+            if "editmessagecaption" not in endpoint.lower():
+                return await _vip_original_do_request(
+                    self,
+                    url,
+                    method,
+                    request_data,
+                    read_timeout,
+                    write_timeout,
+                    connect_timeout,
+                    pool_timeout,
+                )
+
+            _vip_http_t0 = time.perf_counter()
+            logger.info(
+                f"[VIP HTTP DIAG] editMessageCaption request_start "
+                f"url={endpoint}"
+            )
+            try:
+                return await _vip_original_do_request(
+                    self,
+                    url,
+                    method,
+                    request_data,
+                    read_timeout,
+                    write_timeout,
+                    connect_timeout,
+                    pool_timeout,
+                )
+            finally:
+                _vip_http_t1 = time.perf_counter()
+                logger.info(
+                    f"[VIP HTTP DIAG] editMessageCaption request_done "
+                    f"elapsed={_vip_http_t1 - _vip_http_t0:.6f}s"
+                )
+
+        _VIP_HTTPXRequest.do_request = _vip_timed_do_request
+        logger.info("[VIP HTTP DIAG] HTTPXRequest instrumentation installed")
+    except Exception as _vip_http_diag_error:
+        logger.warning(
+            f"[VIP HTTP DIAG] instrumentation unavailable: {_vip_http_diag_error}"
+        )
+
     app.run_polling()
+
+
 
 if __name__ == "__main__":
     main()
