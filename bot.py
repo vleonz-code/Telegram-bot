@@ -8885,7 +8885,7 @@ def main():
 
     restore_pending_orders()
 
-    app = (ApplicationBuilder().token(token).concurrent_updates(2).connection_pool_size(4).pool_timeout(0.5).build())
+    app = (ApplicationBuilder().token(token).concurrent_updates(2).connection_pool_size(4).pool_timeout(0.5).get_updates_connection_pool_size(2).get_updates_pool_timeout(0.5).build())
 
     async def start_background(app):
         for _order_id, _order in upload_waiting.items():
