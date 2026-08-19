@@ -849,6 +849,21 @@ def read_blacklist() -> dict:
         return {}
 
 
+async def deny_if_banned_callback(query) -> bool:
+    """Block customer callback actions for users currently in the blacklist.
+
+    This is intentionally checked at callback time so a user who was banned
+    after opening a menu cannot continue using already-rendered buttons.
+    """
+    if query.from_user.id in read_blacklist():
+        await query.answer(
+            "❌ Akses Anda dibatasi.",
+            show_alert=True
+        )
+        return True
+    return False
+
+
 def write_blacklist(bl: dict):
     global _blacklist_cache
     try:
@@ -1843,6 +1858,9 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
 async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
+    if await deny_if_banned_callback(query):
+        return
+
     if not read_settings()["join_vip_enabled"]:
         await query.answer(
             "⚠️ Order VIP sedang OFF.",
@@ -1910,6 +1928,9 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
     bawah, baru album lama di atasnya dihapus setelahnya. Tidak berlaku
     untuk tombol Lihat Paket lain (timer habis, repeat deeplink, dst)."""
     query = update.callback_query
+
+    if await deny_if_banned_callback(query):
+        return
 
     if not read_settings()["join_vip_enabled"]:
         await query.answer(
@@ -2022,6 +2043,9 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+
+    if await deny_if_banned_callback(query):
+        return
 
     if not read_settings()["join_vip_enabled"]:
         await query.answer(
@@ -2136,6 +2160,9 @@ async def vipnav_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def vip1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
+
+        if await deny_if_banned_callback(query):
+            return
 
         if not read_settings()["join_vip_enabled"]:
             await query.answer(
@@ -2304,6 +2331,9 @@ def cleanup_failed_qris_order(order_id, user_id):
 
 async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+
+    if await deny_if_banned_callback(query):
+        return
 
     if (
         not read_settings()["join_vip_enabled"]
@@ -2586,6 +2616,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if await deny_if_banned_callback(query):
+        return
     await query.answer()
 
     user = query.from_user
@@ -2677,6 +2709,8 @@ async def upload_bukti_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def cancel_order_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if await deny_if_banned_callback(query):
+        return
     await query.answer()
 
     user_id = query.from_user.id
@@ -6574,6 +6608,8 @@ def schedule_qris_expiry(context, order_id: int, expires_at: float):
 
 async def livechat_start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
+    if await deny_if_banned_callback(query):
+        return
     user_id = query.from_user.id
     settings = read_settings()
 
