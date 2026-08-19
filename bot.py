@@ -89,8 +89,6 @@ _vip_packages_cache = None
 # VIP navigation render cache. Keeps the hot tap path free from repeated
 # caption/keyboard construction. Invalidated whenever VIP packages are saved.
 _vip_nav_render_cache = {}
-_vip_nav_page_cache = {}
-_vip_nav_total = 0
 
 
 def read_vip_packages():
@@ -104,16 +102,12 @@ def read_vip_packages():
 
 
 def save_vip_packages(data):
-    global _vip_packages_cache, _vip_nav_render_cache, _vip_nav_page_cache, _vip_nav_total
+    global _vip_packages_cache, _vip_nav_render_cache
     with open(VIP_PACKAGES_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     _vip_packages_cache = copy.deepcopy(data)
     # Package content changed; never serve an old VIP navigation render.
     _vip_nav_render_cache.clear()
-    _vip_nav_page_cache.clear()
-    _vip_nav_total = 0
-    if "build_vip_package_text" in globals() and "build_vip_package_keyboard" in globals():
-        _prewarm_vip_nav_cache()
 
 
 def get_vip_packages_cached():
@@ -2046,34 +2040,6 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
 
 
-def _prewarm_vip_nav_cache():
-    """Pre-render every active VIP page once so navigation only reads RAM."""
-    global _vip_nav_total, _vip_nav_render_cache, _vip_nav_page_cache
-
-    packages = get_vip_packages_cached()["packages"]
-    active_packages = [
-        package for package in packages
-        if package.get("aktif", True)
-    ]
-    total = len(active_packages)
-
-    _vip_nav_render_cache.clear()
-    _vip_nav_page_cache.clear()
-    _vip_nav_total = total
-
-    if not total:
-        return
-
-    for idx, package in enumerate(active_packages):
-        render = (
-            build_vip_package_text(package),
-            build_vip_package_keyboard(idx, total, package["id"]),
-        )
-        _vip_nav_render_cache[(idx, total, package["id"])] = render
-        _vip_nav_page_cache[(idx, total)] = render
-
-
-
 async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
 
@@ -2109,24 +2075,30 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _vip_log_t1 - _vip_log_t0,
     )
 
-    total = _vip_nav_total
-    if not total:
+    packages = get_vip_packages_cached()["packages"]
+    active_packages = [
+        package for package in packages
+        if package.get("aktif", True)
+    ]
+
+    if not active_packages:
         # The acknowledgement task was already started; no page exists.
         return
 
+    total = len(active_packages)
     idx = idx % total
-    cached_render = _vip_nav_page_cache.get((idx, total))
-    if cached_render is None:
-        # Safety fallback if the cache was invalidated between callbacks.
-        _prewarm_vip_nav_cache()
-        total = _vip_nav_total
-        if not total:
-            return
-        idx = idx % total
-        cached_render = _vip_nav_page_cache.get((idx, total))
+    package = active_packages[idx]
 
+    # Hot-path render cache. The package editor invalidates this cache via
+    # save_vip_packages(), so normal admin edits cannot leave stale UI behind.
+    cache_key = (idx, total, package["id"])
+    cached_render = _vip_nav_render_cache.get(cache_key)
     if cached_render is None:
-        return
+        cached_render = (
+            build_vip_package_text(package),
+            build_vip_package_keyboard(idx, total, package["id"]),
+        )
+        _vip_nav_render_cache[cache_key] = cached_render
 
     caption, reply_markup = cached_render
 
@@ -3172,7 +3144,7 @@ async def restore_incoming_vip_menu(
 
 async def incoming_vip_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -6970,7 +6942,7 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -6981,7 +6953,7 @@ async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFA
     # Ubah caption + keyboard pada message yang sedang ditekan,
     # bukan mengganti/membuat message baru.
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         query.edit_message_caption(
             caption=text,
             parse_mode="HTML",
@@ -7068,7 +7040,7 @@ def build_filemgr_detail_view(idx, icon, name, note=None):
 
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
         return
 
@@ -7104,7 +7076,7 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
             )
 
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         render(),
         cleanup_download(),
     )
@@ -7588,7 +7560,15 @@ async def file_manager_restore_receive(update: Update, context: ContextTypes.DEF
         file_manager_restore_processing.discard(user_id)
 
 
+_adminvip_main_keyboard_cache = None
+_payment_keyboard_cache = None
+
+
 def build_adminvip_keyboard():
+    global _adminvip_main_keyboard_cache
+    if _adminvip_main_keyboard_cache is not None:
+        return _adminvip_main_keyboard_cache
+
     keyboard = []
 
     keyboard.append([
@@ -7635,9 +7615,13 @@ def build_adminvip_keyboard():
         )
     ])
 
-    return InlineKeyboardMarkup(keyboard)
+    _adminvip_main_keyboard_cache = InlineKeyboardMarkup(keyboard)
+    return _adminvip_main_keyboard_cache
     
 def build_payment_keyboard():
+    global _payment_keyboard_cache
+    if _payment_keyboard_cache is not None:
+        return _payment_keyboard_cache
 
     keyboard = []
 
@@ -7670,7 +7654,8 @@ def build_payment_keyboard():
         )
     ])
 
-    return InlineKeyboardMarkup(keyboard)
+    _payment_keyboard_cache = InlineKeyboardMarkup(keyboard)
+    return _payment_keyboard_cache
 
 
 async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -9562,7 +9547,6 @@ def main():
             f"[VIP HTTP DIAG] instrumentation unavailable: {_vip_http_diag_error}"
         )
 
-    _prewarm_vip_nav_cache()
     app.run_polling()
 
 
