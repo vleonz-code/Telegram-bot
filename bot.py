@@ -2278,7 +2278,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    asyncio.create_task(query.answer())
 
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
@@ -2866,8 +2866,7 @@ async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
 
     history = read_order_history()
 
@@ -2974,8 +2973,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
 async def payment_history_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
 
     tanggal = query.data.replace("history_", "")
 
@@ -3043,8 +3041,7 @@ async def payment_history_detail_callback(update: Update, context: ContextTypes.
 
 async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
 
     history = read_order_history()
 
@@ -3110,8 +3107,7 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
 
     save_order_history({
         "orders": []
@@ -3134,8 +3130,7 @@ async def payment_clear_yes_callback(update: Update, context: ContextTypes.DEFAU
 
 async def payment_history_delete_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
 
     tanggal = query.data.replace("history_delete_", "")
 
@@ -3287,7 +3282,7 @@ def build_settings_keyboard(settings):
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    asyncio.create_task(query.answer())
 
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
@@ -3305,7 +3300,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
 
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    asyncio.create_task(query.answer())
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -3397,7 +3392,7 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -3622,7 +3617,7 @@ async def sweep_pending_preview_deletions(bot):
 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    asyncio.create_task(query.answer())
 
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
@@ -3662,8 +3657,7 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
 
     admin_qris_waiting.discard(query.from_user.id)
 
@@ -5573,8 +5567,7 @@ def build_filemgr_detail_view(idx, icon, name, note=None):
 
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
 
@@ -5604,8 +5597,7 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
 
@@ -5646,8 +5638,7 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
     idx = int(query.data.replace("filemgr_view_", ""))
@@ -5759,8 +5750,7 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
     idx = int(query.data.replace("filemgr_backup_", ""))
@@ -5800,8 +5790,7 @@ async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_
 
 async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
     idx = int(query.data.replace("filemgr_edit_ask_", ""))
@@ -5833,8 +5822,7 @@ async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def filemgr_edit_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
     idx = int(query.data.replace("filemgr_edit_confirm_", ""))
@@ -5895,8 +5883,7 @@ async def file_manager_edit_receive(update: Update, context: ContextTypes.DEFAUL
 
 async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    await query.answer()
     if query.from_user.id != ADMIN_ID:
         return
 
