@@ -1822,10 +1822,10 @@ def build_vip_package_keyboard(idx: int, total: int, package_id):
         # Keep the same three-button layout on every page.
         # Boundary arrows remain visible but become no-op buttons.
         prev_callback = (
-            f"vipnav_{idx - 1}" if idx > 0 else f"vipnav_{total - 1}"
+            f"vipnav_{idx - 1}" if idx > 0 else "vipnav_noop"
         )
         next_callback = (
-            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_0"
+            f"vipnav_{idx + 1}" if idx < total - 1 else "vipnav_noop"
         )
 
         keyboard.append([
@@ -2055,25 +2055,8 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = int(query.data.split("_")[1])
 
-    # Fire-and-forget acknowledgement: schedule it first, then yield once so
-    # the event loop can start the Telegram acknowledgement request immediately.
-    # This is specifically for the button spinner/loading indicator.
-    _vip_log_t0 = time.perf_counter()
-    logger.info("[VIP NAV LOG] CLICK")
-
-    _vip_diag_t0 = time.perf_counter()
+    # Keep the callback acknowledgement off the critical render path.
     answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
-    _vip_diag_t1 = time.perf_counter()
-    logger.info(
-        "[VIP NAV DIAG] answer_task_started delta=%.6fs",
-        _vip_diag_t1 - _vip_diag_t0,
-    )
-    _vip_log_t1 = time.perf_counter()
-    logger.info(
-        "[VIP NAV LOG] answer_task_scheduled=%.6fs",
-        _vip_log_t1 - _vip_log_t0,
-    )
 
     packages = get_vip_packages_cached()["packages"]
     active_packages = [
@@ -2082,15 +2065,13 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     if not active_packages:
-        # The acknowledgement task was already started; no page exists.
+        await answer_task
         return
 
     total = len(active_packages)
     idx = idx % total
     package = active_packages[idx]
 
-    # Hot-path render cache. The package editor invalidates this cache via
-    # save_vip_packages(), so normal admin edits cannot leave stale UI behind.
     cache_key = (idx, total, package["id"])
     cached_render = _vip_nav_render_cache.get(cache_key)
     if cached_render is None:
@@ -2102,23 +2083,7 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     caption, reply_markup = cached_render
 
-    _vip_log_t2 = time.perf_counter()
-    logger.info(
-        "[VIP NAV LOG] before_edit page=%d/%d local_after_schedule=%.6fs",
-        idx + 1,
-        total,
-        _vip_log_t2 - _vip_log_t1,
-    )
-
-    _vip_log_edit_start = time.perf_counter()
-    _vip_diag_before_edit = time.perf_counter()
-    logger.info(
-        "[VIP NAV DIAG] before_caption_edit since_answer_task=%.6fs",
-        _vip_diag_before_edit - _vip_diag_t1,
-    )
-
-    # Keep the existing media in place. VIP pagination only changes caption
-    # and keyboard, which is the cheapest Telegram-side edit for this UI.
+    # Keep the existing banner/media. Pagination changes only caption + keyboard.
     try:
         await query.edit_message_caption(
             caption=caption,
@@ -2134,21 +2099,7 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         raise
 
-    _vip_diag_after_edit = time.perf_counter()
-    logger.info(
-        "[VIP NAV DIAG] caption_edit_done api_elapsed=%.6fs handler_since_task=%.6fs",
-        _vip_diag_after_edit - _vip_diag_before_edit,
-        _vip_diag_after_edit - _vip_diag_t1,
-    )
-
-    _vip_log_edit_end = time.perf_counter()
-    logger.info(
-        "[VIP NAV LOG] edit_done page=%d/%d edit_media=%.6fs handler_total=%.6fs",
-        idx + 1,
-        total,
-        _vip_log_edit_end - _vip_log_edit_start,
-        _vip_log_edit_end - _vip_log_t0,
-    )
+    await answer_task
 
 
 
