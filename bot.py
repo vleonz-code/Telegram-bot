@@ -2886,6 +2886,7 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
@@ -2956,6 +2957,7 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
 async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     await asyncio.gather(
         answer_task,
@@ -3322,6 +3324,7 @@ async def incoming_vip_detail_callback(
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     admin_channel_waiting.discard(query.from_user.id)
 
@@ -4341,6 +4344,7 @@ def build_settings_keyboard(settings):
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
@@ -4362,6 +4366,7 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -4456,6 +4461,7 @@ async def stats_reset_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 async def adminvip_server_status_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -6923,7 +6929,8 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -6934,7 +6941,7 @@ async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFA
     # Ubah caption + keyboard pada message yang sedang ditekan,
     # bukan mengganti/membuat message baru.
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         query.edit_message_caption(
             caption=text,
             parse_mode="HTML",
@@ -7035,7 +7042,8 @@ def build_filemgr_detail_view(idx, icon, name, note=None):
 
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
     if query.from_user.id != ADMIN_ID:
         return
 
@@ -7071,7 +7079,7 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
             )
 
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         render(),
         cleanup_download(),
     )
@@ -9073,13 +9081,15 @@ def main():
     app.add_handler(
         CallbackQueryHandler(
             adminvip_blacklist_callback,
-            pattern=r"^adminvip_blacklist$"
+            pattern=r"^adminvip_blacklist$",
+            block=False
         )
     )
     app.add_handler(
         CallbackQueryHandler(
             filemgr_list_callback,
-            pattern=r"^filemgr_list$"
+            pattern=r"^filemgr_list$",
+            block=False
         )
     )
     app.add_handler(
@@ -9153,12 +9163,14 @@ def main():
     app.add_handler(
     CallbackQueryHandler(
         adminvip_packages_callback,
-        pattern=r"^adminvip_packages$"
+        pattern=r"^adminvip_packages$",
+        block=False
     ))
     app.add_handler(
     CallbackQueryHandler(
         adminvip_payment_callback,
-        pattern=r"^adminvip_payment$"
+        pattern=r"^adminvip_payment$",
+        block=False
     ))
     app.add_handler(
     CallbackQueryHandler(
@@ -9178,7 +9190,8 @@ def main():
     app.add_handler(
     CallbackQueryHandler(
         adminvip_channel_callback,
-        pattern=r"^adminvip_channel$"
+        pattern=r"^adminvip_channel$",
+        block=False
     ))
     app.add_handler(
     CallbackQueryHandler(
@@ -9278,12 +9291,14 @@ def main():
     app.add_handler(
     CallbackQueryHandler(
         adminvip_settings_callback,
-        pattern=r"^adminvip_settings$"
+        pattern=r"^adminvip_settings$",
+        block=False
     ))
     app.add_handler(
     CallbackQueryHandler(
         adminvip_stats_callback,
-        pattern=r"^adminvip_stats$"
+        pattern=r"^adminvip_stats$",
+        block=False
     ))
     app.add_handler(
     CallbackQueryHandler(
@@ -9298,7 +9313,8 @@ def main():
     app.add_handler(
     CallbackQueryHandler(
         adminvip_server_status_callback,
-        pattern=r"^adminvip_server_status$"
+        pattern=r"^adminvip_server_status$",
+        block=False
     ))
     app.add_handler(
     CallbackQueryHandler(
