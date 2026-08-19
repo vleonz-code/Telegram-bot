@@ -1854,21 +1854,10 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # while the local VIP-menu preparation continues.
     answer_task = asyncio.create_task(query.answer())
 
-    # Capture and remove the OLD repeat-message ID before starting the
-    # background delete. This prevents the task from ever reading a newer
-    # message ID that may be assigned later.
-    old_repeat_message_id = last_repeat_message.pop(
+    await clear_last_repeat(
         query.message.chat_id,
-        None
+        context.bot
     )
-    if old_repeat_message_id:
-        asyncio.create_task(
-            _delete_repeat_message_background(
-                query.message.chat_id,
-                old_repeat_message_id,
-                context.bot
-            )
-        )
 
     packages = get_vip_packages_cached()["packages"]
 
@@ -4542,16 +4531,6 @@ async def clear_last_repeat(chat_id: int, bot):
             )
         except Exception:
             pass
-
-
-async def _delete_repeat_message_background(chat_id: int, message_id: int, bot):
-    try:
-        await bot.delete_message(
-            chat_id=chat_id,
-            message_id=message_id
-        )
-    except Exception:
-        pass
 
 
 async def delete_messages_after_delay(
@@ -9475,8 +9454,7 @@ def main():
     # ============================================================
     # VIP NAV HTTP-LAYER DIAGNOSTIC — NO BEHAVIOR CHANGE
     # Measures only the internal PTB HTTP request duration for
-    # answerCallbackQuery and editMessageCaption. The original
-    # request method is preserved.
+    # editMessageCaption. The original request method is preserved.
     # ============================================================
     try:
         from telegram.request import HTTPXRequest as _VIP_HTTPXRequest
@@ -9495,11 +9473,7 @@ def main():
         ):
             endpoint = str(url)
 
-            endpoint_lower = endpoint.lower()
-            is_vip_answer = "answercallbackquery" in endpoint_lower
-            is_vip_caption_edit = "editmessagecaption" in endpoint_lower
-
-            if not is_vip_answer and not is_vip_caption_edit:
+            if "editmessagecaption" not in endpoint.lower():
                 return await _vip_original_do_request(
                     self,
                     url,
@@ -9512,13 +9486,8 @@ def main():
                 )
 
             _vip_http_t0 = time.perf_counter()
-            _vip_endpoint_label = (
-                "answerCallbackQuery"
-                if is_vip_answer
-                else "editMessageCaption"
-            )
             logger.info(
-                f"[VIP HTTP DIAG] {_vip_endpoint_label} request_start "
+                f"[VIP HTTP DIAG] editMessageCaption request_start "
                 f"url={endpoint}"
             )
             try:
@@ -9535,7 +9504,7 @@ def main():
             finally:
                 _vip_http_t1 = time.perf_counter()
                 logger.info(
-                    f"[VIP HTTP DIAG] {_vip_endpoint_label} request_done "
+                    f"[VIP HTTP DIAG] editMessageCaption request_done "
                     f"elapsed={_vip_http_t1 - _vip_http_t0:.6f}s"
                 )
 
