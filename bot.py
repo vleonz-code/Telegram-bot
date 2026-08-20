@@ -710,6 +710,8 @@ async def deliver_preview_b(bot, chat_id: int, file_ids, auto_delete=False):
             )
 
         # PREV2 deliberately has no inline keyboard.
+        # Read the current user-facing admin contact before building the success notice.
+        settings = read_settings()
         _, success_msg = await asyncio.gather(
             progress.delete(),
             bot.send_message(
