@@ -2914,12 +2914,9 @@ async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     await asyncio.gather(
         answer_task,
-        query.edit_message_media(
-            media=InputMediaPhoto(
-                media=os.environ["PAYMENT_BANNER_FILE_ID"],
-                caption="💳 <b>PEMBAYARAN</b>",
-                parse_mode="HTML",
-            ),
+        query.edit_message_caption(
+            caption="💳 <b>PEMBAYARAN</b>",
+            parse_mode="HTML",
             reply_markup=build_payment_keyboard(),
         )
     )
@@ -3397,21 +3394,18 @@ async def channel_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
     await asyncio.gather(
         answer_task,
-        query.edit_message_media(
-            media=InputMediaPhoto(
-                media=os.environ["CHANNEL_POST_BANNER_FILE_ID"],
-                caption=(
-                    "📢 Channel Post\n\n"
-                    f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
-                    f"Interval : {settings['channel_interval']} menit\n\n"
-                    "<pre>"
-                    "Pesan\n"
-                    "────────────────────\n"
-                    f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
-                    "</pre>"
-                ),
-                parse_mode="HTML",
+        query.edit_message_caption(
+            caption=(
+                "📢 Channel Post\n\n"
+                f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
+                f"Interval : {settings['channel_interval']} menit\n\n"
+                "<pre>"
+                "Pesan\n"
+                "────────────────────\n"
+                f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
+                "</pre>"
             ),
+            parse_mode="HTML",
             reply_markup=keyboard
         )
     )
@@ -3581,9 +3575,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
     await asyncio.gather(
         answer_task,
-        query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["PAYMENT_BANNER_FILE_ID"],
+        query.edit_message_caption(
             caption=(
                 "📋 <b>ORDER HISTORY</b>\n\n"
 
@@ -3595,7 +3587,6 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
                 "Pilih tanggal transaksi di bawah ini."
             ),
             parse_mode="HTML",
-        ),
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
     )
@@ -3830,11 +3821,8 @@ async def payment_history_delete_yes_callback(update: Update, context: ContextTy
                 )
             ]
         ])
-        await query.edit_message_media(
-            media=InputMediaPhoto(
-                media=os.environ["PAYMENT_BANNER_FILE_ID"],
-                caption="✅ Order berhasil dihapus.\n\nTidak ada order lain pada tanggal ini.",
-            ),
+        await query.edit_message_caption(
+            caption="✅ Order berhasil dihapus.\n\nTidak ada order lain pada tanggal ini.",
             reply_markup=keyboard,
         )
         return
@@ -5556,17 +5544,12 @@ async def adminvip_prv_back_callback(update: Update, context: ContextTypes.DEFAU
         ]
     ])
 
-    from telegram import InputMediaPhoto
-
     await asyncio.gather(
         answer_task,
-        query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["SETTINGS_BANNER_FILE_ID"],
-            caption="⚙️ Pengaturan"
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=keyboard,
         ),
-        reply_markup=keyboard
-    ),
     )
 
 
@@ -7163,20 +7146,22 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     async def render():
         try:
-            await query.edit_message_media(
-                media=InputMediaPhoto(
-                    media=os.environ["FILE_MANAGER_BANNER_FILE_ID"],
-                    caption=text,
-                    parse_mode="HTML",
-                ),
-                reply_markup=keyboard
-            )
-        except Exception:
             await query.edit_message_caption(
                 caption=text,
                 parse_mode="HTML",
                 reply_markup=keyboard
             )
+        except Exception:
+            # Fallback tetap mempertahankan perilaku lama jika pesan aktif
+            # bukan media/caption-editable. Jangan memanggil banner lain.
+            try:
+                await query.edit_message_text(
+                    text=text,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+            except Exception:
+                pass
 
     await asyncio.gather(
         answer_task,
