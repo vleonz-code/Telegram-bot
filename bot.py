@@ -2462,9 +2462,20 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         return
 
-    await query.answer()
-
     global next_order_id
+
+    # Normal Bayar path: acknowledge immediately before order/QRIS work.
+    package_id = int(query.data.split("_")[1])
+    package = get_package(package_id)
+    if package is None:
+        await query.answer(
+            "⚠️ Paket sudah tidak tersedia. Silakan buka menu VIP lagi.",
+            show_alert=True
+        )
+        return
+
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     pending = read_pending_orders()
     history = read_order_history()
@@ -2485,15 +2496,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     next_order_id = max(used_order_ids, default=0) + 1
     while next_order_id in used_order_ids:
         next_order_id += 1
-
-    package_id = int(query.data.split("_")[1])
-    package = get_package(package_id)
-    if package is None:
-        await query.answer(
-            "⚠️ Paket sudah tidak tersedia. Silakan buka menu VIP lagi.",
-            show_alert=True
-        )
-        return
 
     order_id = next_order_id
     next_order_id += 1
@@ -2584,6 +2586,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raise
     finally:
         qris_loading_users.discard(query.from_user.id)
+
+    await answer_task
 
 
 
