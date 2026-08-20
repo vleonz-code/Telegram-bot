@@ -6224,12 +6224,25 @@ async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         if settings_chat_id and settings_message_id:
             try:
+                admin_panel_text = (
+                    "<b>👑 ADMIN VIP PANEL</b>\n"
+                    "<pre>"
+                    f"👥 Users       : {len(_users_cache if _users_cache is not None else read_user_registry())}\n"
+                    f"📦 Packages    : {len(get_vip_packages_cached()['packages'])}\n"
+                    f"📥 Incoming    : {len(get_incoming_vip_orders())}\n"
+                    f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
+                    f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
+                    f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
+                    "</pre>"
+                )
                 await context.bot.edit_message_caption(
                     chat_id=settings_chat_id,
                     message_id=settings_message_id,
-                    caption="⚙️ Pengaturan",
-                    reply_markup=build_settings_keyboard(settings),
+                    caption=admin_panel_text,
+                    parse_mode="HTML",
+                    reply_markup=build_adminvip_keyboard(),
                 )
+                await clear_last_stats(settings_chat_id, context.bot)
             except Exception:
                 pass
 
@@ -7701,11 +7714,11 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            "🚫 Daftar Ban",
+            "📛 Daftar Ban",
             callback_data="adminvip_blacklist"
         ),
         InlineKeyboardButton(
-            "👤 Administrator",
+            "🎴 Administrator",
             callback_data="adminvip_admin_contact"
         )
     ])
