@@ -1890,13 +1890,10 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Start acknowledgement immediately so the button feels responsive
-    # while the local VIP-menu preparation continues.
-    answer_task = asyncio.create_task(query.answer())
-
-    await clear_last_repeat(
-        query.message.chat_id,
-        context.bot
+    # Answer + cleanup tidak menunda tampilnya menu VIP.
+    asyncio.create_task(query.answer())
+    asyncio.create_task(
+        clear_last_repeat(query.message.chat_id, context.bot)
     )
 
     packages = get_vip_packages_cached()["packages"]
@@ -1924,7 +1921,6 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=build_vip_package_keyboard(0, total, package["id"]),
             parse_mode="HTML",
         )
-        await answer_task
         asyncio.create_task(
             notify_admin_vip_menu(
                 context.bot,
@@ -1935,12 +1931,13 @@ async def vipmenu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    await answer_task
-    await notify_admin_vip_menu(
-        context.bot,
-        user.full_name or "-",
-        f"@{user.username}" if user.username else "-",
-        user.id,
+    asyncio.create_task(
+        notify_admin_vip_menu(
+            context.bot,
+            user.full_name or "-",
+            f"@{user.username}" if user.username else "-",
+            user.id,
+        )
     )
 
 
@@ -1963,13 +1960,9 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
 
     chat_id = query.message.chat_id
 
-    await asyncio.gather(
-        query.answer(),
-        clear_last_repeat(
-            chat_id,
-            context.bot
-        )
-    )
+    # Jawab dulu; jangan tunggu cleanup sebelum menu VIP tampil.
+    asyncio.create_task(query.answer())
+    asyncio.create_task(clear_last_repeat(chat_id, context.bot))
 
     packages = get_vip_packages_cached()["packages"]
 
@@ -1985,11 +1978,13 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
             chat_id=chat_id,
             text="Belum ada paket VIP yang tersedia saat ini.",
         )
-        await notify_admin_vip_menu(
-            context.bot,
-            user.full_name or "-",
-            f"@{user.username}" if user.username else "-",
-            user.id,
+        asyncio.create_task(
+            notify_admin_vip_menu(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+            )
         )
     else:
         total = len(active_packages)
@@ -2011,55 +2006,58 @@ async def vipmenu_from_preview_callback(update: Update, context: ContextTypes.DE
             )
         )
 
-    # Menu VIP sudah tampil di bawah -- baru sekarang album lama di
-    # atasnya dibereskan, supaya tidak ada jeda "chat kosong".
+    # Menu VIP sudah tampil -- bersihkan album lama di background
+    # supaya tidak menunda tombol Lihat Paket.
     old_task = preview_delete_tasks.pop(chat_id, None)
     if old_task:
         old_task.cancel()
 
     old_messages = last_delivered_messages.pop(chat_id, None)
     if old_messages:
-        notification = None
-        delete_ok = False
-        try:
-            pending = read_pending_preview_deletions()
-            for entry in pending:
-                if (
-                    entry.get("chat_id") == chat_id
-                    and entry.get("message_ids") == old_messages
-                ):
-                    notification = entry.get("admin_notification")
-                    break
-        except Exception:
-            pending = []
+        async def _cleanup_preview_album():
+            notification = None
+            delete_ok = False
+            try:
+                pending = read_pending_preview_deletions()
+                for entry in pending:
+                    if (
+                        entry.get("chat_id") == chat_id
+                        and entry.get("message_ids") == old_messages
+                    ):
+                        notification = entry.get("admin_notification")
+                        break
+            except Exception:
+                pending = []
 
-        try:
-            await context.bot.delete_messages(
-                chat_id=chat_id,
-                message_ids=old_messages
-            )
-            delete_ok = True
-        except Exception:
-            pass
-
-        if delete_ok:
-            await update_media_access_notification_deleted(
-                context.bot,
-                notification
-            )
-
-        try:
-            pending = read_pending_preview_deletions()
-            pending = [
-                entry for entry in pending
-                if not (
-                    entry.get("chat_id") == chat_id
-                    and entry.get("message_ids") == old_messages
+            try:
+                await context.bot.delete_messages(
+                    chat_id=chat_id,
+                    message_ids=old_messages
                 )
-            ]
-            save_pending_preview_deletions(pending)
-        except Exception:
-            pass
+                delete_ok = True
+            except Exception:
+                pass
+
+            if delete_ok:
+                await update_media_access_notification_deleted(
+                    context.bot,
+                    notification
+                )
+
+            try:
+                pending = read_pending_preview_deletions()
+                pending = [
+                    entry for entry in pending
+                    if not (
+                        entry.get("chat_id") == chat_id
+                        and entry.get("message_ids") == old_messages
+                    )
+                ]
+                save_pending_preview_deletions(pending)
+            except Exception:
+                pass
+
+        asyncio.create_task(_cleanup_preview_album())
 
 
 
@@ -2078,8 +2076,8 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     idx = int(query.data.split("_")[1])
 
-    # Keep the callback acknowledgement off the critical render path.
-    answer_task = asyncio.create_task(query.answer())
+    # Jangan tunggu answer sebelum ganti halaman paket.
+    asyncio.create_task(query.answer())
 
     packages = get_vip_packages_cached()["packages"]
     active_packages = [
@@ -2088,7 +2086,6 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
 
     if not active_packages:
-        await answer_task
         return
 
     total = len(active_packages)
@@ -2118,11 +2115,8 @@ async def vipnav_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # BadRequest errors must remain visible so real regressions are not
         # silently hidden.
         if "message is not modified" in str(exc).lower():
-            logger.debug("[VIP NAV] duplicate caption edit ignored")
             return
         raise
-
-    await answer_task
 
 
 
@@ -2277,7 +2271,7 @@ async def show_qris_loading_message(chat_id, context):
     )
 
     async def _remove_loading():
-        await asyncio.sleep(1)
+        # Hapus segera saat di-await setelah QRIS terkirim (tanpa jeda 1 detik).
         try:
             await context.bot.delete_message(
                 chat_id=chat_id,
@@ -2448,12 +2442,14 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await loading_task
 
                 user = query.from_user
-                await notify_admin_vip_qris(
-                    context.bot,
-                    user.full_name or "-",
-                    f"@{user.username}" if user.username else "-",
-                    user.id,
-                    package["nama"],
+                asyncio.create_task(
+                    notify_admin_vip_qris(
+                        context.bot,
+                        user.full_name or "-",
+                        f"@{user.username}" if user.username else "-",
+                        user.id,
+                        package["nama"],
+                    )
                 )
         finally:
             if 'loading_task' in locals() and not loading_task.done():
@@ -2569,12 +2565,14 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 upload_waiting[order_id]["expires_at"]
             )
             user = query.from_user
-            await notify_admin_vip_qris(
-                context.bot,
-                user.full_name or "-",
-                f"@{user.username}" if user.username else "-",
-                user.id,
-                package["nama"],
+            asyncio.create_task(
+                notify_admin_vip_qris(
+                    context.bot,
+                    user.full_name or "-",
+                    f"@{user.username}" if user.username else "-",
+                    user.id,
+                    package["nama"],
+                )
             )
     except Exception:
         if 'loading_task' in locals() and not loading_task.done():
@@ -2586,8 +2584,6 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raise
     finally:
         qris_loading_users.discard(query.from_user.id)
-
-    await answer_task
 
 
 
