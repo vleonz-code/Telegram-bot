@@ -2884,15 +2884,18 @@ def build_adminvip_packages_keyboard(packages):
 
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
-    await query.edit_message_media(
-        media=InputMediaPhoto(
-            media=os.environ["PAYMENT_BANNER_FILE_ID"],
-            caption="💳 <b>PEMBAYARAN</b>",
-            parse_mode="HTML",
-        ),
-        reply_markup=build_payment_keyboard(),
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
+            media=InputMediaPhoto(
+                media=os.environ["PAYMENT_BANNER_FILE_ID"],
+                caption="💳 <b>PEMBAYARAN</b>",
+                parse_mode="HTML",
+            ),
+            reply_markup=build_payment_keyboard(),
+        )
     )
 
 
@@ -4332,7 +4335,7 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
 
 async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
         return
@@ -4348,13 +4351,16 @@ async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         ]
     ])
 
-    await query.edit_message_caption(
-        caption=(
-            f"📊 <b>Stats Bot</b>\n\n"
-            f"Total penggunaan <code>UC3A6P</code>: <b>{count}x</b>"
-        ),
-        parse_mode="HTML",
-        reply_markup=keyboard
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption=(
+                f"📊 <b>Stats Bot</b>\n\n"
+                f"Total penggunaan <code>UC3A6P</code>: <b>{count}x</b>"
+            ),
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
     )
 
 
@@ -4870,7 +4876,7 @@ async def preview_toggle_callback(update: Update, context: ContextTypes.DEFAULT_
 
 async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     timer_buttons = [
         InlineKeyboardButton("30 Detik", callback_data="preview_set_30"),
@@ -4900,15 +4906,18 @@ async def preview_timer_callback(update: Update, context: ContextTypes.DEFAULT_T
     # Masih di banner Pengaturan yang sama, hanya caption & keyboard yang
     # berubah -> edit_message_caption (edit_message_text akan gagal karena
     # pesan ini sudah berupa media).
-    await query.edit_message_caption(
-        caption="⏱ Preview Timer",
-        reply_markup=keyboard
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption="⏱ Preview Timer",
+            reply_markup=keyboard
+        )
     )
 
 
 async def preview_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     seconds = int(
         query.data.replace(
@@ -4925,9 +4934,12 @@ async def preview_set_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # Kembali ke tampilan Pengaturan: banner tidak berubah, cukup
     # caption & keyboard.
-    await query.edit_message_caption(
-        caption="⚙️ Pengaturan",
-        reply_markup=build_settings_keyboard(settings)
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption="⚙️ Pengaturan",
+            reply_markup=build_settings_keyboard(settings)
+        )
     )
 
 
