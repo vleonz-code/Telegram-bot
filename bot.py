@@ -4777,7 +4777,7 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
-        f"㊗️ Admin      : {get_admin_contact_label(settings)}\n"
+        f"㊗️ Admin       : {get_admin_contact_label(settings)}\n"
 
         "</pre>"
     )
@@ -6234,7 +6234,7 @@ async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
                     f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
                     f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
-                    f"㊗️ Admin      : {get_admin_contact_label(settings)}\n"
+                    f"㊗️ Admin       : {get_admin_contact_label(settings)}\n"
                     "</pre>"
                 )
                 await context.bot.edit_message_caption(
@@ -7716,7 +7716,7 @@ def build_adminvip_keyboard():
 
     keyboard.append([
         InlineKeyboardButton(
-            "📛 Daftar Ban",
+            "🚫 Daftar Ban",
             callback_data="adminvip_blacklist"
         ),
         InlineKeyboardButton(
@@ -7791,7 +7791,7 @@ async def adminvip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
-        f"㊗️ Admin      : {get_admin_contact_label(settings)}\n"
+        f"㊗️ Admin       : {get_admin_contact_label(settings)}\n"
 
         "</pre>"
     )
