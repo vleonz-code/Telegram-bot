@@ -2271,7 +2271,7 @@ async def show_qris_loading_message(chat_id, context):
     )
 
     async def _remove_loading():
-        # Hapus segera saat di-await setelah QRIS terkirim (tanpa jeda 1 detik).
+        await asyncio.sleep(1)
         try:
             await context.bot.delete_message(
                 chat_id=chat_id,
@@ -2442,14 +2442,12 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await loading_task
 
                 user = query.from_user
-                asyncio.create_task(
-                    notify_admin_vip_qris(
-                        context.bot,
-                        user.full_name or "-",
-                        f"@{user.username}" if user.username else "-",
-                        user.id,
-                        package["nama"],
-                    )
+                await notify_admin_vip_qris(
+                    context.bot,
+                    user.full_name or "-",
+                    f"@{user.username}" if user.username else "-",
+                    user.id,
+                    package["nama"],
                 )
         finally:
             if 'loading_task' in locals() and not loading_task.done():
@@ -2565,14 +2563,12 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 upload_waiting[order_id]["expires_at"]
             )
             user = query.from_user
-            asyncio.create_task(
-                notify_admin_vip_qris(
-                    context.bot,
-                    user.full_name or "-",
-                    f"@{user.username}" if user.username else "-",
-                    user.id,
-                    package["nama"],
-                )
+            await notify_admin_vip_qris(
+                context.bot,
+                user.full_name or "-",
+                f"@{user.username}" if user.username else "-",
+                user.id,
+                package["nama"],
             )
     except Exception:
         if 'loading_task' in locals() and not loading_task.done():
@@ -2584,6 +2580,8 @@ async def bayar1_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         raise
     finally:
         qris_loading_users.discard(query.from_user.id)
+
+    await answer_task
 
 
 
