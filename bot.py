@@ -2864,11 +2864,14 @@ async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAU
 
     packages = get_vip_packages_cached()["packages"]
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
             caption="Pilih paket yang ingin dikelola:",
             parse_mode="HTML",
             reply_markup=build_adminvip_packages_keyboard(packages)
         )
+    )
 
 
 def build_adminvip_packages_keyboard(packages):
@@ -2924,11 +2927,14 @@ async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAUL
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
             caption="💳 <b>PEMBAYARAN</b>",
             parse_mode="HTML",
             reply_markup=build_payment_keyboard()
         )
+    )
 
 
 INCOMING_VIP_PAGE_SIZE = 10
@@ -3324,7 +3330,9 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
     ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
             caption="📢 Channel Post\n\n"
                     f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
                     f"Interval : {settings['channel_interval']} menit\n\n"
@@ -3336,6 +3344,7 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
             parse_mode="HTML",
             reply_markup=keyboard
         )
+    )
 
 
 async def channel_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4383,10 +4392,13 @@ async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAU
 
     from telegram import InputMediaPhoto
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
             caption="⚙️ Pengaturan",
             reply_markup=keyboard
         )
+    )
 
 
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4424,6 +4436,7 @@ async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     answer_task = asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
 
     count = read_counter()
@@ -4784,12 +4797,14 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
     keyboard = build_adminvip_keyboard()
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
             caption=admin_panel_text,
             parse_mode="HTML",
             reply_markup=keyboard
         )
-
+    )
 
     await clear_last_stats(
         query.message.chat_id,
