@@ -5924,7 +5924,7 @@ async def admin_edit_receive(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     try:
         await update.message.delete()
-    except:
+    except Exception:
         pass
 
     keyboard = InlineKeyboardMarkup([
