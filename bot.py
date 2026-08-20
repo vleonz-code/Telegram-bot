@@ -3087,54 +3087,61 @@ async def incoming_vip_callback(update: Update, context: ContextTypes.DEFAULT_TY
     answer_task = asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
 
     text, keyboard = build_incoming_vip_view(1)
-    try:
-        await query.edit_message_caption(
-            caption=text,
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
-    except Exception:
+    async def render_page():
         try:
-            await query.edit_message_text(
-                text,
+            await query.edit_message_caption(
+                caption=text,
                 parse_mode="HTML",
                 reply_markup=keyboard
             )
-        except Exception as e:
-            logger.warning(f"Incoming VIP menu update failed: {e}")
+        except Exception:
+            try:
+                await query.edit_message_text(
+                    text,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+            except Exception as e:
+                logger.warning(f"Incoming VIP menu update failed: {e}")
 
+    await asyncio.gather(answer_task, render_page())
 
 async def incoming_vip_page_callback(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
 
     page = int(query.data.replace("incoming_vip_page_", ""))
     text, keyboard = build_incoming_vip_view(page)
-    try:
-        await query.edit_message_caption(
-            caption=text,
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
-    except Exception:
+
+    async def render_page():
         try:
-            await query.edit_message_text(
-                text,
+            await query.edit_message_caption(
+                caption=text,
                 parse_mode="HTML",
                 reply_markup=keyboard
             )
-        except Exception as e:
-            logger.warning(f"Incoming VIP page update failed: {e}")
+        except Exception:
+            try:
+                await query.edit_message_text(
+                    text,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+            except Exception as e:
+                logger.warning(f"Incoming VIP page update failed: {e}")
 
+    await asyncio.gather(answer_task, render_page())
 
 async def incoming_vip_detail_callback(
     update: Update,
@@ -3454,26 +3461,29 @@ async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     history = read_order_history()
 
     if not history["orders"]:
 
-        await query.edit_message_caption(
-            caption=(
-                "📋 <b>ORDER HISTORY</b>\n\n"
-                "Belum ada transaksi."
-            ),
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "🔙 Pembayaran",
-                        callback_data="adminvip_payment"
-                    )
-                ]
-            ]),
-            parse_mode="HTML",
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_caption(
+                caption=(
+                    "📋 <b>ORDER HISTORY</b>\n\n"
+                    "Belum ada transaksi."
+                ),
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "🔙 Pembayaran",
+                            callback_data="adminvip_payment"
+                        )
+                    ]
+                ]),
+                parse_mode="HTML",
+            )
         )
         return
 
@@ -3537,7 +3547,9 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
         )
     ])
 
-    await query.edit_message_media(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_media(
         media=InputMediaPhoto(
             media=os.environ["PAYMENT_BANNER_FILE_ID"],
             caption=(
@@ -3552,9 +3564,9 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
             ),
             parse_mode="HTML",
         ),
-        reply_markup=InlineKeyboardMarkup(keyboard),
+            reply_markup=InlineKeyboardMarkup(keyboard),
+        )
     )
-
 
 async def payment_history_detail_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -3925,7 +3937,7 @@ async def payment_history_proof_callback(update: Update, context: ContextTypes.D
 
 async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -3948,14 +3960,16 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             "⚠️ Clear Order\n\n"
             "Silahkan pilih:"
         ),
-        reply_markup=keyboard,
+            reply_markup=keyboard,
+        )
     )
-
 
 async def payment_clear_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -5180,7 +5194,7 @@ async def render_preview_page(context: ContextTypes.DEFAULT_TYPE, chat_id: int, 
 
 async def adminvip_prv_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     # Batalkan mode tambah/edit yang mungkin masih menggantung jika admin
     # menavigasi keluar tanpa mengirim media.
@@ -5193,13 +5207,15 @@ async def adminvip_prv_list_callback(update: Update, context: ContextTypes.DEFAU
     # hanya jika gagal, hapus pesan lama lalu kirim satu pesan katalog
     # baru. Hasil akhirnya selalu satu halaman aktif, menu Pengaturan
     # tidak pernah tertinggal di chat.
-    await render_preview_page(
+    await asyncio.gather(
+        answer_task,
+        render_preview_page(
         context,
         query.message.chat.id,
         query.message.message_id,
         0
+        )
     )
-
 
 async def adminvip_prv_noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -5264,7 +5280,7 @@ async def adminvip_prv_add_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_prv_add_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     preview_add_waiting.pop(query.from_user.id, None)
 
@@ -5272,13 +5288,15 @@ async def adminvip_prv_add_cancel_callback(update: Update, context: ContextTypes
     items = data.get("preview", [])
     idx = max(len(items) - 1, 0)
 
-    await render_preview_page(
+    await asyncio.gather(
+        answer_task,
+        render_preview_page(
         context,
         query.message.chat.id,
         query.message.message_id,
         idx
+        )
     )
-
 
 async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -5316,19 +5334,21 @@ async def adminvip_prv_edit_callback(update: Update, context: ContextTypes.DEFAU
 
 async def adminvip_prv_edit_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
 
     preview_edit_waiting.pop(query.from_user.id, None)
 
     idx = int(query.data.split("_")[4])
 
-    await render_preview_page(
+    await asyncio.gather(
+        answer_task,
+        render_preview_page(
         context,
         query.message.chat.id,
         query.message.message_id,
         idx
+        )
     )
-
 
 async def adminvip_prv_del_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -6701,8 +6721,9 @@ async def banned(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def banned_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
 
     page = int(query.data.replace("banned_page_", ""))
@@ -6723,16 +6744,15 @@ async def banned_page_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             )
 
     await asyncio.gather(
-        query.answer(),
+        answer_task,
         render_page()
     )
 
-
-
 async def banned_reset_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
     page = int(query.data.replace("banned_reset_ask_", ""))
     bl = read_blacklist()
@@ -6746,11 +6766,13 @@ async def banned_reset_ask_callback(update: Update, context: ContextTypes.DEFAUL
         "⚠️ Reset seluruh blacklist?\n\n"
         f"Total {len(bl)} user yang di-blacklist akan dipulihkan."
     )
-    try:
-        await query.edit_message_caption(caption=reset_ask_text, reply_markup=keyboard)
-    except Exception:
-        await query.edit_message_text(reset_ask_text, reply_markup=keyboard)
+    async def render_page():
+        try:
+            await query.edit_message_caption(caption=reset_ask_text, reply_markup=keyboard)
+        except Exception:
+            await query.edit_message_text(reset_ask_text, reply_markup=keyboard)
 
+    await asyncio.gather(answer_task, render_page())
 
 async def banned_reset_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -6767,8 +6789,9 @@ async def banned_reset_yes_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
     data = query.data.replace("banned_manage_", "")
     uid_str, page_str = data.rsplit("_", 1)
@@ -6779,10 +6802,13 @@ async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_T
     info = bl.get(uid)
     if not info:
         text, keyboard = build_blacklist_view(page)
-        try:
-            await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+        async def render_page():
+            try:
+                await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
+            except Exception:
+                await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+        await asyncio.gather(answer_task, render_page())
         return
 
     uname = info["username"] if info["username"] and info["username"] != "-" else "-"
@@ -6798,16 +6824,19 @@ async def banned_manage_callback(update: Update, context: ContextTypes.DEFAULT_T
         [InlineKeyboardButton("🚫 Unban", callback_data=f"banned_unban_ask_{uid}_{page}")],
         [InlineKeyboardButton("🔙 Kembali ke Blacklist", callback_data=f"banned_page_{page}")]
     ])
-    try:
-        await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
-    except Exception:
-        await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+    async def render_page():
+        try:
+            await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
+        except Exception:
+            await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
 
+    await asyncio.gather(answer_task, render_page())
 
 async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
     data = query.data.replace("banned_unban_ask_", "")
     uid_str, page_str = data.rsplit("_", 1)
@@ -6818,10 +6847,13 @@ async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAUL
     info = bl.get(uid)
     if not info:
         text, keyboard = build_blacklist_view(page)
-        try:
-            await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
-        except Exception:
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+        async def render_page():
+            try:
+                await query.edit_message_caption(caption=text, parse_mode="HTML", reply_markup=keyboard)
+            except Exception:
+                await query.edit_message_text(text, parse_mode="HTML", reply_markup=keyboard)
+
+        await asyncio.gather(answer_task, render_page())
         return
 
     keyboard = InlineKeyboardMarkup([
@@ -6835,11 +6867,13 @@ async def banned_unban_ask_callback(update: Update, context: ContextTypes.DEFAUL
         f"👤 {info['full_name']}\n"
         f"🆔 {uid}"
     )
-    try:
-        await query.edit_message_caption(caption=unban_ask_text, reply_markup=keyboard)
-    except Exception:
-        await query.edit_message_text(unban_ask_text, reply_markup=keyboard)
+    async def render_page():
+        try:
+            await query.edit_message_caption(caption=unban_ask_text, reply_markup=keyboard)
+        except Exception:
+            await query.edit_message_text(unban_ask_text, reply_markup=keyboard)
 
+    await asyncio.gather(answer_task, render_page())
 
 async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -7008,8 +7042,9 @@ async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
 
     file_manager_restore_waiting.pop(query.from_user.id, None)
@@ -7019,13 +7054,19 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
     idx = int(query.data.replace("filemgr_open_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
         text, keyboard = build_filemgr_list_view()
-        await query.edit_message_caption(caption=text, reply_markup=keyboard)
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_caption(caption=text, reply_markup=keyboard)
+        )
         return
 
     icon, name, path = FILE_MANAGER_FILES[idx]
     if not os.path.exists(path):
         text, keyboard = build_filemgr_list_view()
-        await query.edit_message_caption(caption=text, reply_markup=keyboard)
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_caption(caption=text, reply_markup=keyboard)
+        )
         return
 
     keyboard = InlineKeyboardMarkup([
@@ -7051,6 +7092,7 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
             pass
 
     await asyncio.gather(
+        answer_task,
         query.edit_message_caption(
             caption=f"{icon} {name}\n\nPilih tindakan.",
             reply_markup=keyboard
@@ -7058,15 +7100,15 @@ async def filemgr_open_callback(update: Update, context: ContextTypes.DEFAULT_TY
         cleanup_download(),
     )
 
-
-
 async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
     idx = int(query.data.replace("filemgr_view_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        await answer_task
         return
 
     icon, name, path = FILE_MANAGER_FILES[idx]
@@ -7092,7 +7134,10 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
 
     if not os.path.exists(path):
         text, keyboard = build_filemgr_list_view()
-        await query.edit_message_caption(caption=text, reply_markup=keyboard)
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_caption(caption=text, reply_markup=keyboard)
+        )
         return
 
     try:
@@ -7115,9 +7160,12 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
             ensure_ascii=False
         )
     except Exception:
-        await query.edit_message_caption(
-            caption=f"❌ Gagal membaca {name}. File mungkin rusak.",
-            reply_markup=action_keyboard
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_caption(
+                caption=f"❌ Gagal membaca {name}. File mungkin rusak.",
+                reply_markup=action_keyboard
+            )
         )
         return
 
@@ -7162,15 +7210,17 @@ async def filemgr_view_callback(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
     try:
-        await query.edit_message_caption(
-            caption=caption,
-            reply_markup=action_keyboard,
-            parse_mode=ParseMode.HTML
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_caption(
+                caption=caption,
+                reply_markup=action_keyboard,
+                parse_mode=ParseMode.HTML
+            )
         )
     except Exception as e:
         logger.exception("filemgr_view_callback failed: %s", e)
         raise
-
 
 async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -7214,11 +7264,13 @@ async def filemgr_backup_callback(update: Update, context: ContextTypes.DEFAULT_
 
 async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
     idx = int(query.data.replace("filemgr_edit_ask_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        await answer_task
         return
 
     dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
@@ -7235,14 +7287,16 @@ async def filemgr_edit_ask_callback(update: Update, context: ContextTypes.DEFAUL
             InlineKeyboardButton("❌ Batal", callback_data=f"filemgr_open_{idx}")
         ]
     ])
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"⚠️ Edit {name}?\n\n"
             "Setelah dikonfirmasi, kirim teks JSON baru untuk menggantikan isi file ini."
         ),
-        reply_markup=keyboard
+            reply_markup=keyboard
+        )
     )
-
 
 async def filemgr_edit_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -7307,8 +7361,9 @@ async def file_manager_edit_receive(update: Update, context: ContextTypes.DEFAUL
 
 async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
 
     context.user_data["filemgr_restore_chat_id"] = query.message.chat_id
@@ -7316,6 +7371,7 @@ async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEF
 
     idx = int(query.data.replace("filemgr_restore_ask_", ""))
     if idx < 0 or idx >= len(FILE_MANAGER_FILES):
+        await answer_task
         return
 
     dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
@@ -7332,14 +7388,16 @@ async def filemgr_restore_ask_callback(update: Update, context: ContextTypes.DEF
             InlineKeyboardButton("❌ Batal", callback_data=f"filemgr_open_{idx}")
         ]
     ])
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
         caption=(
             f"⚠️ Restore {name}?\n\n"
             "Setelah dikonfirmasi, upload file .json baru untuk menggantikan file ini."
         ),
-        reply_markup=keyboard
+            reply_markup=keyboard
+        )
     )
-
 
 async def filemgr_restore_confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
