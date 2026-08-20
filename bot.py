@@ -7697,6 +7697,13 @@ def build_adminvip_keyboard():
             callback_data="adminvip_blacklist"
         ),
         InlineKeyboardButton(
+            "👤 Administrator",
+            callback_data="adminvip_admin_contact"
+        )
+    ])
+
+    keyboard.append([
+        InlineKeyboardButton(
             "⚙️ Pengaturan",
             callback_data="adminvip_settings"
         )
