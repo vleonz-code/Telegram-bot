@@ -4799,7 +4799,6 @@ async def sweep_pending_preview_deletions(bot):
 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    t0 = time.perf_counter()
     # Fire-and-forget answer supaya editMessageCaption tidak menunggu RTT answer.
     asyncio.create_task(query.answer())
 
@@ -4839,10 +4838,6 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
         caption=admin_panel_text,
         parse_mode="HTML",
         reply_markup=keyboard
-    )
-    logger.info(
-        f"[ADMIN UI] adminvip_back edit done in "
-        f"{(time.perf_counter() - t0) * 1000:.0f}ms"
     )
 
     # Non-critical cleanup — jangan tunda navigasi.
@@ -9072,6 +9067,29 @@ async def pre_upload_cleanup_worker(bot):
             pre_upload_cleanup_queue.task_done()
 
 
+async def telegram_connection_warmup(bot):
+    """One-shot warm-up: open TLS/HTTP to api.telegram.org before first admin click."""
+    try:
+        await bot.get_me()
+    except Exception:
+        pass
+
+
+async def telegram_keepalive_loop(bot):
+    """Light keepalive so idle connections do not go fully cold.
+
+    One getMe every 2 minutes — negligible load, helps first click after idle.
+    """
+    while True:
+        try:
+            await asyncio.sleep(120)
+            await bot.get_me()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
+
+
 async def set_admin_commands(app):
     await app.bot.set_my_commands(
         [
@@ -9129,7 +9147,12 @@ def main():
                 schedule_qris_expiry(app, _order_id, float(_expires_at))
 
         await set_admin_commands(app)
+        # Warm Telegram HTTP/TLS so first admin menu click is not a cold start.
+        await telegram_connection_warmup(app.bot)
         app.bot_data["channel_task"] = asyncio.create_task(channel_auto_post_loop(app))
+        app.bot_data["telegram_keepalive_task"] = asyncio.create_task(
+            telegram_keepalive_loop(app.bot)
+        )
         app.bot_data["pre_upload_cleanup_tasks"] = [
             asyncio.create_task(pre_upload_cleanup_worker(app.bot))
             for _ in range(2)
@@ -9141,6 +9164,14 @@ def main():
             task.cancel()
             try:
                 await task
+            except asyncio.CancelledError:
+                pass
+
+        keepalive = app.bot_data.get("telegram_keepalive_task")
+        if keepalive:
+            keepalive.cancel()
+            try:
+                await keepalive
             except asyncio.CancelledError:
                 pass
 
