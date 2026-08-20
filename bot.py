@@ -2863,22 +2863,18 @@ async def adminvip_package_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_packages_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    # Give Telegram's callback acknowledgement an immediate event-loop turn.
-    await asyncio.sleep(0)
+    # Fire-and-forget: jangan tunggu answer sebelum pindah halaman.
+    asyncio.create_task(query.answer())
     # Hentikan mode Tambah Paket jika admin kembali atau menekan Batal.
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
 
     packages = get_vip_packages_cached()["packages"]
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_caption(
-            caption="Pilih paket yang ingin dikelola:",
-            parse_mode="HTML",
-            reply_markup=build_adminvip_packages_keyboard(packages)
-        )
+    await query.edit_message_caption(
+        caption="Pilih paket yang ingin dikelola:",
+        parse_mode="HTML",
+        reply_markup=build_adminvip_packages_keyboard(packages)
     )
 
 
@@ -2916,32 +2912,23 @@ def build_adminvip_packages_keyboard(packages):
 
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    await asyncio.sleep(0)
+    asyncio.create_task(query.answer())
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_caption(
-            caption="💳 <b>PEMBAYARAN</b>",
-            parse_mode="HTML",
-            reply_markup=build_payment_keyboard(),
-        )
+    await query.edit_message_caption(
+        caption="💳 <b>PEMBAYARAN</b>",
+        parse_mode="HTML",
+        reply_markup=build_payment_keyboard(),
     )
 
 
 async def adminvip_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    # Give Telegram's callback acknowledgement an immediate event-loop turn.
-    await asyncio.sleep(0)
+    asyncio.create_task(query.answer())
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_caption(
-            caption="💳 <b>PEMBAYARAN</b>",
-            parse_mode="HTML",
-            reply_markup=build_payment_keyboard()
-        )
+    await query.edit_message_caption(
+        caption="💳 <b>PEMBAYARAN</b>",
+        parse_mode="HTML",
+        reply_markup=build_payment_keyboard()
     )
 
 
@@ -3319,9 +3306,7 @@ async def incoming_vip_detail_callback(
 
 async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    # Give Telegram's callback acknowledgement an immediate event-loop turn.
-    await asyncio.sleep(0)
+    asyncio.create_task(query.answer())
 
     admin_channel_waiting.discard(query.from_user.id)
 
@@ -3356,20 +3341,17 @@ async def adminvip_channel_callback(update: Update, context: ContextTypes.DEFAUL
     ]
     ])
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_caption(
-            caption="📢 Channel Post\n\n"
-                    f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
-                    f"Interval : {settings['channel_interval']} menit\n\n"
-                    "<pre>"
-                    "Pesan\n"
-                    "────────────────────\n"
-                    f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
-                    "</pre>",
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
+    await query.edit_message_caption(
+        caption="📢 Channel Post\n\n"
+                f"Auto Post  : {'🟢 ON' if settings['channel_auto_post'] else '🔴 OFF'}\n"
+                f"Interval : {settings['channel_interval']} menit\n\n"
+                "<pre>"
+                "Pesan\n"
+                "────────────────────\n"
+                f"{settings['channel_post_text'] if settings['channel_post_text'] else 'Belum diatur.'}"
+                "</pre>",
+        parse_mode="HTML",
+        reply_markup=keyboard
     )
 
 
@@ -4431,28 +4413,20 @@ async def adminvip_admin_contact_cancel_callback(update: Update, context: Contex
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    # Give Telegram's callback acknowledgement an immediate event-loop turn.
-    await asyncio.sleep(0)
+    asyncio.create_task(query.answer())
 
     settings = read_settings()
     keyboard = build_settings_keyboard(settings)
 
-    from telegram import InputMediaPhoto
-
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_caption(
-            caption="⚙️ Pengaturan",
-            reply_markup=keyboard
-        )
+    await query.edit_message_caption(
+        caption="⚙️ Pengaturan",
+        reply_markup=keyboard
     )
 
 
 async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    # Give Telegram's callback acknowledgement an immediate event-loop turn.
+    asyncio.create_task(query.answer())
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -4473,13 +4447,10 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_caption(
-            caption="📊 Statistik",
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
+    await query.edit_message_caption(
+        caption="📊 Statistik",
+        parse_mode="HTML",
+        reply_markup=keyboard
     )
 
 
@@ -4828,45 +4799,54 @@ async def sweep_pending_preview_deletions(bot):
 
 async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    # Give Telegram's callback acknowledgement an immediate event-loop turn.
-    await asyncio.sleep(0)
+    t0 = time.perf_counter()
+    # Fire-and-forget answer supaya editMessageCaption tidak menunggu RTT answer.
+    asyncio.create_task(query.answer())
 
     admin_add_waiting.pop(query.from_user.id, None)
     admin_edit_waiting.pop(query.from_user.id, None)
 
     settings = read_settings()
+    users_n = len(_users_cache) if _users_cache is not None else len(read_user_registry())
+    packages_n = len(get_vip_packages_cached()["packages"])
+    incoming_n = sum(
+        1
+        for data in upload_waiting.values()
+        if (
+            data.get("qris_msg_id")
+            and data.get("photo_uploaded") is True
+            and data.get("processing") is True
+            and data.get("photo_file_id")
+        )
+    )
 
     admin_panel_text = (
         "<b>👑 ADMIN VIP PANEL</b>\n"
         "<pre>"
-
-        f"👥 Users       : {len(_users_cache if _users_cache is not None else read_user_registry())}\n"
-        f"📦 Packages    : {len(get_vip_packages_cached()['packages'])}\n"
-        f"📥 Incoming    : {len(get_incoming_vip_orders())}\n"
+        f"👥 Users       : {users_n}\n"
+        f"📦 Packages    : {packages_n}\n"
+        f"📥 Incoming    : {incoming_n}\n"
         f"📢 Auto Post   : {'🟢' if settings['channel_auto_post'] else '🔴'}\n"
         f"🗑 Auto Delete : {'🟢' if settings['preview_auto_delete'] else '🔴'}\n"
         f"⏱ Timer       : {settings['preview_delete_delay']} detik\n"
         f"㊗️ Admin       : {get_admin_contact_label(settings)}\n"
-
         "</pre>"
     )
 
     keyboard = build_adminvip_keyboard()
 
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_caption(
-            caption=admin_panel_text,
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
+    await query.edit_message_caption(
+        caption=admin_panel_text,
+        parse_mode="HTML",
+        reply_markup=keyboard
+    )
+    logger.info(
+        f"[ADMIN UI] adminvip_back edit done in "
+        f"{(time.perf_counter() - t0) * 1000:.0f}ms"
     )
 
-    await clear_last_stats(
-        query.message.chat_id,
-        context.bot
-    )
+    # Non-critical cleanup — jangan tunda navigasi.
+    asyncio.create_task(clear_last_stats(query.message.chat_id, context.bot))
 
 
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -7104,12 +7084,9 @@ async def banned_unban_yes_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    # Give Telegram's callback acknowledgement an immediate event-loop turn.
-    await asyncio.sleep(0)
+    asyncio.create_task(query.answer())
 
     if query.from_user.id != ADMIN_ID:
-        await answer_task
         return
 
     text, keyboard = build_blacklist_view(1)
@@ -7117,13 +7094,10 @@ async def adminvip_blacklist_callback(update: Update, context: ContextTypes.DEFA
     # /adminvip selalu berupa photo message.
     # Ubah caption + keyboard pada message yang sedang ditekan,
     # bukan mengganti/membuat message baru.
-    await asyncio.gather(
-        answer_task,
-        query.edit_message_caption(
-            caption=text,
-            parse_mode="HTML",
-            reply_markup=keyboard,
-        )
+    await query.edit_message_caption(
+        caption=text,
+        parse_mode="HTML",
+        reply_markup=keyboard,
     )
 
 
@@ -7205,51 +7179,38 @@ def build_filemgr_detail_view(idx, icon, name, note=None):
 
 async def filemgr_list_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    answer_task = asyncio.create_task(query.answer())
-    # Give Telegram's callback acknowledgement an immediate event-loop turn.
-    await asyncio.sleep(0)
+    asyncio.create_task(query.answer())
     if query.from_user.id != ADMIN_ID:
-        await answer_task
         return
 
     dl_msg_id = context.user_data.pop("filemgr_download_message_id", None)
     text, keyboard = build_filemgr_list_view()
 
-    async def cleanup_download():
-        if not dl_msg_id:
-            return
-        try:
-            await context.bot.delete_message(
+    if dl_msg_id:
+        asyncio.create_task(
+            context.bot.delete_message(
                 chat_id=query.message.chat_id,
                 message_id=dl_msg_id
             )
-        except Exception:
-            pass
+        )
 
-    async def render():
+    try:
+        await query.edit_message_caption(
+            caption=text,
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+    except Exception:
+        # Fallback tetap mempertahankan perilaku lama jika pesan aktif
+        # bukan media/caption-editable. Jangan memanggil banner lain.
         try:
-            await query.edit_message_caption(
-                caption=text,
+            await query.edit_message_text(
+                text=text,
                 parse_mode="HTML",
                 reply_markup=keyboard
             )
         except Exception:
-            # Fallback tetap mempertahankan perilaku lama jika pesan aktif
-            # bukan media/caption-editable. Jangan memanggil banner lain.
-            try:
-                await query.edit_message_text(
-                    text=text,
-                    parse_mode="HTML",
-                    reply_markup=keyboard
-                )
-            except Exception:
-                pass
-
-    await asyncio.gather(
-        answer_task,
-        render(),
-        cleanup_download(),
-    )
+            pass
 
 
 
@@ -9130,10 +9091,13 @@ def main():
     app = (
         ApplicationBuilder()
         .token(token)
-        .concurrent_updates(8)
-        .connection_pool_size(16)
-        .pool_timeout(2.0)
-        .get_updates_connection_pool_size(4)
+        .concurrent_updates(16)
+        .connection_pool_size(32)
+        .connect_timeout(5.0)
+        .read_timeout(7.0)
+        .write_timeout(7.0)
+        .pool_timeout(1.0)
+        .get_updates_connection_pool_size(8)
         .get_updates_pool_timeout(1.0)
         .build()
     )
@@ -9718,72 +9682,10 @@ def main():
     ))
 
     logger.info("Bot is running...")
-
-    # ============================================================
-    # VIP NAV HTTP-LAYER DIAGNOSTIC — NO BEHAVIOR CHANGE
-    # Measures only the internal PTB HTTP request duration for
-    # editMessageCaption. The original request method is preserved.
-    # ============================================================
-    try:
-        from telegram.request import HTTPXRequest as _VIP_HTTPXRequest
-
-        _vip_original_do_request = _VIP_HTTPXRequest.do_request
-
-        async def _vip_timed_do_request(
-            self,
-            url,
-            method,
-            request_data=None,
-            read_timeout=None,
-            write_timeout=None,
-            connect_timeout=None,
-            pool_timeout=None,
-        ):
-            endpoint = str(url)
-
-            if "editmessagecaption" not in endpoint.lower():
-                return await _vip_original_do_request(
-                    self,
-                    url,
-                    method,
-                    request_data,
-                    read_timeout,
-                    write_timeout,
-                    connect_timeout,
-                    pool_timeout,
-                )
-
-            _vip_http_t0 = time.perf_counter()
-            logger.info(
-                f"[VIP HTTP DIAG] editMessageCaption request_start "
-                f"url={endpoint}"
-            )
-            try:
-                return await _vip_original_do_request(
-                    self,
-                    url,
-                    method,
-                    request_data,
-                    read_timeout,
-                    write_timeout,
-                    connect_timeout,
-                    pool_timeout,
-                )
-            finally:
-                _vip_http_t1 = time.perf_counter()
-                logger.info(
-                    f"[VIP HTTP DIAG] editMessageCaption request_done "
-                    f"elapsed={_vip_http_t1 - _vip_http_t0:.6f}s"
-                )
-
-        _VIP_HTTPXRequest.do_request = _vip_timed_do_request
-        logger.info("[VIP HTTP DIAG] HTTPXRequest instrumentation installed")
-    except Exception as _vip_http_diag_error:
-        logger.warning(
-            f"[VIP HTTP DIAG] instrumentation unavailable: {_vip_http_diag_error}"
-        )
-
-    app.run_polling()
+    app.run_polling(
+        drop_pending_updates=False,
+        allowed_updates=["message", "callback_query"],
+    )
 
 
 
