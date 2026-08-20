@@ -2917,6 +2917,7 @@ def build_adminvip_packages_keyboard(packages):
 async def payment_back_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     await asyncio.gather(
         answer_task,
@@ -3182,9 +3183,11 @@ async def incoming_vip_detail_callback(
     context: ContextTypes.DEFAULT_TYPE
 ):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     if query.from_user.id != ADMIN_ID:
+        await answer_task
         return
 
     _, _, _, order_id_str, page_str = query.data.split("_", 4)
@@ -3195,19 +3198,26 @@ async def incoming_vip_detail_callback(
     if not data or (order_id, data) not in get_incoming_vip_orders():
         text, keyboard = build_incoming_vip_view(page)
         try:
-            await query.edit_message_caption(
-                caption=text,
-                parse_mode="HTML",
-                reply_markup=keyboard
+            await asyncio.gather(
+                answer_task,
+                query.edit_message_caption(
+                    caption=text,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                ),
             )
         except Exception:
             try:
-                await query.edit_message_text(
-                    text,
-                    parse_mode="HTML",
-                    reply_markup=keyboard
+                await asyncio.gather(
+                    answer_task,
+                    query.edit_message_text(
+                        text,
+                        parse_mode="HTML",
+                        reply_markup=keyboard
+                    ),
                 )
             except Exception as e:
+                await answer_task
                 logger.warning(f"Incoming VIP stale detail update failed: {e}")
         return
 
@@ -3238,19 +3248,26 @@ async def incoming_vip_detail_callback(
     ])
 
     try:
-        await query.edit_message_caption(
-            caption=detail_text,
-            parse_mode="HTML",
-            reply_markup=detail_keyboard
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_caption(
+                caption=detail_text,
+                parse_mode="HTML",
+                reply_markup=detail_keyboard
+            ),
         )
     except Exception:
         try:
-            await query.edit_message_text(
-                detail_text,
-                parse_mode="HTML",
-                reply_markup=detail_keyboard
+            await asyncio.gather(
+                answer_task,
+                query.edit_message_text(
+                    detail_text,
+                    parse_mode="HTML",
+                    reply_markup=detail_keyboard
+                ),
             )
         except Exception as e:
+            await answer_task
             logger.warning(f"Incoming VIP detail update failed: {e}")
             return
 
@@ -3448,7 +3465,8 @@ async def channel_interval_callback(update: Update, context: ContextTypes.DEFAUL
 
 async def channel_set_interval_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     minutes = int(query.data.replace("channel_set_", ""))
 
@@ -3456,6 +3474,7 @@ async def channel_set_interval_callback(update: Update, context: ContextTypes.DE
     settings["channel_interval"] = minutes
     save_settings(settings)
 
+    await answer_task
     await adminvip_channel_callback(update, context)
 
 
@@ -3498,6 +3517,7 @@ async def channel_send_callback(update: Update, context: ContextTypes.DEFAULT_TY
 async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     history = read_order_history()
 
@@ -3527,7 +3547,7 @@ async def payment_history_callback(update: Update, context: ContextTypes.DEFAULT
 
     total_pendapatan = 0
 
-    packages = read_vip_packages()["packages"]
+    packages = get_vip_packages_cached()["packages"]
 
     for order in history["orders"]:
 
@@ -3968,6 +3988,7 @@ async def payment_history_proof_callback(update: Update, context: ContextTypes.D
 async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -4003,7 +4024,8 @@ async def payment_clear_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def payment_clear_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     callback_data = query.data
 
@@ -4033,12 +4055,15 @@ async def payment_clear_date_callback(update: Update, context: ContextTypes.DEFA
                 )
             ]
         ])
-        await query.edit_message_caption(
-            caption=(
-                "📅 Hapus Order Berdasarkan Tanggal\n\n"
-                "Belum ada Order History."
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_caption(
+                caption=(
+                    "📅 Hapus Order Berdasarkan Tanggal\n\n"
+                    "Belum ada Order History."
+                ),
+                reply_markup=keyboard,
             ),
-            reply_markup=keyboard,
         )
         return
 
@@ -4094,18 +4119,22 @@ async def payment_clear_date_callback(update: Update, context: ContextTypes.DEFA
         )
     ])
 
-    await query.edit_message_caption(
-        caption=(
-            "📅 Hapus Order Berdasarkan Tanggal\n\n"
-            "Silahkan pilih tanggal:"
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption=(
+                "📅 Hapus Order Berdasarkan Tanggal\n\n"
+                "Silahkan pilih tanggal:"
+            ),
+            reply_markup=InlineKeyboardMarkup(keyboard),
         ),
-        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
 async def payment_clear_date_select_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     tanggal = query.data.replace("payment_clear_date_select_", "", 1)
     history = read_order_history()
@@ -4140,23 +4169,27 @@ async def payment_clear_date_select_callback(update: Update, context: ContextTyp
         ]
     ])
 
-    await query.edit_message_caption(
-        caption=(
-            "⚠️ Hapus Order Tanggal Ini\n\n"
-            f"📅 {tanggal}\n\n"
-            f"📦 Total Order\n"
-            f"{total_order}\n\n"
-            f"💰 Total Pendapatan\n"
-            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
-            "Data tidak dapat dikembalikan."
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption=(
+                "⚠️ Hapus Order Tanggal Ini\n\n"
+                f"📅 {tanggal}\n\n"
+                f"📦 Total Order\n"
+                f"{total_order}\n\n"
+                f"💰 Total Pendapatan\n"
+                f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+                "Data tidak dapat dikembalikan."
+            ),
+            reply_markup=keyboard,
         ),
-        reply_markup=keyboard,
     )
 
 
 async def payment_clear_date_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     tanggal = query.data.replace("payment_clear_date_yes_", "", 1)
     history = read_order_history()
@@ -4178,21 +4211,25 @@ async def payment_clear_date_yes_callback(update: Update, context: ContextTypes.
         ]
     ])
 
-    await query.edit_message_caption(
-        caption="✅ Transaksi tanggal berhasil dihapus.",
-        reply_markup=keyboard,
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption="✅ Transaksi tanggal berhasil dihapus.",
+            reply_markup=keyboard,
+        ),
     )
 
 
 async def payment_clear_all_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     history = read_order_history()
     total_order = len(history["orders"])
 
     total_pendapatan = 0
-    packages = read_vip_packages()["packages"]
+    packages = get_vip_packages_cached()["packages"]
 
     for order in history["orders"]:
         package = next(
@@ -4223,23 +4260,27 @@ async def payment_clear_all_callback(update: Update, context: ContextTypes.DEFAU
         ]
     ])
 
-    await query.edit_message_caption(
-        caption=(
-            "⚠️ Hapus Semua Order\n\n"
-            "Seluruh Order History akan dihapus.\n\n"
-            f"📦 Total Order\n"
-            f"{total_order}\n\n"
-            f"💰 Total Pendapatan\n"
-            f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
-            "Data tidak dapat dikembalikan."
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption=(
+                "⚠️ Hapus Semua Order\n\n"
+                "Seluruh Order History akan dihapus.\n\n"
+                f"📦 Total Order\n"
+                f"{total_order}\n\n"
+                f"💰 Total Pendapatan\n"
+                f"Rp{total_pendapatan:,}".replace(",", ".") + "\n\n"
+                "Data tidak dapat dikembalikan."
+            ),
+            reply_markup=keyboard,
         ),
-        reply_markup=keyboard,
     )
 
 
 async def payment_clear_all_yes_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     save_order_history({
         "orders": []
@@ -4254,9 +4295,12 @@ async def payment_clear_all_yes_callback(update: Update, context: ContextTypes.D
         ]
     ])
 
-    await query.edit_message_caption(
-        caption="✅ Order History berhasil dibersihkan.",
-        reply_markup=keyboard,
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption="✅ Order History berhasil dibersihkan.",
+            reply_markup=keyboard,
+        ),
     )
 
 
@@ -4409,7 +4453,6 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     answer_task = asyncio.create_task(query.answer())
     # Give Telegram's callback acknowledgement an immediate event-loop turn.
-    await asyncio.sleep(0)
 
     keyboard = InlineKeyboardMarkup([
         [
@@ -4430,11 +4473,14 @@ async def adminvip_stats_callback(update: Update, context: ContextTypes.DEFAULT_
         ]
     ])
 
-    await query.edit_message_caption(
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
             caption="📊 Statistik",
             parse_mode="HTML",
             reply_markup=keyboard
         )
+    )
 
 
 async def stats_view_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -4825,7 +4871,8 @@ async def adminvip_back_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     admin_qris_waiting.discard(query.from_user.id)
 
@@ -4850,23 +4897,29 @@ async def adminvip_qris_callback(update: Update, context: ContextTypes.DEFAULT_T
     ])
 
     if settings["qris_file_id"]:
-        await query.edit_message_media(
-            media=InputMediaPhoto(
-                media=settings["qris_file_id"],
-                caption=(
-                    "🖼 <b>QRIS PEMBAYARAN</b>\n\n"
-                    "QRIS yang sedang digunakan.\n\n"
-                    "Pilih aksi di bawah."
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_media(
+                media=InputMediaPhoto(
+                    media=settings["qris_file_id"],
+                    caption=(
+                        "🖼 <b>QRIS PEMBAYARAN</b>\n\n"
+                        "QRIS yang sedang digunakan.\n\n"
+                        "Pilih aksi di bawah."
+                    ),
+                    parse_mode="HTML",
                 ),
-                parse_mode="HTML",
+                reply_markup=keyboard,
             ),
-            reply_markup=keyboard,
         )
     else:
-        await query.edit_message_caption(
-            caption="⚠️ QRIS belum diatur.",
-            reply_markup=keyboard,
-            parse_mode="HTML",
+        await asyncio.gather(
+            answer_task,
+            query.edit_message_caption(
+                caption="⚠️ QRIS belum diatur.",
+                reply_markup=keyboard,
+                parse_mode="HTML",
+            ),
         )
 
 
@@ -5874,7 +5927,8 @@ async def adminvip_delete_yes_callback(update: Update, context: ContextTypes.DEF
 
     query = update.callback_query
 
-    await query.answer()
+    answer_task = asyncio.create_task(query.answer())
+    await asyncio.sleep(0)
 
     package_id = int(query.data.split("_")[3])
 
@@ -5890,6 +5944,7 @@ async def adminvip_delete_yes_callback(update: Update, context: ContextTypes.DEF
 
     save_vip_packages(packages)
 
+    await answer_task
     await adminvip_packages_callback(update, context)
 
 
@@ -9072,9 +9127,33 @@ def main():
 
     restore_pending_orders()
 
-    app = (ApplicationBuilder().token(token).concurrent_updates(2).connection_pool_size(4).pool_timeout(0.5).get_updates_connection_pool_size(2).get_updates_pool_timeout(0.5).build())
+    app = (
+        ApplicationBuilder()
+        .token(token)
+        .concurrent_updates(8)
+        .connection_pool_size(16)
+        .pool_timeout(2.0)
+        .get_updates_connection_pool_size(4)
+        .get_updates_pool_timeout(1.0)
+        .build()
+    )
 
     async def start_background(app):
+        # Warm caches so first admin clicks never hit cold disk I/O.
+        try:
+            read_settings()
+            get_vip_packages_cached()
+            read_user_registry()
+            read_approved()
+            read_blacklist()
+            read_order_history()
+            read_pending_orders()
+            read_counter()
+            build_adminvip_keyboard()
+            build_payment_keyboard()
+        except Exception as e:
+            logger.warning(f"Cache warm-up skipped: {e}")
+
         for _order_id, _order in upload_waiting.items():
             _expires_at = _order.get("expires_at")
             if (
