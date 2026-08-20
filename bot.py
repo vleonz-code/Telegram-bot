@@ -4298,12 +4298,6 @@ def build_settings_keyboard(settings):
         ],
         [
             InlineKeyboardButton(
-                f"👤 Administrator: {get_admin_contact_label(settings)}",
-                callback_data="adminvip_admin_contact"
-            )
-        ],
-        [
-            InlineKeyboardButton(
                 "🔙 Kembali",
                 callback_data="adminvip_back"
             )
@@ -4346,7 +4340,7 @@ async def adminvip_admin_contact_callback(update: Update, context: ContextTypes.
         [
             InlineKeyboardButton(
                 "❌ Batal",
-                callback_data="adminvip_settings"
+                callback_data="adminvip_admin_contact_cancel"
             )
         ]
     ])
@@ -4357,13 +4351,27 @@ async def adminvip_admin_contact_callback(update: Update, context: ContextTypes.
             caption=(
                 "👤 <b>ADMINISTRATOR USER-FACING</b>\n\n"
                 f"Username saat ini: <b>{get_admin_contact_label(settings)}</b>\n\n"
-                "Kirim username Telegram admin yang akan ditampilkan ke user.\n"
-                "Contoh: <code>AdminBaru</code> atau <code>@AdminBaru</code>."
+                "Kirim username Telegram admin yang akan ditampilkan ke user."
             ),
             reply_markup=keyboard,
             parse_mode="HTML",
         )
     )
+
+
+async def adminvip_admin_contact_cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+
+    if query.from_user.id != ADMIN_ID:
+        await query.answer()
+        return
+
+    context.user_data.pop("admin_username_waiting", None)
+    context.user_data.pop("admin_username_settings_chat_id", None)
+    context.user_data.pop("admin_username_settings_message_id", None)
+
+    # Batal benar-benar menghentikan mode input lalu kembali ke Menu Utama.
+    await adminvip_back_callback(update, context)
 
 
 async def adminvip_settings_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -9360,6 +9368,11 @@ def main():
     CallbackQueryHandler(
         payment_history_detail_callback,
         pattern=r"^history_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_admin_contact_cancel_callback,
+        pattern=r"^adminvip_admin_contact_cancel$"
     ))
     app.add_handler(
     CallbackQueryHandler(
