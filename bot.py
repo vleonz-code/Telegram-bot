@@ -49,6 +49,7 @@ DEEP_LINK_B = "PREV2"
 PREVIEW_VIDEO_B_FILE_ID = "BAACAgUAAxkBAAJDlGp4Hmwz0OM4FdHxZdCjBifMqn_-AAJ8HgACmpvAV-mzh74iZtACPQQ"
 
 ADMIN_ID = 7602115007
+DEFAULT_ADMIN_USERNAME = "BocilVIP511"
 CHANNEL_ID = -1004363191859
 ORDER_HISTORY_EXCLUDED = {
     ADMIN_ID,
@@ -323,6 +324,7 @@ def read_settings():
                     "channel_interval": 60,
                     "channel_last_post": 0,
                     "channel_last_message_id": None,
+                    "admin_username": DEFAULT_ADMIN_USERNAME,
                 },
 
                 f,
@@ -377,6 +379,10 @@ def read_settings():
         data["channel_last_post"] = 0
         save_settings(data)
 
+    if "admin_username" not in data:
+        data["admin_username"] = DEFAULT_ADMIN_USERNAME
+        save_settings(data)
+
     _settings_cache = dict(data)
 
     return data
@@ -401,6 +407,21 @@ def save_settings(data):
         )
 
     _settings_cache = dict(data)
+
+
+def get_admin_username(settings=None):
+    if settings is None:
+        settings = read_settings()
+    username = str(settings.get("admin_username", DEFAULT_ADMIN_USERNAME)).strip().lstrip("@")
+    return username or DEFAULT_ADMIN_USERNAME
+
+
+def get_admin_contact_url(settings=None):
+    return f"https://t.me/{get_admin_username(settings)}"
+
+
+def get_admin_contact_label(settings=None):
+    return f"@{get_admin_username(settings)}"
 
 
 def load_preview():
@@ -584,7 +605,7 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
                     ),
                     InlineKeyboardButton(
                         "🆘 Bantuan",
-                        url="https://t.me/BocilVIP511"
+                        url=get_admin_contact_url(settings)
                     )
                 ]
             ])
@@ -594,7 +615,7 @@ async def deliver_album(bot, chat_id: int, file_ids, auto_delete=True):
             bot.send_message(
                 chat_id,
                 (
-                    "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
+                    f"<b>📢 Bot Resmi milik {get_admin_contact_label(settings)}</b>\n"
                     f"✅ Semua {len(media)} media terkirim!"
                 ),
                 parse_mode="HTML",
@@ -694,7 +715,7 @@ async def deliver_preview_b(bot, chat_id: int, file_ids, auto_delete=False):
             bot.send_message(
                 chat_id,
                 (
-                    "<b>📢 Bot Resmi milik @BocilVIP511</b>\n"
+                    f"<b>📢 Bot Resmi milik {get_admin_contact_label(settings)}</b>\n"
                     f"✅ Semua {len(media)} media terkirim!"
                 ),
                 parse_mode="HTML"
@@ -4277,6 +4298,12 @@ def build_settings_keyboard(settings):
         ],
         [
             InlineKeyboardButton(
+                f"👤 Administrator: {get_admin_contact_label(settings)}",
+                callback_data="adminvip_admin_contact"
+            )
+        ],
+        [
+            InlineKeyboardButton(
                 "🔙 Kembali",
                 callback_data="adminvip_back"
             )
@@ -4298,6 +4325,43 @@ async def adminvip_backup_callback(update: Update, context: ContextTypes.DEFAULT
             document=source_path,
             filename=os.path.basename(source_path),
             caption="💾 Backup source bot"
+        )
+    )
+
+
+async def adminvip_admin_contact_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    answer_task = asyncio.create_task(query.answer())
+
+    if query.from_user.id != ADMIN_ID:
+        await answer_task
+        return
+
+    settings = read_settings()
+    context.user_data["admin_username_waiting"] = True
+    context.user_data["admin_username_settings_chat_id"] = query.message.chat_id
+    context.user_data["admin_username_settings_message_id"] = query.message.message_id
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "❌ Batal",
+                callback_data="adminvip_settings"
+            )
+        ]
+    ])
+
+    await asyncio.gather(
+        answer_task,
+        query.edit_message_caption(
+            caption=(
+                "👤 <b>ADMINISTRATOR USER-FACING</b>\n\n"
+                f"Username saat ini: <b>{get_admin_contact_label(settings)}</b>\n\n"
+                "Kirim username Telegram admin yang akan ditampilkan ke user.\n"
+                "Contoh: <code>AdminBaru</code> atau <code>@AdminBaru</code>."
+            ),
+            reply_markup=keyboard,
+            parse_mode="HTML",
         )
     )
 
@@ -6124,6 +6188,48 @@ async def admin_vip_banner_receive(update: Update, context: ContextTypes.DEFAULT
 async def admin_text_receive(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_id = update.effective_user.id
+
+    if user_id == ADMIN_ID and context.user_data.get("admin_username_waiting"):
+        raw_username = (update.message.text or "").strip()
+        username = raw_username.lstrip("@")
+
+        import re
+        if not re.fullmatch(r"[A-Za-z0-9_]{5,32}", username):
+            await update.message.reply_text(
+                "❌ Username tidak valid. Gunakan username Telegram 5–32 karakter tanpa spasi.\n"
+                "Contoh: @AdminBaru"
+            )
+            return
+
+        settings = read_settings()
+        settings["admin_username"] = username
+        save_settings(settings)
+        context.user_data.pop("admin_username_waiting", None)
+
+        settings_chat_id = context.user_data.pop("admin_username_settings_chat_id", None)
+        settings_message_id = context.user_data.pop("admin_username_settings_message_id", None)
+
+        try:
+            await update.message.delete()
+        except Exception:
+            pass
+
+        if settings_chat_id and settings_message_id:
+            try:
+                await context.bot.edit_message_caption(
+                    chat_id=settings_chat_id,
+                    message_id=settings_message_id,
+                    caption="⚙️ Pengaturan",
+                    reply_markup=build_settings_keyboard(settings),
+                )
+            except Exception:
+                pass
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=f"✅ Username admin user-facing berhasil diubah menjadi {get_admin_contact_label(settings)}"
+        )
+        return
 
     if user_id in admin_edit_waiting:
         await admin_edit_receive(update, context)
@@ -9247,6 +9353,11 @@ def main():
     CallbackQueryHandler(
         payment_history_detail_callback,
         pattern=r"^history_"
+    ))
+    app.add_handler(
+    CallbackQueryHandler(
+        adminvip_admin_contact_callback,
+        pattern=r"^adminvip_admin_contact$"
     ))
     app.add_handler(
     CallbackQueryHandler(
